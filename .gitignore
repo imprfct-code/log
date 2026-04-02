@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+.output/
+
+# Convex
+.env.local
+convex/_generated/
+
+# Vite
+*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+*.swp
+*.swo
+.zed/
+.vscode/
+.cursor/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
