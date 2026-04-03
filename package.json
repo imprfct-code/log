@@ -6,6 +6,12 @@
   "scripts": {
     "ready": "vp fmt && vp lint && vp run -r test && vp run -r build",
     "dev": "vp run web#dev",
+    "build": "vp run -r build",
+    "lint": "vp lint",
+    "fmt": "vp fmt",
+    "fmt:check": "vp fmt --check",
+    "typecheck": "vp run -r typecheck",
+    "check": "vp check",
     "prepare": "vp config"
   },
   "devDependencies": {

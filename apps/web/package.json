@@ -7,6 +7,7 @@
     "dev": "vp dev",
     "build": "tsc -b && vp build",
     "lint": "eslint .",
+    "typecheck": "tsc -b --noEmit",
     "preview": "vp preview"
   },
   "dependencies": {
