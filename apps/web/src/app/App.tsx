@@ -1,6 +1,7 @@
 import { useMutation } from "convex/react";
 import { type FormEvent, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
+import logo from "../assets/logo.svg";
 import "./App.css";
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
     <>
       <header className="header">
         <div className="header-left">
+          <img src={logo} alt="imprfct Log" className="header-logo" />
           <span className="header-name">imprfct Log</span>
           <span className="header-domain">/ log.imprfct.dev</span>
         </div>
