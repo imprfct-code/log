@@ -55,13 +55,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm add -g vercel@latest
       - name: Pull Vercel config
-        run: vercel pull --yes --environment=${{ needs.resolve-env.outputs.is_production == 'true' && 'production' || 'preview' }}
+        run: vercel pull --yes --environment=${{ needs.resolve-env.outputs.is_production == 'true' && 'production' || 'preview' }} --token=${{ secrets.VERCEL_TOKEN }}
       - name: Build
-        run: vercel build ${{ needs.resolve-env.outputs.is_production == 'true' && '--prod' || '' }}
+        run: vercel build ${{ needs.resolve-env.outputs.is_production == 'true' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }}
       - name: Deploy
         id: deploy
         run: |
-          URL=$(vercel deploy --prebuilt ${{ needs.resolve-env.outputs.is_production == 'true' && '--prod' || '' }})
+          URL=$(vercel deploy --prebuilt ${{ needs.resolve-env.outputs.is_production == 'true' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }})
           echo "url=$URL" >> "$GITHUB_OUTPUT"
       - name: Summary
         run: |
@@ -80,7 +80,7 @@ jobs:
         run: |
           COUNT=$(find convex -name '*.ts' -o -name '*.js' | grep -v '_generated' | wc -l | tr -d ' ')
           echo "has_sources=$( [ "$COUNT" -gt 0 ] && echo true || echo false )" >> "$GITHUB_OUTPUT"
-          [ "$COUNT" -eq 0 ] && echo "::notice::Convex not configured yet — skipping deploy"
+          [ "$COUNT" -eq 0 ] && echo "::notice::Convex not configured yet — skipping deploy" || true
       - uses: pnpm/action-setup@v4
         if: steps.check.outputs.has_sources == 'true'
       - uses: actions/setup-node@v4
