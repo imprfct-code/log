@@ -11,7 +11,8 @@ convex/_generated/
 
 # Environment
 .env
-.env.local
+.env.*
+!.env.example
 
 # Vite
 *.local
@@ -38,3 +39,7 @@ pnpm-debug.log*
 .codex/
 .cursor/
 .agents/
+
+# Vercel
+.vercel/
+.vercel

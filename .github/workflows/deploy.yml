@@ -1,0 +1,102 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main, development]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - production
+          - development
+
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'production') || 'development' }}
+  cancel-in-progress: false
+
+jobs:
+  resolve-env:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.set.outputs.environment }}
+      is_production: ${{ steps.set.outputs.is_production }}
+    steps:
+      - id: set
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            ENV="${{ github.event.inputs.environment }}"
+          elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            ENV="production"
+          else
+            ENV="development"
+          fi
+          echo "environment=$ENV" >> "$GITHUB_OUTPUT"
+          echo "is_production=$( [ "$ENV" = "production" ] && echo true || echo false )" >> "$GITHUB_OUTPUT"
+
+  deploy-web:
+    needs: resolve-env
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: ${{ needs.resolve-env.outputs.environment }}
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm add -g vercel@latest
+      - name: Pull Vercel config
+        run: vercel pull --yes --environment=${{ needs.resolve-env.outputs.is_production == 'true' && 'production' || 'preview' }}
+      - name: Build
+        run: vercel build ${{ needs.resolve-env.outputs.is_production == 'true' && '--prod' || '' }}
+      - name: Deploy
+        id: deploy
+        run: |
+          URL=$(vercel deploy --prebuilt ${{ needs.resolve-env.outputs.is_production == 'true' && '--prod' || '' }})
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+      - name: Summary
+        run: |
+          echo "### Deployed to ${{ needs.resolve-env.outputs.environment }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ steps.deploy.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
+
+  deploy-convex:
+    needs: resolve-env
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: ${{ needs.resolve-env.outputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Convex sources
+        id: check
+        run: |
+          COUNT=$(find convex -name '*.ts' -o -name '*.js' | grep -v '_generated' | wc -l | tr -d ' ')
+          echo "has_sources=$( [ "$COUNT" -gt 0 ] && echo true || echo false )" >> "$GITHUB_OUTPUT"
+          [ "$COUNT" -eq 0 ] && echo "::notice::Convex not configured yet — skipping deploy"
+      - uses: pnpm/action-setup@v4
+        if: steps.check.outputs.has_sources == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.has_sources == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        if: steps.check.outputs.has_sources == 'true'
+      - name: Deploy Convex
+        if: steps.check.outputs.has_sources == 'true'
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+        run: |
+          if [ "${{ needs.resolve-env.outputs.is_production }}" = "true" ]; then
+            npx convex deploy
+          else
+            npx convex deploy --preview "${{ github.ref_name }}"
+          fi

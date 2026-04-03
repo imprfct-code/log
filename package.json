@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "ready": "vp fmt && vp lint && vp run -r test && vp run -r build",
-    "dev": "vp run web#dev",
+    "dev": "npx convex dev & vp run web#dev",
+    "preview": "vercel env pull .env.production --environment=production --yes && vp run -r build && vp run web#preview",
     "build": "vp run -r build",
     "lint": "vp lint",
     "fmt": "vp fmt",
@@ -15,6 +16,7 @@
     "prepare": "vp config"
   },
   "devDependencies": {
+    "convex": "catalog:",
     "vite-plus": "catalog:"
   },
   "engines": {
