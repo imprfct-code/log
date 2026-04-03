@@ -98,9 +98,4 @@ jobs:
         if: steps.check.outputs.has_sources == 'true'
         env:
           CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
-        run: |
-          if [ "${{ needs.resolve-env.outputs.is_production }}" = "true" ]; then
-            npx convex deploy
-          else
-            npx convex deploy --preview "${{ github.ref_name }}"
-          fi
+        run: npx convex deploy
