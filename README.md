@@ -1,6 +1,12 @@
 <p align="center">
-  <h1 align="center">imprfct Log</h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/logo-light.svg">
+    <source media="(prefers-color-scheme: light)" srcset=".github/assets/logo-dark.svg">
+    <img alt="Log" src=".github/assets/logo-dark.svg" height="80">
+  </picture>
 </p>
+
+<h1 align="center">Log</h1>
 
 <p align="center">
   Ship-only devlog platform. Commit publicly. Build in the open. Ship.
