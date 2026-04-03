@@ -1,5 +1,51 @@
 # AGENTS.md
 
+## About Log
+
+Log — ship-only devlog platform by imprfct. People publicly commit to building something, document the journey through auto-pulled git commits, and ship the result. Core loop: Commit → Devlog → Ship. For indie hackers and builders who struggle with the gap between "I have an idea" and "I shipped it".
+
+## Tech Stack
+
+- React 19 + TypeScript (strict) — SPA, not Next.js. No server components.
+- Convex — backend, database, realtime, crons
+- Clerk — auth (GitHub OAuth)
+- Vite+ — toolchain (`vp` CLI, never `pnpm` for dev commands)
+- Vercel — frontend deploy
+- pnpm workspaces — monorepo
+
+## Commands
+
+- `vp run dev` — start dev server (at monorepo root, not `vp dev`)
+- `vp run -r build` — build all packages
+- `vp lint` — lint
+- `vp fmt` — format
+- `vp fmt --check` — check formatting
+- `vp run -r typecheck` — type check
+- `vp check` — lint + fmt + typecheck
+- `pnpm ready` — full pre-push check (fmt + lint + test + build)
+
+## Project Structure
+
+```
+convex/              # Backend — schema, queries, mutations, crons
+apps/web/            # React SPA
+  src/app/           # App shell, routing
+  src/components/    # UI components
+  src/lib/           # Utilities, providers
+packages/utils/      # Shared utilities
+```
+
+## Formatting
+
+oxfmt: double quotes, 2-space indent, 100 char width, trailing commas.
+
+## Philosophy
+
+- Minimal code. Don't over-engineer.
+- Ship fast, iterate. No premature abstractions.
+- Three similar lines > a shared helper used once.
+- If it works and is readable, it's done.
+
 ## Architecture Principles
 
 - No god files. One component = one file. One Convex function = one domain file.
