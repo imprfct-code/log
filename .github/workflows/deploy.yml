@@ -53,6 +53,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Generate Convex types
+        run: npx convex codegen
       - run: pnpm add -g vercel@latest
       - name: Pull Vercel config
         run: vercel pull --yes --environment=${{ needs.resolve-env.outputs.is_production == 'true' && 'production' || 'preview' }} --token=${{ secrets.VERCEL_TOKEN }}
