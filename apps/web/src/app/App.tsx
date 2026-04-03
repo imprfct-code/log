@@ -1,100 +1,97 @@
-import { useState } from "react";
-import heroImg from "../assets/hero.png";
-import reactLogo from "../assets/react.svg";
-import viteLogo from "../assets/vite.svg";
+import { useMutation } from "convex/react";
+import { type FormEvent, useState } from "react";
+import { api } from "../../../../convex/_generated/api";
 import "./App.css";
 
 function App() {
-  const [count, setCount] = useState(0);
+  const joinWaitlist = useMutation(api.waitlist.join);
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<"idle" | "sending" | "done" | "exists" | "error">("idle");
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setStatus("sending");
+    try {
+      const result = await joinWaitlist({ email: email.trim() });
+      setStatus(result.alreadyJoined ? "exists" : "done");
+    } catch {
+      setStatus("error");
+    }
+  }
 
   return (
     <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+      <header className="header">
+        <div className="header-left">
+          <span className="header-name">imprfct Log</span>
+          <span className="header-domain">/ log.imprfct.dev</span>
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button className="counter" onClick={() => setCount((count) => count + 1)}>
-          Count is {count}
-        </button>
+        <span className="badge">Building</span>
+      </header>
+
+      <section className="hero">
+        <p className="hero-label">
+          commit #1 — <span className="accent">day 1</span>
+        </p>
+        <h1 className="hero-title">
+          A place to commit,
+          <br />
+          document the struggle,
+          <br />
+          and <span className="accent">ship</span>.
+        </h1>
+        <p className="subtitle">
+          Public commitments. Auto devlogs from your git history.
+          <br />
+          No editing. No curation. Just work.
+        </p>
       </section>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+      <div className="timeline">
+        <div className="timeline-entry">
+          <span className="timeline-day">day 1</span>
+          <span className="timeline-text">I'm building imprfct Log.</span>
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg className="button-icon" role="presentation" aria-hidden="true">
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg className="button-icon" role="presentation" aria-hidden="true">
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg className="button-icon" role="presentation" aria-hidden="true">
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg className="button-icon" role="presentation" aria-hidden="true">
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
+        <div className="timeline-entry">
+          <span className="timeline-day">day 3</span>
+          <span className="timeline-text">First feature works. Pushing forward.</span>
         </div>
-      </section>
+        <div className="timeline-entry">
+          <span className="timeline-day">now</span>
+          <span className="timeline-text">
+            Building in public.
+            <span className="cursor" />
+          </span>
+        </div>
+      </div>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
+      <div className="cta">
+        {status === "done" ? (
+          <p className="cta-success">You're in. We'll let you know.</p>
+        ) : status === "exists" ? (
+          <p className="cta-success">Already on the list. We got you.</p>
+        ) : (
+          <>
+            <p className="cta-label">Get notified when it ships &rarr;</p>
+            <form className="cta-form" onSubmit={handleSubmit}>
+              <input
+                className="cta-input"
+                type="email"
+                placeholder="your@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={status === "sending"}
+              />
+              <button className="cta-button" type="submit" disabled={status === "sending"}>
+                {status === "sending" ? "..." : "notify me"}
+              </button>
+            </form>
+            {status === "error" && <p className="cta-error">Something went wrong. Try again.</p>}
+          </>
+        )}
+      </div>
     </>
   );
 }
