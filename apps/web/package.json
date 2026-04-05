@@ -11,10 +11,21 @@
     "preview": "vp preview"
   },
   "dependencies": {
+    "@base-ui/react": "catalog:",
     "@clerk/react": "catalog:",
+    "@fontsource-variable/geist-mono": "catalog:",
+    "@tailwindcss/vite": "catalog:",
+    "class-variance-authority": "catalog:",
+    "clsx": "catalog:",
     "convex": "catalog:",
+    "lucide-react": "catalog:",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "react-router": "catalog:",
+    "shadcn": "catalog:",
+    "tailwind-merge": "catalog:",
+    "tailwindcss": "catalog:",
+    "tw-animate-css": "catalog:",
     "utils": "workspace:*"
   },
   "devDependencies": {
