@@ -6,6 +6,7 @@ import { CreateCommitmentScreen } from "@/screens/CreateCommitmentScreen";
 import { CommitmentDetailScreen } from "@/screens/CommitmentDetailScreen";
 import { ProfileScreen } from "@/screens/ProfileScreen";
 import { ShipFlowScreen } from "@/screens/ShipFlowScreen";
+import { NotFoundScreen } from "@/screens/NotFoundScreen";
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -58,6 +59,14 @@ export function App() {
           element={
             <Layout>
               <ShipFlowScreen />
+            </Layout>
+          }
+        />
+        <Route
+          path="*"
+          element={
+            <Layout>
+              <NotFoundScreen />
             </Layout>
           }
         />

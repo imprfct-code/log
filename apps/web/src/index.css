@@ -205,6 +205,24 @@
   transition-duration: 50ms;
 }
 
+.not-found-cta {
+  transition:
+    transform 150ms ease,
+    box-shadow 250ms ease,
+    border-color 200ms ease,
+    color 200ms ease;
+}
+
+.not-found-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px var(--color-accent-soft);
+}
+
+.not-found-cta:active {
+  transform: translateY(0);
+  transition-duration: 50ms;
+}
+
 /* ── Heatmap animation ── */
 
 @keyframes heatmap-in {
