@@ -23,7 +23,7 @@
   <a href="https://github.com/imprfct-code/log"><img src="https://img.shields.io/github/stars/imprfct-code/log?style=social" alt="GitHub Stars"></a>
 </p>
 
-## About
+## About [Test]
 
 People have all the tools to build — AI, frameworks, tutorials — but the gap between "I have an idea" and "I shipped it" kills 90% of projects. The inner critic says "not worth it" before the first line of code.
 
