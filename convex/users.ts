@@ -90,11 +90,10 @@ export const updateProfile = mutation({
     const user = await getUserByToken(ctx);
     if (!user) throw new Error("Not authenticated");
 
-    const updates: Record<string, string> = {};
-    if (args.username !== undefined) updates.username = args.username;
-    if (args.bio !== undefined) updates.bio = args.bio;
-    if (args.githubUsername !== undefined) updates.githubUsername = args.githubUsername;
-
-    await ctx.db.patch(user._id, updates);
+    await ctx.db.patch(user._id, {
+      ...(args.username !== undefined && { username: args.username }),
+      ...(args.bio !== undefined && { bio: args.bio }),
+      ...(args.githubUsername !== undefined && { githubUsername: args.githubUsername }),
+    });
   },
 });

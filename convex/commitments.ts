@@ -74,7 +74,7 @@ export const search = query({
     status: v.optional(v.union(v.literal("building"), v.literal("shipped"))),
   },
   handler: async (ctx, { query: searchQuery, status }) => {
-    let q = ctx.db.query("commitments").withSearchIndex("search_text", (s) => {
+    const q = ctx.db.query("commitments").withSearchIndex("search_text", (s) => {
       const base = s.search("text", searchQuery);
       return status ? base.eq("status", status) : base;
     });

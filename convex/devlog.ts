@@ -1,16 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { DAY_MS, utcDateString } from "./dates";
 import { getUserByToken } from "./users";
-
-function todayDateString(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function yesterdayDateString(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return d.toISOString().slice(0, 10);
-}
 
 /** Shift activity array to account for days passed, then increment today. */
 function updateActivity(current: number[], lastActivityAt: number): number[] {
@@ -65,10 +56,11 @@ export const create = mutation({
       activity: updateActivity(commitment.activity, commitment.lastActivityAt),
     });
 
-    // Update user streak
-    const today = todayDateString();
+    // Update user streak (UTC-based — consistent across all users)
+    const today = utcDateString();
     if (user.lastActiveDate !== today) {
-      const isConsecutive = user.lastActiveDate === yesterdayDateString();
+      const yesterday = utcDateString(new Date(Date.now() - DAY_MS));
+      const isConsecutive = user.lastActiveDate === yesterday;
       await ctx.db.patch(user._id, {
         streak: isConsecutive ? user.streak + 1 : 1,
         lastActiveDate: today,
@@ -115,14 +107,22 @@ export const listByUser = query({
 export const getActivityForHeatmap = query({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => {
-    const oneYearAgo = Date.now() - 365 * 86_400_000;
+    const oneYearAgo = Date.now() - 365 * DAY_MS;
 
-    // Get all entries for user in the last year
-    const entries = await ctx.db
+    // Stream entries, stopping at year boundary (no arbitrary limit)
+    const dayMap: Record<string, { commits: number; posts: number }> = {};
+    const entriesQuery = ctx.db
       .query("devlogEntries")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .order("desc")
-      .take(2000);
+      .order("desc");
+
+    for await (const entry of entriesQuery) {
+      if (entry._creationTime < oneYearAgo) break;
+      const date = new Date(entry._creationTime).toISOString().slice(0, 10);
+      if (!dayMap[date]) dayMap[date] = { commits: 0, posts: 0 };
+      if (entry.type === "commit") dayMap[date].commits++;
+      else dayMap[date].posts++;
+    }
 
     // Get shipped dates from commitments
     const commitments = await ctx.db
@@ -135,16 +135,6 @@ export const getActivityForHeatmap = query({
         .filter((c) => c.shippedAt && c.shippedAt >= oneYearAgo)
         .map((c) => new Date(c.shippedAt!).toISOString().slice(0, 10)),
     );
-
-    // Bucket entries by date
-    const dayMap: Record<string, { commits: number; posts: number }> = {};
-    for (const entry of entries) {
-      if (entry._creationTime < oneYearAgo) break;
-      const date = new Date(entry._creationTime).toISOString().slice(0, 10);
-      if (!dayMap[date]) dayMap[date] = { commits: 0, posts: 0 };
-      if (entry.type === "commit") dayMap[date].commits++;
-      else dayMap[date].posts++;
-    }
 
     // Build array of days
     const days: { date: string; commits: number; posts: number; shipped: boolean }[] = [];
