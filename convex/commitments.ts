@@ -114,6 +114,24 @@ export const listByUser = query({
   },
 });
 
+export const connectRepo = mutation({
+  args: {
+    id: v.id("commitments"),
+    repo: v.string(),
+  },
+  handler: async (ctx, { id, repo }) => {
+    const user = await getUserByToken(ctx);
+    if (!user) throw new Error("Not authenticated");
+
+    const commitment = await ctx.db.get(id);
+    if (!commitment) throw new Error("Commitment not found");
+    if (commitment.userId !== user._id) throw new Error("Not the owner");
+    if (commitment.repo) throw new Error("Repo already connected");
+
+    await ctx.db.patch(id, { repo });
+  },
+});
+
 export const ship = mutation({
   args: {
     id: v.id("commitments"),

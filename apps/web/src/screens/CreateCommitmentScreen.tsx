@@ -6,6 +6,7 @@ import { GhIcon } from "@/components/Icons";
 import { CommitCard } from "@/components/CommitCard";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { stripGithubUrl } from "@/lib/github";
 import type { Commitment } from "@/types";
 
 const MAX_DECLARATION = 80;
@@ -33,15 +34,6 @@ const IDEAS = [
   "a webhook testing tool",
   "a type-safe API client generator",
 ];
-
-function stripGithubUrl(value: string): string {
-  let cleaned = value
-    .replace(/^https?:\/\/(www\.)?github\.com\//, "")
-    .replace(/^github\.com\//, "");
-  cleaned = cleaned.replace(/\/(tree|blob|commits|issues|pull|releases|actions|settings)\/.*$/, "");
-  cleaned = cleaned.replace(/\/$/, "");
-  return cleaned;
-}
 
 function buildPreviewCommitment(
   text: string,

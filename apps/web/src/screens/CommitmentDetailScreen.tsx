@@ -1,9 +1,10 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { CommitmentMeta } from "@/components/CommitmentMeta";
+import { ConnectRepoForm } from "@/components/ConnectRepoForm";
 import { DevlogTimeline } from "@/components/DevlogTimeline";
 import { daysSince, formatTimeAgo } from "@/lib/formatTime";
 import type { DevlogEntry as DevlogEntryType } from "@/types";
@@ -31,8 +32,10 @@ export function CommitmentDetailScreen() {
   // Invalid IDs are handled server-side (query returns null).
   const commitmentId = id as Id<"commitments"> | undefined;
 
+  const me = useQuery(api.users.getMe);
   const data = useQuery(api.commitments.getById, commitmentId ? { id: commitmentId } : "skip");
   const entries = useQuery(api.devlog.listByCommitment, commitmentId ? { commitmentId } : "skip");
+  const [connectingRepo, setConnectingRepo] = useState(false);
 
   if (!commitmentId) {
     return (
@@ -59,6 +62,8 @@ export function CommitmentDetailScreen() {
   }
 
   const { user, ...commitment } = data;
+  const isAuthor = me?._id === commitment.userId;
+  const canConnect = isAuthor && !commitment.repo && commitment.status === "building";
   const day = daysSince(commitment._creationTime);
 
   const devlog: DevlogEntryType[] = entries.map((e) => ({
@@ -87,7 +92,24 @@ export function CommitmentDetailScreen() {
               </span>
             )
           }
+          connectSlot={
+            canConnect && !connectingRepo ? (
+              <button
+                type="button"
+                onClick={() => setConnectingRepo(true)}
+                className="cursor-pointer border-none bg-transparent p-0 font-mono text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+              >
+                + connect repo
+              </button>
+            ) : undefined
+          }
         />
+
+        {connectingRepo && !commitment.repo && (
+          <div className="mt-2">
+            <ConnectRepoForm commitmentId={commitment._id} />
+          </div>
+        )}
 
         <h1 className="mt-1 mb-4 text-lg font-bold text-foreground-bright">{commitment.text}</h1>
 

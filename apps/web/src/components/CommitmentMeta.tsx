@@ -9,12 +9,14 @@ export function CommitmentMeta({
   repoHref,
   activity,
   statusLabel,
+  connectSlot,
 }: {
   username: string;
   repo?: string;
   repoHref?: string;
   activity: number[];
   statusLabel: ReactNode;
+  connectSlot?: ReactNode;
 }) {
   return (
     <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[13px]">
@@ -25,7 +27,7 @@ export function CommitmentMeta({
         {username}
       </Link>
 
-      {repo && (
+      {repo ? (
         <>
           <span className="text-[#333]">/</span>
           {repoHref ? (
@@ -45,6 +47,13 @@ export function CommitmentMeta({
             </span>
           )}
         </>
+      ) : (
+        connectSlot && (
+          <>
+            <span className="text-[#333]">/</span>
+            {connectSlot}
+          </>
+        )
       )}
 
       <ActivitySparkline activity={activity} className="ml-1" />
