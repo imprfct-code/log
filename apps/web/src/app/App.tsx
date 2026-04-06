@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router";
 import { NavHeader } from "@/components/NavHeader";
+import { RequireAuth } from "@/components/RequireAuth";
 import { LandingScreen } from "@/screens/LandingScreen";
 import { FeedScreen } from "@/screens/FeedScreen";
 import { CreateCommitmentScreen } from "@/screens/CreateCommitmentScreen";
@@ -7,6 +8,7 @@ import { CommitmentDetailScreen } from "@/screens/CommitmentDetailScreen";
 import { ProfileScreen } from "@/screens/ProfileScreen";
 import { ShipFlowScreen } from "@/screens/ShipFlowScreen";
 import { NotFoundScreen } from "@/screens/NotFoundScreen";
+import { SSOCallbackScreen } from "@/screens/SSOCallbackScreen";
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -22,6 +24,7 @@ export function App() {
     <BrowserRouter>
       <Routes>
         <Route index element={<LandingScreen />} />
+        <Route path="sso-callback" element={<SSOCallbackScreen />} />
         <Route
           path="feed"
           element={
@@ -34,7 +37,9 @@ export function App() {
           path="create"
           element={
             <Layout>
-              <CreateCommitmentScreen />
+              <RequireAuth>
+                <CreateCommitmentScreen />
+              </RequireAuth>
             </Layout>
           }
         />
@@ -58,7 +63,9 @@ export function App() {
           path="ship/:id"
           element={
             <Layout>
-              <ShipFlowScreen />
+              <RequireAuth>
+                <ShipFlowScreen />
+              </RequireAuth>
             </Layout>
           }
         />

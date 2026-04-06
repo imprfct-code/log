@@ -357,6 +357,17 @@
   }
 }
 
+.skip-landing-anim .landing-up,
+.skip-landing-anim .landing-word-in {
+  animation: none !important;
+  opacity: 1 !important;
+}
+
+.skip-landing-anim .landing-line-grow {
+  animation: none !important;
+  transform: scaleY(1) !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .landing-up,
   .landing-word-in,

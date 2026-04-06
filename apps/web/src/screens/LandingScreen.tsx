@@ -1,5 +1,7 @@
+import { useConvexAuth } from "convex/react";
+import { Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Link } from "react-router";
+import { Link, Navigate, useLocation } from "react-router";
 import { LogIcon } from "@/components/LogIcon";
 import { GhIcon } from "@/components/Icons";
 import { buttonVariants } from "@/components/ui/button";
@@ -7,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { GlowCard } from "@/components/GlowCard";
 import { CommitCard } from "@/components/CommitCard";
 import { useReveal } from "@/hooks/useReveal";
+import { useGithubLogin } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import type { Commitment } from "@/data/mock";
 
@@ -85,7 +88,34 @@ const PREVIEW_COMMITMENT: Commitment = {
   ],
 };
 
+function GitHubLoginButton({
+  isLoggingIn,
+  onClick,
+}: {
+  isLoggingIn: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={isLoggingIn}
+      className={cn(
+        buttonVariants({ variant: "default" }),
+        "landing-cta cursor-pointer disabled:pointer-events-none disabled:opacity-50",
+      )}
+      onClick={onClick}
+    >
+      {isLoggingIn ? <Loader2 size={14} className="animate-spin" /> : <GhIcon size={14} />}
+      {isLoggingIn ? "Logging in…" : "Login with GitHub"}
+    </button>
+  );
+}
+
 export function LandingScreen() {
+  const { isAuthenticated } = useConvexAuth();
+  const location = useLocation();
+  const isSigningOut = (location.state as { signOut?: boolean })?.signOut === true;
+  const { login, isLoggingIn } = useGithubLogin();
   const [wordIndex, setWordIndex] = useState(0);
   const [rotating, setRotating] = useState(false);
   const [howRef, howVisible] = useReveal();
@@ -94,6 +124,7 @@ export function LandingScreen() {
   const [footerRef, footerVisible] = useReveal();
 
   useEffect(() => {
+    if (isAuthenticated) return;
     let interval: number;
     const timeout = setTimeout(() => {
       interval = window.setInterval(() => {
@@ -105,10 +136,16 @@ export function LandingScreen() {
       clearTimeout(timeout);
       clearInterval(interval);
     };
-  }, []);
+  }, [isAuthenticated]);
+
+  if (isAuthenticated && !isSigningOut) {
+    return <Navigate to="/feed" replace />;
+  }
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
+    <div
+      className={cn("relative min-h-screen overflow-hidden", isSigningOut && "skip-landing-anim")}
+    >
       <div className="landing-orb" aria-hidden="true" />
       <div className="landing-grid" aria-hidden="true" />
 
@@ -167,10 +204,7 @@ export function LandingScreen() {
         </p>
 
         <div className="landing-up opacity-0" style={{ animationDelay: "750ms" }}>
-          <Link to="/feed" className={cn(buttonVariants({ variant: "default" }), "landing-cta")}>
-            <GhIcon size={14} />
-            Login with GitHub
-          </Link>
+          <GitHubLoginButton isLoggingIn={isLoggingIn} onClick={login} />
           <div className="mt-2 text-[11px] text-[#333]">Free. Takes 30 seconds.</div>
         </div>
 
@@ -259,10 +293,7 @@ export function LandingScreen() {
             <div className="mb-4 text-lg font-semibold text-foreground-bright">
               ready to build in public?
             </div>
-            <Link to="/feed" className={cn(buttonVariants({ variant: "default" }), "landing-cta")}>
-              <GhIcon size={14} />
-              Login with GitHub
-            </Link>
+            <GitHubLoginButton isLoggingIn={isLoggingIn} onClick={login} />
           </div>
         </div>
       </div>
