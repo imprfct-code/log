@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 import { api } from "./_generated/api";
-import { setupUser, setupUserWithCommitment, testCtx } from "./testing";
+import { setupUser, setupUserWithCommitment, testCtx } from "./testing.test";
 
 describe("commitments.create", () => {
   test("creates a commitment with correct defaults", async () => {

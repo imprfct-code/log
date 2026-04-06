@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 import { api } from "./_generated/api";
-import { setupUser, testCtx, userIdentity } from "./testing";
+import { setupUser, testCtx, userIdentity } from "./testing.test";
 
 describe("users.getOrCreate", () => {
   test("creates a new user on first login", async () => {

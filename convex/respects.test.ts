@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vite-plus/test";
 import type { Id } from "./_generated/dataModel";
 import { api } from "./_generated/api";
-import { setupUser, setupUserWithCommitment, testCtx } from "./testing";
+import { setupUser, setupUserWithCommitment, testCtx } from "./testing.test";
 
 /** Ship a commitment so it can receive respects. */
 async function shipCommitment(t: ReturnType<typeof testCtx>, commitmentId: Id<"commitments">) {
