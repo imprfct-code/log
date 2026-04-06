@@ -11,7 +11,7 @@ export function DevlogEntry({
   onCommentClick,
 }: {
   entry: DevlogEntryType;
-  commitmentId: number;
+  commitmentId: string;
   isLatest?: boolean;
   status?: "building" | "shipped";
   onCommentClick?: () => void;

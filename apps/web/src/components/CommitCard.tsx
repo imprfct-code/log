@@ -1,37 +1,25 @@
 import { Link } from "react-router";
 import type { Commitment } from "@/types";
-import { GhIcon } from "./Icons";
-import { ActivitySparkline } from "./ActivitySparkline";
+import { CommitmentMeta } from "./CommitmentMeta";
 import { DevlogTimeline } from "./DevlogTimeline";
 
 export function CommitCard({ item, preview }: { item: Commitment; preview?: boolean }) {
   return (
     <div>
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[13px]">
-        <Link
-          to={`/profile/${item.user}`}
-          className="font-semibold text-foreground-bright no-underline hover:underline"
-        >
-          {item.user}
-        </Link>
-        <span className="text-[#333]">/</span>
-        <span className="flex items-center gap-1 truncate text-muted-foreground">
-          <GhIcon size={11} color="#666" />
-          {item.repo}
-        </span>
-
-        <ActivitySparkline activity={item.activity} className="ml-1" />
-
-        <span className="ml-auto shrink-0 text-[11px]">
-          {item.status === "shipped" ? (
+      <CommitmentMeta
+        username={item.user}
+        repo={item.repo || undefined}
+        activity={item.activity}
+        statusLabel={
+          item.status === "shipped" ? (
             <span className="text-shipped">shipped in {item.shippedIn}</span>
           ) : (
             <span className="text-muted-foreground">
               day <span className="text-accent">{item.day}</span>
             </span>
-          )}
-        </span>
-      </div>
+          )
+        }
+      />
 
       {preview ? (
         <div className="mt-1 mb-3 text-sm font-medium text-foreground">{item.text}</div>

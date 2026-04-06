@@ -16,7 +16,7 @@ export interface DevlogEntry {
 }
 
 export interface Commitment {
-  id: number;
+  id: string;
   user: string;
   avatar: string;
   text: string;
@@ -28,7 +28,5 @@ export interface Commitment {
   status: "building" | "shipped";
   shipUrl?: string;
   shippedIn?: string;
-  daysAgo: number;
-  commentData: Comment[];
   activity: number[];
 }

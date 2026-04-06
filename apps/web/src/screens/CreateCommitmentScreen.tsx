@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "@convex/_generated/api";
 import { GhIcon } from "@/components/Icons";
 import { CommitCard } from "@/components/CommitCard";
 import { buttonVariants } from "@/components/ui/button";
@@ -41,11 +43,16 @@ function stripGithubUrl(value: string): string {
   return cleaned;
 }
 
-function buildPreviewCommitment(text: string, repo: string): Commitment {
+function buildPreviewCommitment(
+  text: string,
+  repo: string,
+  username?: string,
+  avatar?: string,
+): Commitment {
   return {
-    id: 0,
-    user: "you",
-    avatar: "Y",
+    id: "",
+    user: username ?? "you",
+    avatar: avatar ?? "",
     text,
     repo: repo || "",
     day: 1,
@@ -53,8 +60,6 @@ function buildPreviewCommitment(text: string, repo: string): Commitment {
     devlog: [],
     respects: 0,
     status: "building",
-    daysAgo: 0,
-    commentData: [],
     activity: [0, 0, 0, 0, 0, 0, 1],
   };
 }
@@ -62,11 +67,14 @@ function buildPreviewCommitment(text: string, repo: string): Commitment {
 export function CreateCommitmentScreen() {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
+  const createCommitment = useMutation(api.commitments.create);
+  const me = useQuery(api.users.getMe);
 
   const [declaration, setDeclaration] = useState("");
   const [showRepo, setShowRepo] = useState(false);
   const [repo, setRepo] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [ideaIndex, setIdeaIndex] = useState(0);
   const [ideaVisible, setIdeaVisible] = useState(true);
 
@@ -90,10 +98,20 @@ export function CreateCommitmentScreen() {
     inputRef.current?.focus();
   }, []);
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!canSubmit) return;
     setSubmitting(true);
-    setTimeout(() => navigate("/commitment/1"), 600);
+    setError(null);
+    try {
+      const id = await createCommitment({
+        text: trimmed,
+        repo: repo || undefined,
+      });
+      void navigate(`/commitment/${id}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to create commitment");
+      setSubmitting(false);
+    }
   }
 
   function handleRepoChange(value: string) {
@@ -222,7 +240,10 @@ export function CreateCommitmentScreen() {
             </div>
 
             <div className="feed-in mb-6 opacity-0">
-              <CommitCard item={buildPreviewCommitment(trimmed, repo)} preview />
+              <CommitCard
+                item={buildPreviewCommitment(trimmed, repo, me?.username, me?.avatarUrl)}
+                preview
+              />
             </div>
           </>
         )}
@@ -246,6 +267,7 @@ export function CreateCommitmentScreen() {
             >
               {submitting ? "committing..." : "Commit publicly"}
             </button>
+            {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
           </div>
         </div>
       </div>

@@ -52,7 +52,7 @@ const PERSONAS = [
 ];
 
 const PREVIEW_COMMITMENT: Commitment = {
-  id: 0,
+  id: "preview",
   user: "danielle",
   avatar: "D",
   text: "an AI recipe generator",
@@ -61,9 +61,7 @@ const PREVIEW_COMMITMENT: Commitment = {
   comments: 0,
   respects: 12,
   status: "building",
-  daysAgo: 0,
   activity: [0, 2, 1, 0, 3, 1, 2],
-  commentData: [],
   devlog: [
     {
       type: "commit",

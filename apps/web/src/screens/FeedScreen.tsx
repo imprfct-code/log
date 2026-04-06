@@ -1,13 +1,101 @@
-import { useState } from "react";
-import { Search } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { usePaginatedQuery, useQuery } from "convex/react";
+import { api } from "@convex/_generated/api";
+import { Search, Loader2 } from "lucide-react";
+import { CommitCard } from "@/components/CommitCard";
+import { daysSince, formatTimeAgo } from "@/lib/formatTime";
 import { cn } from "@/lib/utils";
+import type { Commitment, DevlogEntry } from "@/types";
 
 const TABS = ["all", "building", "shipped"] as const;
 type Tab = (typeof TABS)[number];
 
+interface RawDevlogEntry {
+  type: "commit" | "post";
+  text: string;
+  body?: string;
+  hash?: string;
+  commentCount: number;
+  _creationTime: number;
+}
+
+interface RawFeedItem {
+  _id: string;
+  text: string;
+  repo?: string;
+  status: "building" | "shipped";
+  activity: number[];
+  commentCount: number;
+  respectCount: number;
+  _creationTime: number;
+  user: { username: string; avatarUrl?: string } | null;
+  recentEntries?: RawDevlogEntry[];
+}
+
+function toDevlogEntry(entry: RawDevlogEntry): DevlogEntry {
+  return {
+    type: entry.type,
+    text: entry.text,
+    body: entry.body,
+    time: formatTimeAgo(entry._creationTime),
+    hash: entry.hash,
+    comments: entry.commentCount,
+  };
+}
+
+function toCommitment(item: RawFeedItem): Commitment {
+  return {
+    id: item._id,
+    user: item.user?.username ?? "unknown",
+    avatar: item.user?.avatarUrl ?? "",
+    text: item.text,
+    repo: item.repo ?? "",
+    day: daysSince(item._creationTime),
+    comments: item.commentCount,
+    devlog: (item.recentEntries ?? []).map(toDevlogEntry),
+    respects: item.respectCount,
+    status: item.status,
+    activity: item.activity,
+  };
+}
+
 export function FeedScreen() {
   const [activeTab, setActiveTab] = useState<Tab>("all");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => {
+    clearTimeout(debounceRef.current);
+    if (!search.trim()) {
+      setDebouncedSearch("");
+      return;
+    }
+    debounceRef.current = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(debounceRef.current);
+  }, [search]);
+
+  const statusArg = activeTab === "all" ? undefined : activeTab;
+
+  const {
+    results: feedResults,
+    status: loadStatus,
+    loadMore,
+  } = usePaginatedQuery(
+    api.commitments.listFeed,
+    debouncedSearch ? "skip" : { status: statusArg },
+    { initialNumItems: 15 },
+  );
+
+  const searchResults = useQuery(
+    api.commitments.search,
+    debouncedSearch ? { query: debouncedSearch, status: statusArg } : "skip",
+  );
+
+  const isSearching = !!debouncedSearch;
+  const items: RawFeedItem[] = isSearching ? (searchResults ?? []) : feedResults;
+  const commitments = items.map(toCommitment);
+  const isLoading = isSearching ? searchResults === undefined : loadStatus === "LoadingFirstPage";
 
   return (
     <div className="relative min-h-screen">
@@ -50,9 +138,39 @@ export function FeedScreen() {
           </div>
         </div>
 
-        <div className="py-16 text-center text-sm text-muted-foreground">
-          {search ? "nothing matches your search." : "no commitments yet. be the first."}
-        </div>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 size={20} className="animate-spin text-muted-foreground" />
+          </div>
+        ) : commitments.length === 0 ? (
+          <div className="py-16 text-center text-sm text-muted-foreground">
+            {search ? "nothing matches your search." : "no commitments yet. be the first."}
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {commitments.map((item) => (
+              <div key={item.id} className="feed-in border-b border-border pb-5 opacity-0">
+                <CommitCard item={item} />
+              </div>
+            ))}
+
+            {!isSearching && loadStatus === "CanLoadMore" && (
+              <button
+                type="button"
+                onClick={() => loadMore(15)}
+                className="w-full cursor-pointer border-none bg-transparent py-3 font-mono text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+              >
+                load more
+              </button>
+            )}
+
+            {!isSearching && loadStatus === "LoadingMore" && (
+              <div className="flex items-center justify-center py-3">
+                <Loader2 size={16} className="animate-spin text-muted-foreground" />
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

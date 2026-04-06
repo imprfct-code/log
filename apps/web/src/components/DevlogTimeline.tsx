@@ -12,7 +12,7 @@ export function DevlogTimeline({
   limit = 4,
 }: {
   entries: DevlogEntryType[];
-  commitmentId: number;
+  commitmentId: string;
   status: "building" | "shipped";
   limit?: number;
 }) {
