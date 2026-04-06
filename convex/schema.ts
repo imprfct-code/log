@@ -5,4 +5,66 @@ export default defineSchema({
   waitlist: defineTable({
     email: v.string(),
   }).index("by_email", ["email"]),
+
+  users: defineTable({
+    tokenIdentifier: v.string(),
+    username: v.string(),
+    avatarUrl: v.optional(v.string()),
+    bio: v.optional(v.string()),
+    githubUsername: v.optional(v.string()),
+    streak: v.number(),
+    lastActiveDate: v.optional(v.string()),
+  })
+    .index("by_tokenIdentifier", ["tokenIdentifier"])
+    .index("by_username", ["username"]),
+
+  commitments: defineTable({
+    userId: v.id("users"),
+    text: v.string(),
+    repo: v.optional(v.string()),
+    status: v.union(v.literal("building"), v.literal("shipped")),
+    shipUrl: v.optional(v.string()),
+    shipNote: v.optional(v.string()),
+    shippedAt: v.optional(v.number()),
+    commentCount: v.number(),
+    respectCount: v.number(),
+    lastActivityAt: v.number(),
+    activity: v.array(v.number()),
+  })
+    .index("by_userId_and_status", ["userId", "status"])
+    .index("by_status_and_lastActivityAt", ["status", "lastActivityAt"])
+    .index("by_lastActivityAt", ["lastActivityAt"])
+    .searchIndex("search_text", {
+      searchField: "text",
+      filterFields: ["status"],
+    }),
+
+  devlogEntries: defineTable({
+    commitmentId: v.id("commitments"),
+    userId: v.id("users"),
+    type: v.union(v.literal("commit"), v.literal("post")),
+    text: v.string(),
+    body: v.optional(v.string()),
+    imageStorageId: v.optional(v.id("_storage")),
+    hash: v.optional(v.string()),
+    commentCount: v.number(),
+  })
+    .index("by_commitmentId", ["commitmentId"])
+    .index("by_userId", ["userId"]),
+
+  comments: defineTable({
+    userId: v.id("users"),
+    commitmentId: v.id("commitments"),
+    devlogEntryId: v.optional(v.id("devlogEntries")),
+    text: v.string(),
+  })
+    .index("by_commitmentId", ["commitmentId"])
+    .index("by_devlogEntryId", ["devlogEntryId"]),
+
+  respects: defineTable({
+    userId: v.id("users"),
+    commitmentId: v.id("commitments"),
+  })
+    .index("by_commitmentId", ["commitmentId"])
+    .index("by_userId_and_commitmentId", ["userId", "commitmentId"]),
 });

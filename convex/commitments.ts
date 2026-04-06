@@ -1,0 +1,139 @@
+import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
+import { paginationOptsValidator } from "convex/server";
+import { getUserByToken } from "./users";
+
+export const create = mutation({
+  args: {
+    text: v.string(),
+    repo: v.optional(v.string()),
+  },
+  handler: async (ctx, { text, repo }) => {
+    const user = await getUserByToken(ctx);
+    if (!user) throw new Error("Not authenticated");
+
+    const now = Date.now();
+    return await ctx.db.insert("commitments", {
+      userId: user._id,
+      text,
+      repo,
+      status: "building",
+      commentCount: 0,
+      respectCount: 0,
+      lastActivityAt: now,
+      activity: [0, 0, 0, 0, 0, 0, 0],
+    });
+  },
+});
+
+export const getById = query({
+  args: { id: v.id("commitments") },
+  handler: async (ctx, { id }) => {
+    const commitment = await ctx.db.get(id);
+    if (!commitment) return null;
+
+    const user = await ctx.db.get(commitment.userId);
+    return { ...commitment, user };
+  },
+});
+
+export const listFeed = query({
+  args: {
+    status: v.optional(v.union(v.literal("building"), v.literal("shipped"))),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, { status, paginationOpts }) => {
+    const baseQuery = status
+      ? ctx.db
+          .query("commitments")
+          .withIndex("by_status_and_lastActivityAt", (q) => q.eq("status", status))
+      : ctx.db.query("commitments").withIndex("by_lastActivityAt");
+
+    const page = await baseQuery.order("desc").paginate(paginationOpts);
+
+    const itemsWithData = await Promise.all(
+      page.page.map(async (commitment) => {
+        const user = await ctx.db.get(commitment.userId);
+        const entries = await ctx.db
+          .query("devlogEntries")
+          .withIndex("by_commitmentId", (q) => q.eq("commitmentId", commitment._id))
+          .order("desc")
+          .take(4);
+
+        return { ...commitment, user, recentEntries: entries };
+      }),
+    );
+
+    return { ...page, page: itemsWithData };
+  },
+});
+
+export const search = query({
+  args: {
+    query: v.string(),
+    status: v.optional(v.union(v.literal("building"), v.literal("shipped"))),
+  },
+  handler: async (ctx, { query: searchQuery, status }) => {
+    let q = ctx.db.query("commitments").withSearchIndex("search_text", (s) => {
+      const base = s.search("text", searchQuery);
+      return status ? base.eq("status", status) : base;
+    });
+
+    const results = await q.take(20);
+
+    return await Promise.all(
+      results.map(async (commitment) => {
+        const user = await ctx.db.get(commitment.userId);
+        return { ...commitment, user };
+      }),
+    );
+  },
+});
+
+export const listByUser = query({
+  args: {
+    userId: v.id("users"),
+    status: v.optional(v.union(v.literal("building"), v.literal("shipped"))),
+  },
+  handler: async (ctx, { userId, status }) => {
+    let results;
+    if (status) {
+      results = await ctx.db
+        .query("commitments")
+        .withIndex("by_userId_and_status", (q) => q.eq("userId", userId).eq("status", status))
+        .order("desc")
+        .take(50);
+    } else {
+      results = await ctx.db
+        .query("commitments")
+        .withIndex("by_userId_and_status", (q) => q.eq("userId", userId))
+        .order("desc")
+        .take(50);
+    }
+    return results;
+  },
+});
+
+export const ship = mutation({
+  args: {
+    id: v.id("commitments"),
+    shipUrl: v.string(),
+    shipNote: v.optional(v.string()),
+  },
+  handler: async (ctx, { id, shipUrl, shipNote }) => {
+    const user = await getUserByToken(ctx);
+    if (!user) throw new Error("Not authenticated");
+
+    const commitment = await ctx.db.get(id);
+    if (!commitment) throw new Error("Commitment not found");
+    if (commitment.userId !== user._id) throw new Error("Not the owner");
+    if (commitment.status !== "building") throw new Error("Already shipped");
+
+    await ctx.db.patch(id, {
+      status: "shipped",
+      shipUrl,
+      shipNote,
+      shippedAt: Date.now(),
+    });
+  },
+});
