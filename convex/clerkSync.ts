@@ -6,10 +6,7 @@ export const fetchAndUpdateProfile = internalAction({
   args: { userId: v.id("users"), clerkUserId: v.string() },
   handler: async (ctx, { userId, clerkUserId }) => {
     const secretKey = process.env.CLERK_SECRET_KEY;
-    if (!secretKey) {
-      console.warn("CLERK_SECRET_KEY not set, skipping profile sync");
-      return;
-    }
+    if (!secretKey) return;
 
     const res = await fetch(`https://api.clerk.com/v1/users/${clerkUserId}`, {
       headers: { Authorization: `Bearer ${secretKey}` },

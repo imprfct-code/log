@@ -11,5 +11,6 @@ export default defineConfig({
   },
   test: {
     include: ["convex/**/*.test.ts"],
+    environment: "edge-runtime",
   },
 });

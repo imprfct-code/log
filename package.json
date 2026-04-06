@@ -17,7 +17,9 @@
     "prepare": "vp config"
   },
   "devDependencies": {
+    "@edge-runtime/vm": "catalog:",
     "convex": "catalog:",
+    "convex-test": "catalog:",
     "vite-plus": "catalog:"
   },
   "engines": {
