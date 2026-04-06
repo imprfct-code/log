@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { DevlogEntry as DevlogEntryType } from "@/data/mock";
+import type { DevlogEntry as DevlogEntryType } from "@/types";
 import { DevlogEntry } from "./DevlogEntry";
 import { CommentThread } from "./CommentThread";
 import { CommentInput } from "./CommentInput";

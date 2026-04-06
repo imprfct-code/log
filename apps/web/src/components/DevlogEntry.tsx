@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import type { DevlogEntry as DevlogEntryType } from "@/data/mock";
+import type { DevlogEntry as DevlogEntryType } from "@/types";
 import { CommentIcon } from "./Icons";
 import { cn } from "@/lib/utils";
 

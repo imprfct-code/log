@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import type { DevlogEntry } from "@/data/mock";
+import type { DevlogEntry } from "@/types";
 import { cn } from "@/lib/utils";
 
 type ActivityEntry = DevlogEntry & {

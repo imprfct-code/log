@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import type { Commitment } from "@/data/mock";
+import type { Commitment } from "@/types";
 import { GhIcon, CommentIcon, RespectIcon } from "./Icons";
 import { ActivitySparkline } from "./ActivitySparkline";
 import { cn } from "@/lib/utils";

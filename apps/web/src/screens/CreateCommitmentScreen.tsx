@@ -4,7 +4,7 @@ import { GhIcon } from "@/components/Icons";
 import { CommitCard } from "@/components/CommitCard";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { Commitment } from "@/data/mock";
+import type { Commitment } from "@/types";
 
 const MAX_DECLARATION = 80;
 const IDEA_INTERVAL = 4500;
@@ -112,9 +112,9 @@ export function CreateCommitmentScreen() {
         <div className="feed-in mb-6 opacity-0">
           <div className="mb-1 text-[13px] text-accent">new commitment</div>
           <h2 className="m-0 mb-0.5 text-2xl font-bold tracking-tight text-foreground-bright">
-            Say it publicly.
+            What are you building?
           </h2>
-          <p className="text-sm text-muted-foreground">Then build it.</p>
+          <p className="text-sm text-muted-foreground">Say it out loud, then ship it.</p>
         </div>
 
         <div className="feed-in mb-1 opacity-0" style={{ animationDelay: "60ms" }}>

@@ -1,95 +1,13 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState } from "react";
 import { Search } from "lucide-react";
-import { commitments } from "@/data/mock";
-import type { Commitment } from "@/data/mock";
-import { CommitCard } from "@/components/CommitCard";
-import { FeedSkeleton } from "@/components/FeedSkeleton";
 import { cn } from "@/lib/utils";
 
 const TABS = ["all", "building", "shipped"] as const;
 type Tab = (typeof TABS)[number];
 
-const ITEMS_PER_PAGE = 4;
-
-function getDayLabel(daysAgo: number): string {
-  if (daysAgo === 0) return "today";
-  if (daysAgo === 1) return "yesterday";
-  if (daysAgo < 7) return `${daysAgo} days ago`;
-  return "last week";
-}
-
-function groupByDay(items: Commitment[]): [string, Commitment[]][] {
-  const groups: [string, Commitment[]][] = [];
-  let currentLabel = "";
-
-  for (const item of items) {
-    const label = getDayLabel(item.daysAgo);
-    if (label !== currentLabel) {
-      groups.push([label, [item]]);
-      currentLabel = label;
-    } else {
-      groups[groups.length - 1][1].push(item);
-    }
-  }
-
-  return groups;
-}
-
 export function FeedScreen() {
   const [activeTab, setActiveTab] = useState<Tab>("all");
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
-  const sentinelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const delay = 200 + Math.random() * 1100;
-    const timer = setTimeout(() => setLoading(false), delay);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const filtered = useMemo(() => {
-    const query = search.toLowerCase().trim();
-    return commitments
-      .filter((c) => {
-        if (activeTab !== "all" && c.status !== activeTab) return false;
-        if (!query) return true;
-        return (
-          c.user.toLowerCase().includes(query) ||
-          c.repo.toLowerCase().includes(query) ||
-          c.text.toLowerCase().includes(query) ||
-          c.devlog.some((e) => e.text.toLowerCase().includes(query))
-        );
-      })
-      .sort((a, b) => a.daysAgo - b.daysAgo);
-  }, [activeTab, search]);
-
-  useEffect(() => {
-    setVisibleCount(ITEMS_PER_PAGE);
-  }, [activeTab, search]);
-
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el || loading) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisibleCount((c) => Math.min(c + ITEMS_PER_PAGE, filtered.length));
-        }
-      },
-      { rootMargin: "200px" },
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [loading, filtered.length, visibleCount]);
-
-  const visible = filtered.slice(0, visibleCount);
-  const grouped = groupByDay(visible);
-  const hasMore = visibleCount < filtered.length;
-
-  let cardIndex = 0;
 
   return (
     <div className="relative min-h-screen">
@@ -132,45 +50,9 @@ export function FeedScreen() {
           </div>
         </div>
 
-        {loading ? (
-          <FeedSkeleton />
-        ) : filtered.length > 0 ? (
-          <div className="flex flex-col gap-4">
-            {grouped.map(([label, items]) => (
-              <div key={label}>
-                <div className="mb-4 flex items-center gap-3 text-[11px] text-muted-foreground">
-                  <span>{label}</span>
-                  <div className="h-px flex-1 bg-border" />
-                </div>
-
-                <div className="flex flex-col gap-8">
-                  {items.map((item) => {
-                    const idx = cardIndex++;
-                    return (
-                      <div
-                        key={item.id}
-                        className="feed-in opacity-0"
-                        style={{ animationDelay: `${idx * 60}ms` }}
-                      >
-                        <CommitCard item={item} />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-
-            {hasMore && (
-              <div ref={sentinelRef} className="py-6 text-center text-[11px] text-muted-foreground">
-                loading...
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="py-16 text-center text-sm text-muted-foreground">
-            {search ? "nothing matches your search." : "no commitments yet. be the first."}
-          </div>
-        )}
+        <div className="py-16 text-center text-sm text-muted-foreground">
+          {search ? "nothing matches your search." : "no commitments yet. be the first."}
+        </div>
       </div>
     </div>
   );

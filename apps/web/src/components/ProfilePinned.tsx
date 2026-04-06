@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import type { Commitment } from "@/data/mock";
+import type { Commitment } from "@/types";
 import { GhIcon, RespectIcon } from "./Icons";
 import { ActivitySparkline } from "./ActivitySparkline";
 import { GlowCard } from "./GlowCard";

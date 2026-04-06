@@ -11,9 +11,9 @@ import { CommitCard } from "@/components/CommitCard";
 import { useReveal } from "@/hooks/useReveal";
 import { useGithubLogin } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import type { Commitment } from "@/data/mock";
+import type { Commitment } from "@/types";
 
-const WORDS = ["story", "truth", "proof"];
+const WORDS = ["content", "portfolio", "devlog"];
 const WORD_INTERVAL = 2500;
 const INITIAL_DELAY = 2200;
 
@@ -39,7 +39,7 @@ const PERSONAS = [
   },
   {
     quote: "3 projects shipped, zero blog posts.",
-    text: "Your git history is the devlog. Profile that speaks through work, not self-presentation.",
+    text: "Your git history is the devlog. Ship stuff, skip the personal branding.",
   },
   {
     quote: "Not building yet \u2014 just watching.",
@@ -47,7 +47,7 @@ const PERSONAS = [
   },
   {
     quote: "Thousands use my library. Nobody knows I exist.",
-    text: "Your commits already tell the story. Log just makes them visible.",
+    text: "You're already doing the work. Log just makes it visible.",
   },
 ];
 
@@ -124,7 +124,6 @@ export function LandingScreen() {
   const [footerRef, footerVisible] = useReveal();
 
   useEffect(() => {
-    if (isAuthenticated) return;
     let interval: number;
     const timeout = setTimeout(() => {
       interval = window.setInterval(() => {
@@ -136,7 +135,7 @@ export function LandingScreen() {
       clearTimeout(timeout);
       clearInterval(interval);
     };
-  }, [isAuthenticated]);
+  }, []);
 
   if (isAuthenticated && !isSigningOut) {
     return <Navigate to="/feed" replace />;
@@ -175,11 +174,11 @@ export function LandingScreen() {
             </span>
             <br />
             <span className="landing-up inline-block opacity-0" style={{ animationDelay: "300ms" }}>
-              Let your git history
+              Your commits are the
             </span>
             <br />
             <span className="landing-up inline-block opacity-0" style={{ animationDelay: "450ms" }}>
-              tell the{" "}
+              {" "}
               <span className="inline-flex h-[1.2em] items-end overflow-hidden align-bottom">
                 <span
                   key={wordIndex}
@@ -199,13 +198,13 @@ export function LandingScreen() {
           style={{ animationDelay: "600ms" }}
         >
           imprfct Log turns your GitHub commits into an automatic devlog. Declare what you're
-          building, connect your repo, and every push becomes a public entry \u2014 without writing
-          a single post.
+          building, connect your repo, and every push becomes a public entry - without writing a
+          single post.
         </p>
 
         <div className="landing-up opacity-0" style={{ animationDelay: "750ms" }}>
           <GitHubLoginButton isLoggingIn={isLoggingIn} onClick={login} />
-          <div className="mt-2 text-[11px] text-[#333]">Free. Takes 30 seconds.</div>
+          <div className="mt-2 text-[11px] text-[#333]">Free, takes 30 seconds.</div>
         </div>
 
         <div ref={howRef} className="mt-20">
@@ -247,7 +246,7 @@ export function LandingScreen() {
               personasVisible && "landing-up",
             )}
           >
-            for builders at every stage
+            sound familiar?
           </div>
           <GlowCard className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {PERSONAS.map((persona, i) => (

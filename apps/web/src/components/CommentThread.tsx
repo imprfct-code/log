@@ -1,4 +1,4 @@
-import type { Comment } from "@/data/mock";
+import type { Comment } from "@/types";
 import { CommentInput } from "./CommentInput";
 
 export function CommentThread({ comments }: { comments: Comment[] }) {
