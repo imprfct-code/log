@@ -53,8 +53,20 @@ jobs:
         run: npx convex codegen
         env:
           CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
-      - name: Check (fmt + lint + test + build)
-        run: pnpm ready
+      - name: Format
+        run: pnpm run fmt:check
+      - name: Lint
+        run: pnpm run lint
+      - name: Typecheck
+        run: pnpm run typecheck
+      - name: Test — convex
+        run: pnpm test
+      - name: Test — workspaces
+        run: pnpm run -r test
+      - name: Build
+        run: pnpm run build
+      - name: Clean summary
+        run: echo -n > "$GITHUB_STEP_SUMMARY"
 
   deploy-web:
     needs: [resolve-env, test]

@@ -20,9 +20,17 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm run fmt:check
-      - run: pnpm run lint
-      - run: pnpm run typecheck
-      - run: pnpm test
-      - run: pnpm run -r test
-      - run: pnpm run build
+      - name: Format
+        run: pnpm run fmt:check
+      - name: Lint
+        run: pnpm run lint
+      - name: Typecheck
+        run: pnpm run typecheck
+      - name: Test — convex
+        run: pnpm test
+      - name: Test — workspaces
+        run: pnpm run -r test
+      - name: Build
+        run: pnpm run build
+      - name: Clean summary
+        run: echo -n > "$GITHUB_STEP_SUMMARY"
