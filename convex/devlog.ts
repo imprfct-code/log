@@ -4,7 +4,7 @@ import { DAY_MS, utcDateString } from "./dates";
 import { getUserByToken } from "./users";
 
 /** Shift activity array to account for days passed, then increment today. */
-function updateActivity(current: number[], lastActivityAt: number): number[] {
+export function updateActivity(current: number[], lastActivityAt: number): number[] {
   const now = Date.now();
   const daysSinceLast = Math.floor((now - lastActivityAt) / 86_400_000);
   const shifted = daysSinceLast >= 7 ? [0, 0, 0, 0, 0, 0, 0] : [...current];
