@@ -10,3 +10,7 @@ export function stripGithubUrl(value: string): string {
 export function isValidRepoFormat(repo: string): boolean {
   return /^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/.test(repo);
 }
+
+export function commitUrl(repo: string, sha: string): string {
+  return `https://github.com/${repo}/commit/${sha}`;
+}

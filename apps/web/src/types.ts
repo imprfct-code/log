@@ -5,12 +5,14 @@ export interface Comment {
 }
 
 export interface DevlogEntry {
-  type: "commit" | "post";
+  type: "commit" | "post" | "git_commit";
   text: string;
   body?: string;
   image?: string;
   time: string;
   hash?: string;
+  gitAuthor?: string;
+  gitUrl?: string;
   comments: number;
   commentData?: Comment[];
 }

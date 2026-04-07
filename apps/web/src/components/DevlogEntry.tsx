@@ -18,7 +18,23 @@ export function DevlogEntry({
 }) {
   const showPulse = isLatest && status === "building";
 
-  if (entry.type === "commit") {
+  if (entry.type === "commit" || entry.type === "git_commit") {
+    const hashDisplay = entry.hash ? entry.hash.slice(0, 7) : undefined;
+    const hashElement = hashDisplay ? (
+      entry.gitUrl ? (
+        <a
+          href={entry.gitUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 text-[11px] text-[#444] no-underline hover:text-accent"
+        >
+          {hashDisplay}
+        </a>
+      ) : (
+        <span className="shrink-0 text-[11px] text-[#444]">{hashDisplay}</span>
+      )
+    ) : null;
+
     return (
       <div className="relative flex items-baseline gap-2.5 py-1.5 pl-6 text-[13px]">
         <span
@@ -28,7 +44,7 @@ export function DevlogEntry({
           )}
         />
 
-        <span className="shrink-0 text-[11px] text-[#444]">{entry.hash}</span>
+        {hashElement}
         <span className="min-w-0 flex-1 truncate text-muted-foreground">{entry.text}</span>
         {onCommentClick ? (
           <button

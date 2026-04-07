@@ -25,7 +25,7 @@ export function ProfileActivity({ entries }: { entries: ActivityEntry[] }) {
               )}
             />
 
-            {entry.type === "commit" && entry.hash && (
+            {(entry.type === "commit" || entry.type === "git_commit") && entry.hash && (
               <span className="shrink-0 text-[11px] text-[#444]">{entry.hash.slice(0, 7)}</span>
             )}
             {entry.type === "post" && (

@@ -11,10 +11,13 @@ const TABS = ["all", "building", "shipped"] as const;
 type Tab = (typeof TABS)[number];
 
 interface RawDevlogEntry {
-  type: "commit" | "post";
+  type: "commit" | "post" | "git_commit";
   text: string;
   body?: string;
   hash?: string;
+  gitAuthor?: string;
+  gitUrl?: string;
+  committedAt?: number;
   commentCount: number;
   _creationTime: number;
 }
@@ -37,8 +40,10 @@ function toDevlogEntry(entry: RawDevlogEntry): DevlogEntry {
     type: entry.type,
     text: entry.text,
     body: entry.body,
-    time: formatTimeAgo(entry._creationTime),
+    time: formatTimeAgo(entry.committedAt ?? entry._creationTime),
     hash: entry.hash,
+    gitAuthor: entry.gitAuthor,
+    gitUrl: entry.gitUrl,
     comments: entry.commentCount,
   };
 }

@@ -120,7 +120,7 @@ export const getActivityForHeatmap = query({
       if (entry._creationTime < oneYearAgo) break;
       const date = new Date(entry._creationTime).toISOString().slice(0, 10);
       if (!dayMap[date]) dayMap[date] = { commits: 0, posts: 0 };
-      if (entry.type === "commit") dayMap[date].commits++;
+      if (entry.type === "commit" || entry.type === "git_commit") dayMap[date].commits++;
       else dayMap[date].posts++;
     }
 

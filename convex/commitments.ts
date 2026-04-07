@@ -1,7 +1,16 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { paginationOptsValidator } from "convex/server";
 import { getUserByToken } from "./users";
+
+const REPO_RE = /^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/;
+
+function validateRepo(repo: string) {
+  if (!REPO_RE.test(repo)) {
+    throw new Error("Invalid repo format, expected owner/repo");
+  }
+}
 
 export const create = mutation({
   args: {
@@ -13,7 +22,9 @@ export const create = mutation({
     if (!user) throw new Error("Not authenticated");
 
     const now = Date.now();
-    return await ctx.db.insert("commitments", {
+    if (repo) validateRepo(repo);
+
+    const commitmentId = await ctx.db.insert("commitments", {
       userId: user._id,
       text,
       repo,
@@ -23,6 +34,16 @@ export const create = mutation({
       lastActivityAt: now,
       activity: [0, 0, 0, 0, 0, 0, 0],
     });
+
+    // Register GitHub webhook if repo provided
+    if (repo) {
+      await ctx.scheduler.runAfter(0, internal.github.registerWebhook, {
+        commitmentId,
+        repo,
+      });
+    }
+
+    return commitmentId;
   },
 });
 
@@ -128,7 +149,14 @@ export const connectRepo = mutation({
     if (commitment.userId !== user._id) throw new Error("Not the owner");
     if (commitment.repo) throw new Error("Repo already connected");
 
+    validateRepo(repo);
     await ctx.db.patch(id, { repo });
+
+    // Register GitHub webhook for auto-pulling commits
+    await ctx.scheduler.runAfter(0, internal.github.registerWebhook, {
+      commitmentId: id,
+      repo,
+    });
   },
 });
 
@@ -153,5 +181,14 @@ export const ship = mutation({
       shipNote,
       shippedAt: Date.now(),
     });
+
+    // Remove GitHub webhook if one was registered
+    if (commitment.repo && commitment.webhookId) {
+      await ctx.scheduler.runAfter(0, internal.github.removeWebhook, {
+        commitmentId: id,
+        repo: commitment.repo,
+        webhookId: commitment.webhookId,
+      });
+    }
   },
 });

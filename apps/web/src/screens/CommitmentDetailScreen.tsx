@@ -70,8 +70,10 @@ export function CommitmentDetailScreen() {
     type: e.type,
     text: e.text,
     body: e.body,
-    time: formatTimeAgo(e._creationTime),
+    time: formatTimeAgo(e.committedAt ?? e._creationTime),
     hash: e.hash,
+    gitAuthor: e.gitAuthor,
+    gitUrl: e.gitUrl,
     comments: e.commentCount,
   }));
 

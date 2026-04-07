@@ -29,6 +29,7 @@ export const fetchAndUpdateProfile = internalAction({
 
     await ctx.runMutation(internal.users.updateFromClerk, {
       userId,
+      clerkUserId,
       username,
       avatarUrl,
       githubUsername,

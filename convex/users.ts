@@ -21,12 +21,14 @@ export const getMe = query({
 export const updateFromClerk = internalMutation({
   args: {
     userId: v.id("users"),
+    clerkUserId: v.string(),
     username: v.string(),
     avatarUrl: v.optional(v.string()),
     githubUsername: v.optional(v.string()),
   },
-  handler: async (ctx, { userId, username, avatarUrl, githubUsername }) => {
+  handler: async (ctx, { userId, clerkUserId, username, avatarUrl, githubUsername }) => {
     await ctx.db.patch(userId, {
+      clerkUserId,
       username,
       ...(avatarUrl !== undefined && { avatarUrl }),
       ...(githubUsername !== undefined && { githubUsername }),

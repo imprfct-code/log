@@ -8,6 +8,7 @@ export default defineSchema({
 
   users: defineTable({
     tokenIdentifier: v.string(),
+    clerkUserId: v.optional(v.string()),
     username: v.string(),
     avatarUrl: v.optional(v.string()),
     bio: v.optional(v.string()),
@@ -26,6 +27,7 @@ export default defineSchema({
     shipUrl: v.optional(v.string()),
     shipNote: v.optional(v.string()),
     shippedAt: v.optional(v.number()),
+    webhookId: v.optional(v.number()),
     commentCount: v.number(),
     respectCount: v.number(),
     lastActivityAt: v.number(),
@@ -34,6 +36,8 @@ export default defineSchema({
     .index("by_userId_and_status", ["userId", "status"])
     .index("by_status_and_lastActivityAt", ["status", "lastActivityAt"])
     .index("by_lastActivityAt", ["lastActivityAt"])
+    .index("by_repo", ["repo"])
+    .index("by_repo_and_status", ["repo", "status"])
     .searchIndex("search_text", {
       searchField: "text",
       filterFields: ["status"],
@@ -42,15 +46,19 @@ export default defineSchema({
   devlogEntries: defineTable({
     commitmentId: v.id("commitments"),
     userId: v.id("users"),
-    type: v.union(v.literal("commit"), v.literal("post")),
+    type: v.union(v.literal("commit"), v.literal("post"), v.literal("git_commit")),
     text: v.string(),
     body: v.optional(v.string()),
     imageStorageId: v.optional(v.id("_storage")),
     hash: v.optional(v.string()),
+    gitAuthor: v.optional(v.string()),
+    gitUrl: v.optional(v.string()),
+    committedAt: v.optional(v.number()),
     commentCount: v.number(),
   })
     .index("by_commitmentId", ["commitmentId"])
-    .index("by_userId", ["userId"]),
+    .index("by_userId", ["userId"])
+    .index("by_commitmentId_and_hash", ["commitmentId", "hash"]),
 
   comments: defineTable({
     userId: v.id("users"),
