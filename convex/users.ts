@@ -1,6 +1,26 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
+import {
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
+import { DAY_MS, utcDateString } from "./dates";
+
+export async function updateStreak(ctx: MutationCtx, user: Doc<"users">) {
+  const today = utcDateString();
+  if (user.lastActiveDate === today) return;
+  const yesterday = utcDateString(new Date(Date.now() - DAY_MS));
+  const isConsecutive = user.lastActiveDate === yesterday;
+  await ctx.db.patch(user._id, {
+    streak: isConsecutive ? user.streak + 1 : 1,
+    lastActiveDate: today,
+  });
+}
 
 export async function getUserByToken(ctx: QueryCtx) {
   const identity = await ctx.auth.getUserIdentity();
@@ -79,6 +99,61 @@ export const getOrCreate = mutation({
     });
 
     return userId;
+  },
+});
+
+export const getByTokenIdentifier = internalQuery({
+  args: { tokenIdentifier: v.string() },
+  handler: async (ctx, { tokenIdentifier }) => {
+    return await ctx.db
+      .query("users")
+      .withIndex("by_tokenIdentifier", (q) => q.eq("tokenIdentifier", tokenIdentifier))
+      .unique();
+  },
+});
+
+export const updateSyncMode = mutation({
+  args: { syncMode: v.union(v.literal("polling"), v.literal("webhook")) },
+  handler: async (ctx, { syncMode }) => {
+    const user = await getUserByToken(ctx);
+    if (!user) throw new Error("Not authenticated");
+
+    const previousMode = user.syncMode ?? "polling";
+    await ctx.db.patch(user._id, { syncMode });
+
+    if (previousMode === syncMode) return;
+
+    // Migrate all active commitments to the new sync mode
+    const commitments = await ctx.db
+      .query("commitments")
+      .withIndex("by_userId_and_status", (q) => q.eq("userId", user._id).eq("status", "building"))
+      .collect();
+
+    const now = Date.now();
+    const seenRepos = new Set<string>();
+
+    for (const c of commitments) {
+      if (!c.repo) continue;
+
+      if (syncMode === "webhook" && !c.webhookId) {
+        await ctx.scheduler.runAfter(0, internal.github.registerWebhook, {
+          commitmentId: c._id,
+          repo: c.repo,
+          skipBackfill: true,
+        });
+      } else if (syncMode === "polling" && c.webhookId) {
+        await ctx.db.patch(c._id, { webhookId: undefined, lastPolledAt: now });
+
+        if (!seenRepos.has(c.repo) && user.clerkUserId) {
+          seenRepos.add(c.repo);
+          await ctx.scheduler.runAfter(0, internal.github.deleteRepoWebhook, {
+            repo: c.repo,
+            webhookId: c.webhookId,
+            clerkUserId: user.clerkUserId,
+          });
+        }
+      }
+    }
   },
 });
 

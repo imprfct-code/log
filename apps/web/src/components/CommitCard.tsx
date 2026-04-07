@@ -33,7 +33,22 @@ export function CommitCard({ item, preview }: { item: Commitment; preview?: bool
       )}
 
       {item.devlog.length > 0 && (
-        <DevlogTimeline entries={item.devlog} commitmentId={item.id} status={item.status} />
+        <>
+          <DevlogTimeline
+            entries={item.devlog}
+            commitmentId={item.id}
+            repo={item.repo || undefined}
+            status={item.status}
+          />
+          {!preview && item.hasMore && (
+            <Link
+              to={`/commitment/${item.id}`}
+              className="mt-1 block pl-6 font-mono text-[11px] text-muted-foreground no-underline transition-colors hover:text-foreground"
+            >
+              view all
+            </Link>
+          )}
+        </>
       )}
     </div>
   );

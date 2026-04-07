@@ -35,12 +35,17 @@ export const create = mutation({
       activity: [0, 0, 0, 0, 0, 0, 0],
     });
 
-    // Register GitHub webhook if repo provided
+    // Set up GitHub commit tracking if repo provided
     if (repo) {
-      await ctx.scheduler.runAfter(0, internal.github.registerWebhook, {
-        commitmentId,
-        repo,
-      });
+      const syncMode = user.syncMode ?? "polling";
+      if (syncMode === "webhook") {
+        await ctx.scheduler.runAfter(0, internal.github.registerWebhook, { commitmentId, repo });
+      } else {
+        await ctx.scheduler.runAfter(0, internal.githubPolling.setupPolling, {
+          commitmentId,
+          repo,
+        });
+      }
     }
 
     return commitmentId;
@@ -75,13 +80,20 @@ export const listFeed = query({
     const itemsWithData = await Promise.all(
       page.page.map(async (commitment) => {
         const user = await ctx.db.get(commitment.userId);
+        // Fetch 5 entries to detect "has more" without reading the entire collection
         const entries = await ctx.db
           .query("devlogEntries")
-          .withIndex("by_commitmentId", (q) => q.eq("commitmentId", commitment._id))
+          .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", commitment._id))
           .order("desc")
-          .take(4);
+          .take(5);
 
-        return { ...commitment, user, recentEntries: entries };
+        const hasMore = entries.length > 4;
+        return {
+          ...commitment,
+          user,
+          recentEntries: entries.slice(0, 4),
+          hasMore,
+        };
       }),
     );
 
@@ -152,11 +164,16 @@ export const connectRepo = mutation({
     validateRepo(repo);
     await ctx.db.patch(id, { repo });
 
-    // Register GitHub webhook for auto-pulling commits
-    await ctx.scheduler.runAfter(0, internal.github.registerWebhook, {
-      commitmentId: id,
-      repo,
-    });
+    // Set up GitHub commit tracking based on user preference
+    const syncMode = user.syncMode ?? "polling";
+    if (syncMode === "webhook") {
+      await ctx.scheduler.runAfter(0, internal.github.registerWebhook, { commitmentId: id, repo });
+    } else {
+      await ctx.scheduler.runAfter(0, internal.githubPolling.setupPolling, {
+        commitmentId: id,
+        repo,
+      });
+    }
   },
 });
 

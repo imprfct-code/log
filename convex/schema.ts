@@ -13,6 +13,7 @@ export default defineSchema({
     avatarUrl: v.optional(v.string()),
     bio: v.optional(v.string()),
     githubUsername: v.optional(v.string()),
+    syncMode: v.optional(v.union(v.literal("polling"), v.literal("webhook"))),
     streak: v.number(),
     lastActiveDate: v.optional(v.string()),
   })
@@ -28,6 +29,7 @@ export default defineSchema({
     shipNote: v.optional(v.string()),
     shippedAt: v.optional(v.number()),
     webhookId: v.optional(v.number()),
+    lastPolledAt: v.optional(v.number()),
     commentCount: v.number(),
     respectCount: v.number(),
     lastActivityAt: v.number(),
@@ -53,12 +55,14 @@ export default defineSchema({
     hash: v.optional(v.string()),
     gitAuthor: v.optional(v.string()),
     gitUrl: v.optional(v.string()),
+    gitBranch: v.optional(v.string()),
     committedAt: v.optional(v.number()),
     commentCount: v.number(),
   })
     .index("by_commitmentId", ["commitmentId"])
     .index("by_userId", ["userId"])
-    .index("by_commitmentId_and_hash", ["commitmentId", "hash"]),
+    .index("by_commitmentId_and_hash", ["commitmentId", "hash"])
+    .index("by_commitmentId_and_committedAt", ["commitmentId", "committedAt"]),
 
   comments: defineTable({
     userId: v.id("users"),

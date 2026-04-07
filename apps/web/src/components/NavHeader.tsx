@@ -5,7 +5,7 @@ import { api } from "@convex/_generated/api";
 import { useGithubLogin } from "@/lib/auth";
 import { GhIcon } from "./Icons";
 import { LogIcon } from "./LogIcon";
-import { Loader2, Plus, User, LogOut } from "lucide-react";
+import { Loader2, Plus, Settings, User, LogOut } from "lucide-react";
 
 export function NavHeader() {
   const location = useLocation();
@@ -63,6 +63,16 @@ export function NavHeader() {
                   <User size={14} />
                 </div>
               )}
+            </Link>
+            <Link
+              to="/settings"
+              className={`flex items-center justify-center border-none bg-transparent p-0 no-underline transition-colors ${
+                location.pathname === "/settings"
+                  ? "text-foreground-bright"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Settings size={14} />
             </Link>
             <button
               type="button"

@@ -1,16 +1,17 @@
 import { v } from "convex/values";
-import {
-  internalAction,
-  internalMutation,
-  internalQuery,
-  type ActionCtx,
-} from "./_generated/server";
+import { action, internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
 import { updateActivity } from "./devlog";
-import { DAY_MS, utcDateString } from "./dates";
-
-// --- Queries ---
+import { updateStreak } from "./users";
+import {
+  fetchGitHubToken,
+  githubApiHeaders,
+  fetchCommitPage,
+  fetchBranches,
+  fetchNewCommitsAllBranches,
+  mapGitHubCommits,
+  findExistingHook,
+} from "./githubApi";
 
 export const getCommitmentsByRepo = internalQuery({
   args: { repo: v.string() },
@@ -32,8 +33,6 @@ export const getCommitmentWithUser = internalQuery({
   },
 });
 
-// --- Mutations ---
-
 export const storeWebhookId = internalMutation({
   args: { commitmentId: v.id("commitments"), webhookId: v.number() },
   handler: async (ctx, { commitmentId, webhookId }) => {
@@ -54,6 +53,7 @@ const gitCommitValidator = v.object({
   author: v.string(),
   url: v.string(),
   timestamp: v.number(),
+  branch: v.optional(v.string()),
 });
 
 export const insertGitCommits = internalMutation({
@@ -73,7 +73,6 @@ export const insertGitCommits = internalMutation({
 
     let inserted = 0;
     for (const commit of commits) {
-      // Dedup: check if we already have this SHA for this commitment
       const existing = await ctx.db
         .query("devlogEntries")
         .withIndex("by_commitmentId_and_hash", (q) =>
@@ -91,6 +90,7 @@ export const insertGitCommits = internalMutation({
         hash: commit.sha,
         gitAuthor: commit.author,
         gitUrl: commit.url,
+        gitBranch: commit.branch,
         committedAt: commit.timestamp,
         commentCount: 0,
       });
@@ -99,123 +99,69 @@ export const insertGitCommits = internalMutation({
 
     if (inserted === 0) return;
 
-    // Update commitment activity + lastActivityAt
     const now = Date.now();
     await ctx.db.patch(commitmentId, {
       lastActivityAt: now,
       activity: updateActivity(commitment.activity, commitment.lastActivityAt),
     });
 
-    // Update user streak
-    const today = utcDateString();
-    if (user.lastActiveDate !== today) {
-      const yesterday = utcDateString(new Date(Date.now() - DAY_MS));
-      const isConsecutive = user.lastActiveDate === yesterday;
-      await ctx.db.patch(userId, {
-        streak: isConsecutive ? user.streak + 1 : 1,
-        lastActiveDate: today,
+    await updateStreak(ctx, user);
+  },
+});
+
+/** Paginated backfill: fetches one page at a time, self-schedules for the next page. */
+export const backfillAllCommits = internalAction({
+  args: {
+    commitmentId: v.id("commitments"),
+    repo: v.string(),
+    page: v.optional(v.number()),
+    branch: v.optional(v.string()),
+  },
+  handler: async (ctx, { commitmentId, repo, page, branch }) => {
+    const currentPage = page ?? 1;
+
+    const data = await ctx.runQuery(internal.github.getCommitmentWithUser, { commitmentId });
+    if (!data) return;
+
+    const { user } = data;
+    if (!user?.clerkUserId) return;
+
+    const token = await fetchGitHubToken(user.clerkUserId);
+    if (!token) return;
+
+    const rawCommits = await fetchCommitPage(repo, token, currentPage, { sha: branch });
+    if (!rawCommits || rawCommits.length === 0) return;
+
+    const commits = mapGitHubCommits(rawCommits, branch);
+
+    await ctx.runMutation(internal.github.insertGitCommits, {
+      commitmentId,
+      userId: data.commitment.userId,
+      commits,
+    });
+
+    if (rawCommits.length === 100) {
+      await ctx.scheduler.runAfter(0, internal.github.backfillAllCommits, {
+        commitmentId,
+        repo,
+        page: currentPage + 1,
+        branch,
       });
     }
   },
 });
 
-// --- Actions ---
-
-async function fetchGitHubToken(clerkUserId: string): Promise<string | null> {
-  const secretKey = process.env.CLERK_SECRET_KEY;
-  if (!secretKey) return null;
-
-  const res = await fetch(
-    `https://api.clerk.com/v1/users/${clerkUserId}/oauth_access_tokens/oauth_github`,
-    { headers: { Authorization: `Bearer ${secretKey}` } },
-  );
-
-  if (!res.ok) {
-    console.error("Failed to fetch GitHub token from Clerk:", res.status);
-    return null;
-  }
-
-  const data = await res.json();
-  // Clerk returns an array of tokens; take the first one
-  const token = data?.[0]?.token;
-  return token ?? null;
-}
-
-/** Check if a webhook with our URL already exists on this repo (prevents duplicates on retry). */
-async function findExistingHook(
-  repo: string,
-  webhookUrl: string,
-  headers: Record<string, string>,
-): Promise<number | null> {
-  const res = await fetch(`https://api.github.com/repos/${repo}/hooks`, { headers });
-  if (!res.ok) return null;
-
-  const hooks: Array<{ id: number; config: { url?: string } }> = await res.json();
-  const match = hooks.find((h) => h.config.url === webhookUrl);
-  return match?.id ?? null;
-}
-
-interface GitHubCommit {
-  sha: string;
-  commit: {
-    message: string;
-    author: { name: string; date: string } | null;
-  };
-  html_url: string;
-  author: { login: string } | null;
-}
-
-/** Fetch existing commits from GitHub API and insert them as devlog entries. */
-async function backfillCommits(
-  ctx: ActionCtx,
-  opts: {
-    repo: string;
-    token: string;
-    commitmentId: Id<"commitments">;
-    userId: Id<"users">;
-  },
-) {
-  const { repo, token, commitmentId, userId } = opts;
-
-  // Fetch up to 100 most recent commits from the default branch
-  const res = await fetch(`https://api.github.com/repos/${repo}/commits?per_page=100`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2022-11-28",
-    },
-  });
-
-  if (!res.ok) {
-    console.error("backfillCommits: failed to fetch commits", { repo, status: res.status });
-    return;
-  }
-
-  const data: GitHubCommit[] = await res.json();
-  if (data.length === 0) return;
-
-  const commits = data.map((c) => ({
-    sha: c.sha,
-    message: c.commit.message.split("\n")[0],
-    author: c.commit.author?.name || c.author?.login || "unknown",
-    url: c.html_url,
-    timestamp: new Date(c.commit.author?.date ?? Date.now()).getTime(),
-  }));
-
-  await ctx.runMutation(internal.github.insertGitCommits, {
-    commitmentId,
-    userId,
-    commits,
-  });
-}
-
 export const registerWebhook = internalAction({
-  args: { commitmentId: v.id("commitments"), repo: v.string() },
-  handler: async (ctx, { commitmentId, repo }) => {
+  args: {
+    commitmentId: v.id("commitments"),
+    repo: v.string(),
+    skipBackfill: v.optional(v.boolean()),
+  },
+  handler: async (ctx, { commitmentId, repo, skipBackfill }) => {
     const data = await ctx.runQuery(internal.github.getCommitmentWithUser, { commitmentId });
     if (!data) return;
 
-    const { commitment, user } = data;
+    const { user } = data;
     if (!user?.clerkUserId) {
       console.error("registerWebhook: user has no clerkUserId", { commitmentId });
       return;
@@ -224,39 +170,46 @@ export const registerWebhook = internalAction({
     const token = await fetchGitHubToken(user.clerkUserId);
     if (!token) {
       console.error("registerWebhook: could not get GitHub token", { commitmentId, repo });
+      // Fallback: set lastPolledAt so polling cron picks this up efficiently
+      await ctx.runMutation(internal.githubPolling.updateLastPolledAt, {
+        commitmentIds: [commitmentId],
+      });
       return;
     }
 
-    // 1. Backfill existing commits first
-    await backfillCommits(ctx, {
-      repo,
-      token,
-      commitmentId,
-      userId: commitment.userId,
-    });
+    if (!skipBackfill) {
+      const branches = await fetchBranches(repo, token);
+      for (const branch of branches.length > 0 ? branches : [undefined]) {
+        await ctx.scheduler.runAfter(0, internal.github.backfillAllCommits, {
+          commitmentId,
+          repo,
+          branch,
+        });
+      }
+    }
 
-    // 2. Register webhook for future pushes
     const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
     if (!webhookSecret) {
       console.error("registerWebhook: GITHUB_WEBHOOK_SECRET not set");
+      await ctx.runMutation(internal.githubPolling.updateLastPolledAt, {
+        commitmentIds: [commitmentId],
+      });
       return;
     }
 
     const convexSiteUrl = process.env.CONVEX_SITE_URL;
     if (!convexSiteUrl) {
       console.error("registerWebhook: CONVEX_SITE_URL not set");
+      await ctx.runMutation(internal.githubPolling.updateLastPolledAt, {
+        commitmentIds: [commitmentId],
+      });
       return;
     }
 
     const webhookUrl = `${convexSiteUrl}/github-webhook`;
-    const githubHeaders = {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2022-11-28",
-    };
+    const headers = githubApiHeaders(token);
 
-    // Check for existing webhook with our URL (prevents duplicates on retry)
-    const existingHookId = await findExistingHook(repo, webhookUrl, githubHeaders);
+    const existingHookId = await findExistingHook(repo, webhookUrl, headers);
     if (existingHookId) {
       await ctx.runMutation(internal.github.storeWebhookId, {
         commitmentId,
@@ -267,7 +220,7 @@ export const registerWebhook = internalAction({
 
     const res = await fetch(`https://api.github.com/repos/${repo}/hooks`, {
       method: "POST",
-      headers: { ...githubHeaders, "Content-Type": "application/json" },
+      headers: { ...headers, "Content-Type": "application/json" },
       body: JSON.stringify({
         name: "web",
         active: true,
@@ -283,6 +236,10 @@ export const registerWebhook = internalAction({
     if (!res.ok) {
       const body = await res.text();
       console.error("Failed to register GitHub webhook:", { repo, status: res.status, body });
+      // Fallback: ensure polling picks this up
+      await ctx.runMutation(internal.githubPolling.updateLastPolledAt, {
+        commitmentIds: [commitmentId],
+      });
       return;
     }
 
@@ -297,10 +254,9 @@ export const registerWebhook = internalAction({
 export const removeWebhook = internalAction({
   args: { commitmentId: v.id("commitments"), repo: v.string(), webhookId: v.number() },
   handler: async (ctx, { commitmentId, repo, webhookId }) => {
-    // Clear the webhookId on this commitment first
     await ctx.runMutation(internal.github.clearWebhookId, { commitmentId });
 
-    // Only delete the webhook from GitHub if no other active commitments use this repo
+    // Only delete from GitHub if no other active commitments use this repo
     const others = await ctx.runQuery(internal.github.getCommitmentsByRepo, { repo });
     if (others.length > 0) return;
 
@@ -315,15 +271,98 @@ export const removeWebhook = internalAction({
 
     const res = await fetch(`https://api.github.com/repos/${repo}/hooks/${webhookId}`, {
       method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
+      headers: githubApiHeaders(token),
     });
 
     if (!res.ok && res.status !== 404) {
-      console.error("Failed to remove GitHub webhook:", res.status);
+      console.error("Failed to remove GitHub webhook:", { repo, status: res.status });
     }
+  },
+});
+
+/** Check if the user's GitHub token has the admin:repo_hook scope. */
+export const checkWebhookScope = action({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.runQuery(internal.users.getByTokenIdentifier, {
+      tokenIdentifier: identity.tokenIdentifier,
+    });
+    if (!user?.clerkUserId) throw new Error("GitHub account not linked");
+
+    const token = await fetchGitHubToken(user.clerkUserId);
+    if (!token) throw new Error("Could not get GitHub token");
+
+    const res = await fetch("https://api.github.com/", {
+      headers: githubApiHeaders(token),
+    });
+    const scopeHeader = res.headers.get("X-OAuth-Scopes") ?? "";
+    const scopes = scopeHeader.split(",").map((s) => s.trim());
+    return { hasScope: scopes.includes("admin:repo_hook") };
+  },
+});
+
+/** Delete a webhook from GitHub if no active commitment still references it. */
+export const deleteRepoWebhook = internalAction({
+  args: { repo: v.string(), webhookId: v.number(), clerkUserId: v.string() },
+  handler: async (ctx, { repo, webhookId, clerkUserId }) => {
+    const active = await ctx.runQuery(internal.github.getCommitmentsByRepo, { repo });
+    if (active.some((c) => c.webhookId)) return;
+
+    const token = await fetchGitHubToken(clerkUserId);
+    if (!token) return;
+
+    const res = await fetch(`https://api.github.com/repos/${repo}/hooks/${webhookId}`, {
+      method: "DELETE",
+      headers: githubApiHeaders(token),
+    });
+
+    if (!res.ok && res.status !== 404) {
+      console.error("Failed to remove GitHub webhook:", { repo, status: res.status });
+    }
+  },
+});
+
+/** Manual sync — callable from the frontend. Returns count of new commits found. */
+export const triggerSync = action({
+  args: { commitmentId: v.id("commitments") },
+  handler: async (ctx, { commitmentId }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const data = await ctx.runQuery(internal.github.getCommitmentWithUser, { commitmentId });
+    if (!data) throw new Error("Commitment not found");
+
+    const { commitment, user } = data;
+    if (!user || user.tokenIdentifier !== identity.tokenIdentifier) {
+      throw new Error("Not the owner");
+    }
+    if (!commitment.repo) throw new Error("No repo connected");
+    if (!user.clerkUserId) throw new Error("GitHub account not linked");
+
+    const token = await fetchGitHubToken(user.clerkUserId);
+    if (!token) throw new Error("Could not get GitHub token — try re-logging in");
+
+    const since = commitment.lastPolledAt
+      ? new Date(commitment.lastPolledAt).toISOString()
+      : undefined;
+
+    const rawCommits = await fetchNewCommitsAllBranches(commitment.repo, token, since);
+    if (rawCommits.length > 0) {
+      const commits = mapGitHubCommits(rawCommits);
+      await ctx.runMutation(internal.github.insertGitCommits, {
+        commitmentId,
+        userId: commitment.userId,
+        commits,
+      });
+    }
+
+    await ctx.runMutation(internal.githubPolling.updateLastPolledAt, {
+      commitmentIds: [commitmentId],
+    });
+
+    return { newCommits: rawCommits.length };
   },
 });

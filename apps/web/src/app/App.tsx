@@ -6,6 +6,7 @@ import { FeedScreen } from "@/screens/FeedScreen";
 import { CreateCommitmentScreen } from "@/screens/CreateCommitmentScreen";
 import { CommitmentDetailScreen } from "@/screens/CommitmentDetailScreen";
 import { ProfileScreen } from "@/screens/ProfileScreen";
+import { SettingsScreen } from "@/screens/SettingsScreen";
 import { ShipFlowScreen } from "@/screens/ShipFlowScreen";
 import { NotFoundScreen } from "@/screens/NotFoundScreen";
 import { SSOCallbackScreen } from "@/screens/SSOCallbackScreen";
@@ -56,6 +57,16 @@ export function App() {
           element={
             <Layout>
               <ProfileScreen />
+            </Layout>
+          }
+        />
+        <Route
+          path="settings"
+          element={
+            <Layout>
+              <RequireAuth>
+                <SettingsScreen />
+              </RequireAuth>
             </Layout>
           }
         />

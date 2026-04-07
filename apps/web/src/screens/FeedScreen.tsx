@@ -17,6 +17,7 @@ interface RawDevlogEntry {
   hash?: string;
   gitAuthor?: string;
   gitUrl?: string;
+  gitBranch?: string;
   committedAt?: number;
   commentCount: number;
   _creationTime: number;
@@ -33,6 +34,7 @@ interface RawFeedItem {
   _creationTime: number;
   user: { username: string; avatarUrl?: string } | null;
   recentEntries?: RawDevlogEntry[];
+  hasMore?: boolean;
 }
 
 function toDevlogEntry(entry: RawDevlogEntry): DevlogEntry {
@@ -44,6 +46,7 @@ function toDevlogEntry(entry: RawDevlogEntry): DevlogEntry {
     hash: entry.hash,
     gitAuthor: entry.gitAuthor,
     gitUrl: entry.gitUrl,
+    gitBranch: entry.gitBranch,
     comments: entry.commentCount,
   };
 }
@@ -61,6 +64,7 @@ function toCommitment(item: RawFeedItem): Commitment {
     respects: item.respectCount,
     status: item.status,
     activity: item.activity,
+    hasMore: item.hasMore,
   };
 }
 

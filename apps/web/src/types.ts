@@ -13,6 +13,7 @@ export interface DevlogEntry {
   hash?: string;
   gitAuthor?: string;
   gitUrl?: string;
+  gitBranch?: string;
   comments: number;
   commentData?: Comment[];
 }
@@ -31,4 +32,5 @@ export interface Commitment {
   shipUrl?: string;
   shippedIn?: string;
   activity: number[];
+  hasMore?: boolean;
 }

@@ -106,8 +106,8 @@ export function CreateCommitmentScreen() {
     }
   }
 
-  function handleRepoChange(value: string) {
-    setRepo(stripGithubUrl(value));
+  function handleRepoChange(value: string, strip = false) {
+    setRepo(strip ? stripGithubUrl(value) : value);
   }
 
   function acceptIdea() {
@@ -212,7 +212,7 @@ export function CreateCommitmentScreen() {
                     const pasted = e.clipboardData.getData("text");
                     if (pasted.includes("github.com/")) {
                       e.preventDefault();
-                      handleRepoChange(pasted);
+                      handleRepoChange(pasted, true);
                     }
                   }}
                   placeholder="user/repo"

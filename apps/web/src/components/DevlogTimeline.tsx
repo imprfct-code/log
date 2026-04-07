@@ -8,11 +8,13 @@ import { cn } from "@/lib/utils";
 export function DevlogTimeline({
   entries,
   commitmentId,
+  repo,
   status,
   limit = 4,
 }: {
   entries: DevlogEntryType[];
   commitmentId: string;
+  repo?: string;
   status: "building" | "shipped";
   limit?: number;
 }) {
@@ -38,6 +40,7 @@ export function DevlogTimeline({
         <DevlogEntry
           entry={entry}
           commitmentId={commitmentId}
+          repo={repo}
           isLatest={index === 0}
           status={status}
           onCommentClick={() => toggleComment(index)}

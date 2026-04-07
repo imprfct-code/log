@@ -1,8 +1,9 @@
 import { useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
-import { useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
+import { RefreshCw } from "lucide-react";
 import { CommitmentMeta } from "@/components/CommitmentMeta";
 import { ConnectRepoForm } from "@/components/ConnectRepoForm";
 import { DevlogTimeline } from "@/components/DevlogTimeline";
@@ -35,7 +36,10 @@ export function CommitmentDetailScreen() {
   const me = useQuery(api.users.getMe);
   const data = useQuery(api.commitments.getById, commitmentId ? { id: commitmentId } : "skip");
   const entries = useQuery(api.devlog.listByCommitment, commitmentId ? { commitmentId } : "skip");
+  const triggerSync = useAction(api.github.triggerSync);
   const [connectingRepo, setConnectingRepo] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
 
   if (!commitmentId) {
     return (
@@ -64,7 +68,26 @@ export function CommitmentDetailScreen() {
   const { user, ...commitment } = data;
   const isAuthor = me?._id === commitment.userId;
   const canConnect = isAuthor && !commitment.repo && commitment.status === "building";
+  const canSync =
+    isAuthor && commitment.repo && !commitment.webhookId && commitment.status === "building";
   const day = daysSince(commitment._creationTime);
+
+  async function handleSync() {
+    if (!commitmentId || syncing) return;
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const result = await triggerSync({ commitmentId });
+      const n = result?.newCommits ?? 0;
+      setSyncResult(n > 0 ? `${n} new` : "up to date");
+      setTimeout(() => setSyncResult(null), 3000);
+    } catch {
+      setSyncResult("failed");
+      setTimeout(() => setSyncResult(null), 3000);
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   const devlog: DevlogEntryType[] = entries.map((e) => ({
     type: e.type,
@@ -74,6 +97,7 @@ export function CommitmentDetailScreen() {
     hash: e.hash,
     gitAuthor: e.gitAuthor,
     gitUrl: e.gitUrl,
+    gitBranch: e.gitBranch,
     comments: e.commentCount,
   }));
 
@@ -118,6 +142,17 @@ export function CommitmentDetailScreen() {
         <div className="mb-4 flex items-center gap-4 text-[11px] text-muted-foreground">
           <span>{commitment.commentCount} comments</span>
           <span>{commitment.respectCount} respects</span>
+          {canSync && (
+            <button
+              type="button"
+              disabled={syncing}
+              onClick={() => void handleSync()}
+              className="ml-auto flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+            >
+              <RefreshCw size={11} className={syncing ? "animate-spin" : ""} />
+              {syncing ? "syncing..." : (syncResult ?? "sync")}
+            </button>
+          )}
         </div>
       </div>
 
@@ -130,6 +165,7 @@ export function CommitmentDetailScreen() {
           <DevlogTimeline
             entries={devlog}
             commitmentId={commitment._id}
+            repo={commitment.repo}
             status={commitment.status}
             limit={20}
           />

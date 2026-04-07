@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { DAY_MS, utcDateString } from "./dates";
-import { getUserByToken } from "./users";
+import { DAY_MS } from "./dates";
+import { getUserByToken, updateStreak } from "./users";
 
 /** Shift activity array to account for days passed, then increment today. */
 export function updateActivity(current: number[], lastActivityAt: number): number[] {
@@ -37,7 +37,8 @@ export const create = mutation({
     if (!commitment) throw new Error("Commitment not found");
     if (commitment.userId !== user._id) throw new Error("Not the owner");
 
-    // Insert entry
+    const now = Date.now();
+
     const entryId = await ctx.db.insert("devlogEntries", {
       commitmentId: args.commitmentId,
       userId: user._id,
@@ -46,26 +47,16 @@ export const create = mutation({
       body: args.body,
       imageStorageId: args.imageStorageId,
       hash: args.hash,
+      committedAt: now,
       commentCount: 0,
     });
 
-    // Update commitment activity + lastActivityAt
-    const now = Date.now();
     await ctx.db.patch(args.commitmentId, {
       lastActivityAt: now,
       activity: updateActivity(commitment.activity, commitment.lastActivityAt),
     });
 
-    // Update user streak (UTC-based — consistent across all users)
-    const today = utcDateString();
-    if (user.lastActiveDate !== today) {
-      const yesterday = utcDateString(new Date(Date.now() - DAY_MS));
-      const isConsecutive = user.lastActiveDate === yesterday;
-      await ctx.db.patch(user._id, {
-        streak: isConsecutive ? user.streak + 1 : 1,
-        lastActiveDate: today,
-      });
-    }
+    await updateStreak(ctx, user);
 
     return entryId;
   },
@@ -74,11 +65,12 @@ export const create = mutation({
 export const listByCommitment = query({
   args: { commitmentId: v.id("commitments") },
   handler: async (ctx, { commitmentId }) => {
+    // committedAt is set on all new entries. Old entries without it sort last (desc order).
     return await ctx.db
       .query("devlogEntries")
-      .withIndex("by_commitmentId", (q) => q.eq("commitmentId", commitmentId))
+      .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", commitmentId))
       .order("desc")
-      .take(100);
+      .take(200);
   },
 });
 

@@ -13,9 +13,9 @@ export function ConnectRepoForm({ commitmentId }: { commitmentId: Id<"commitment
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  function handleChange(value: string) {
+  function handleChange(value: string, strip = false) {
     setError(null);
-    setRepo(stripGithubUrl(value));
+    setRepo(strip ? stripGithubUrl(value) : value);
   }
 
   async function handleSubmit() {
@@ -52,7 +52,7 @@ export function ConnectRepoForm({ commitmentId }: { commitmentId: Id<"commitment
               const pasted = e.clipboardData.getData("text");
               if (pasted.includes("github.com/")) {
                 e.preventDefault();
-                handleChange(pasted);
+                handleChange(pasted, true);
               }
             }}
             onKeyDown={(e) => {

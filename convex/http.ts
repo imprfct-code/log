@@ -3,6 +3,7 @@ import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 
 interface WebhookPushPayload {
+  ref?: string;
   repository?: { full_name?: string };
   commits?: Array<{
     id: string;
@@ -13,7 +14,7 @@ interface WebhookPushPayload {
   }>;
 }
 
-async function verifyGitHubSignature(
+export async function verifyGitHubSignature(
   body: ArrayBuffer,
   signature: string | null,
   secret: string,
@@ -55,7 +56,6 @@ http.route({
       return new Response("server error", { status: 500 });
     }
 
-    // Always verify signature first, before any event handling
     const bodyBytes = await req.arrayBuffer();
     const signature = req.headers.get("X-Hub-Signature-256");
     const valid = await verifyGitHubSignature(bodyBytes, signature, webhookSecret);
@@ -65,39 +65,25 @@ http.route({
     }
 
     const event = req.headers.get("X-GitHub-Event");
+    if (event === "ping") return new Response("pong", { status: 200 });
+    if (event !== "push") return new Response("ignored", { status: 200 });
 
-    // Respond to ping (sent when webhook is first registered)
-    if (event === "ping") {
-      return new Response("pong", { status: 200 });
-    }
-
-    // Only process push events
-    if (event !== "push") {
-      return new Response("ignored", { status: 200 });
-    }
-
-    // Parse payload
     let payload: WebhookPushPayload;
     try {
       payload = JSON.parse(new TextDecoder().decode(bodyBytes));
     } catch {
       return new Response("invalid json", { status: 400 });
     }
-    const repoFullName = payload.repository?.full_name;
-    if (!repoFullName) {
-      return new Response("missing repo", { status: 400 });
-    }
 
-    // Find active commitments for this repo
+    const repoFullName = payload.repository?.full_name;
+    if (!repoFullName) return new Response("missing repo", { status: 400 });
+
     const commitments = await ctx.runQuery(internal.github.getCommitmentsByRepo, {
       repo: repoFullName,
     });
+    if (commitments.length === 0) return new Response("no matching commitments", { status: 200 });
 
-    if (commitments.length === 0) {
-      return new Response("no matching commitments", { status: 200 });
-    }
-
-    // Extract commits from push payload
+    const branch = payload.ref?.replace("refs/heads/", "") ?? undefined;
     const rawCommits = payload.commits ?? [];
 
     if (rawCommits.length === 0) {
@@ -106,13 +92,13 @@ http.route({
 
     const commits = rawCommits.map((c) => ({
       sha: c.id,
-      message: c.message.split("\n")[0], // First line only
+      message: c.message.split("\n")[0],
       author: c.author.name || c.author.username || "unknown",
       url: c.url,
       timestamp: new Date(c.timestamp).getTime(),
+      branch,
     }));
 
-    // Insert commits for each matching commitment
     for (const commitment of commitments) {
       await ctx.runMutation(internal.github.insertGitCommits, {
         commitmentId: commitment._id,

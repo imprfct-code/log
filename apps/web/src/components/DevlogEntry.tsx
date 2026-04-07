@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { GitBranch } from "lucide-react";
 import type { DevlogEntry as DevlogEntryType } from "@/types";
 import { CommentIcon } from "./Icons";
 import { cn } from "@/lib/utils";
@@ -6,12 +7,14 @@ import { cn } from "@/lib/utils";
 export function DevlogEntry({
   entry,
   commitmentId,
+  repo,
   isLatest = false,
   status = "building",
   onCommentClick,
 }: {
   entry: DevlogEntryType;
   commitmentId: string;
+  repo?: string;
   isLatest?: boolean;
   status?: "building" | "shipped";
   onCommentClick?: () => void;
@@ -35,6 +38,11 @@ export function DevlogEntry({
       )
     ) : null;
 
+    const showBranch =
+      entry.gitBranch && entry.gitBranch !== "main" && entry.gitBranch !== "master";
+    const branchHref =
+      showBranch && repo ? `https://github.com/${repo}/tree/${entry.gitBranch}` : undefined;
+
     return (
       <div className="relative flex items-baseline gap-2.5 py-1.5 pl-6 text-[13px]">
         <span
@@ -45,6 +53,23 @@ export function DevlogEntry({
         />
 
         {hashElement}
+        {showBranch &&
+          (branchHref ? (
+            <a
+              href={branchHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex shrink-0 items-center gap-1 border border-border px-1 py-px text-[10px] text-[#555] no-underline transition-colors hover:border-accent/40 hover:text-accent"
+            >
+              <GitBranch size={10} />
+              {entry.gitBranch}
+            </a>
+          ) : (
+            <span className="flex shrink-0 items-center gap-1 border border-border px-1 py-px text-[10px] text-[#555]">
+              <GitBranch size={10} />
+              {entry.gitBranch}
+            </span>
+          ))}
         <span className="min-w-0 flex-1 truncate text-muted-foreground">{entry.text}</span>
         {onCommentClick ? (
           <button
