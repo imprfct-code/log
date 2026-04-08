@@ -29,6 +29,7 @@ export function AttachmentGrid({ attachments }: { attachments: Attachment[] }) {
             <img
               src={att.url}
               alt=""
+              loading="lazy"
               className={cn(
                 "w-full border border-border object-cover",
                 count === 1 ? "max-h-48" : "h-40",

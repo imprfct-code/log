@@ -14,6 +14,8 @@ import {
 import { MarkdownBody } from "./MarkdownBody";
 
 const CHAR_SOFT_LIMIT = 10_000;
+const CHAR_WARN_THRESHOLD = 8_000;
+const CHAR_DANGER_THRESHOLD = 9_500;
 
 interface EditData {
   id: string;
@@ -177,9 +179,9 @@ export function CreatePostForm({
   const charColorClass =
     charCount > CHAR_SOFT_LIMIT
       ? "text-destructive"
-      : charCount > 9500
+      : charCount > CHAR_DANGER_THRESHOLD
         ? "text-accent"
-        : charCount > 8000
+        : charCount > CHAR_WARN_THRESHOLD
           ? "text-yellow-500"
           : "text-[#333]";
 

@@ -14,6 +14,14 @@ import { CoverMedia } from "./CoverMedia";
 import { VideoPlayer } from "./VideoPlayer";
 import { cn } from "@/lib/utils";
 
+/** Strip the first line (title) and inline media refs from body for feed/detail preview. */
+function stripBodyForPreview(body: string): string {
+  return body
+    .replace(/^.*\n?/, "")
+    .replace(/!\[[^\]]*?\]\([^)]+\)\n?/g, "")
+    .trim();
+}
+
 function CommentBadge({ count, onClick }: { count: number; onClick?: () => void }) {
   if (onClick) {
     return (
@@ -168,19 +176,24 @@ export function DevlogEntry({
   // Strip title (first line) and cover's markdown ref from body to avoid rendering them twice
   const detailBody = (() => {
     if (!isDetailPage || !entry.body) return entry.body;
-    // Strip first line (title — shown separately above cover)
-    let body = entry.body.replace(/^.*\n?/, "");
-    // Strip cover attachment markdown ref
+    let body = stripBodyForPreview(entry.body);
     if (cover) {
       const escaped = cover.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      body = body.replace(new RegExp(`!\\[[^\\]]*?\\]\\(upload:${escaped}\\)\\n?`, "g"), "");
+      body = body.replace(new RegExp(`!\\[[^\\]]*?\\]\\(upload:${escaped}\\)\\n?`, "g"), "").trim();
     }
-    return body.trim() || undefined;
+    return body || undefined;
   })();
   // Feed: first attachment as thumbnail or cover
   const feedThumb = !isDetailPage ? allAtts[0] : undefined;
   // cover: explicit flag, fallback to type-based (video = cover) for old posts
   const isCover = feedThumb?.cover ?? feedThumb?.type === "video";
+  // Feed body preview: strip title line + image refs, truncate
+  const feedBodyPreview = (() => {
+    if (isDetailPage || !entry.body) return null;
+    const clean = stripBodyForPreview(entry.body);
+    if (!clean) return null;
+    return clean.length > 200 ? `${clean.slice(0, 200)}\u2026` : clean;
+  })();
 
   return (
     <div className="relative py-2.5 pl-6">
@@ -214,8 +227,8 @@ export function DevlogEntry({
                   onClick={async () => {
                     try {
                       await removePost({ entryId: entry.id });
-                    } catch {
-                      // Mutation error surfaces via Convex error handler
+                    } catch (err) {
+                      console.error("Failed to delete post:", err);
                     }
                     setConfirmDelete(false);
                   }}
@@ -275,20 +288,11 @@ export function DevlogEntry({
                 {isDetailPage && entry.text && (
                   <p className="text-[13px] text-foreground-bright">{entry.text}</p>
                 )}
-                {entry.body &&
-                  !isDetailPage &&
-                  (() => {
-                    // Remove first line (already shown as title) + strip image refs
-                    const withoutFirstLine = entry.body.replace(/^.*\n?/, "");
-                    const clean = withoutFirstLine.replace(/!\[[^\]]*?\]\([^)]+\)\n?/g, "").trim();
-                    if (!clean) return null;
-                    const truncated = clean.length > 200 ? `${clean.slice(0, 200)}\u2026` : clean;
-                    return (
-                      <div className="mt-0.5 line-clamp-3 text-[12px] leading-relaxed text-muted-foreground">
-                        <MarkdownBody content={truncated} />
-                      </div>
-                    );
-                  })()}
+                {feedBodyPreview && (
+                  <div className="mt-0.5 line-clamp-3 text-[12px] leading-relaxed text-muted-foreground">
+                    <MarkdownBody content={feedBodyPreview} />
+                  </div>
+                )}
               </div>
               {feedThumb && !isCover && (
                 <Link to={`/commitment/${commitmentId}`} className="shrink-0">

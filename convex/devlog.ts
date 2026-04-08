@@ -4,16 +4,8 @@ import type { Doc } from "./_generated/dataModel";
 import { DAY_MS } from "./dates";
 import { getUserByToken, updateStreak } from "./users";
 import { computeVisibility, redactEntry } from "./privacy";
+import { attachmentValidator } from "./schema";
 import { r2 } from "./r2";
-
-const attachmentValidator = v.object({
-  key: v.string(),
-  type: v.union(v.literal("image"), v.literal("video")),
-  filename: v.string(),
-  inline: v.optional(v.boolean()),
-  cover: v.optional(v.boolean()),
-  duration: v.optional(v.number()),
-});
 
 /** Shift activity array to account for days passed, then increment today. */
 export function updateActivity(current: number[], lastActivityAt: number): number[] {
