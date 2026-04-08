@@ -14,6 +14,35 @@ import { CoverMedia } from "./CoverMedia";
 import { VideoPlayer } from "./VideoPlayer";
 import { cn } from "@/lib/utils";
 
+function CommentBadge({ count, onClick }: { count: number; onClick?: () => void }) {
+  if (onClick) {
+    return (
+      <button
+        onClick={onClick}
+        aria-label={`${count} comments — toggle comment input`}
+        className={cn(
+          "flex shrink-0 cursor-pointer items-center gap-1 border-none bg-transparent text-[11px] transition-colors",
+          count > 0
+            ? "text-muted-foreground hover:text-foreground"
+            : "text-[#333] hover:text-muted-foreground",
+        )}
+      >
+        <CommentIcon size={10} color="currentColor" />
+        {count > 0 && count}
+      </button>
+    );
+  }
+
+  if (count === 0) return null;
+
+  return (
+    <span className="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
+      <CommentIcon size={10} color="#666" />
+      {count}
+    </span>
+  );
+}
+
 export function DevlogEntry({
   entry,
   commitmentId,
@@ -107,28 +136,7 @@ export function DevlogEntry({
         >
           {showMessages ? entry.text : "private commit"}
         </span>
-        {onCommentClick ? (
-          <button
-            onClick={onCommentClick}
-            aria-label={`${entry.comments || 0} comments — toggle comment input`}
-            className={cn(
-              "flex shrink-0 cursor-pointer items-center gap-1 border-none bg-transparent text-[11px] transition-colors",
-              entry.comments > 0
-                ? "text-muted-foreground hover:text-foreground"
-                : "text-[#333] hover:text-muted-foreground",
-            )}
-          >
-            <CommentIcon size={10} color="currentColor" />
-            {entry.comments > 0 && entry.comments}
-          </button>
-        ) : (
-          entry.comments > 0 && (
-            <span className="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
-              <CommentIcon size={10} color="#666" />
-              {entry.comments}
-            </span>
-          )
-        )}
+        <CommentBadge count={entry.comments} onClick={onCommentClick} />
         <span className="shrink-0 text-[11px] text-[#333]">{entry.time}</span>
       </div>
     );
@@ -186,28 +194,7 @@ export function DevlogEntry({
       <div className="flex items-baseline gap-2 text-[11px]">
         <span className="text-accent">post</span>
         <span className="text-[#333]">{entry.time}</span>
-        {onCommentClick ? (
-          <button
-            onClick={onCommentClick}
-            aria-label={`${entry.comments || 0} comments — toggle comment input`}
-            className={cn(
-              "flex cursor-pointer items-center gap-1 border-none bg-transparent text-[11px] transition-colors",
-              entry.comments > 0
-                ? "text-muted-foreground hover:text-foreground"
-                : "text-[#333] hover:text-muted-foreground",
-            )}
-          >
-            <CommentIcon size={10} color="currentColor" />
-            {entry.comments > 0 && entry.comments}
-          </button>
-        ) : (
-          entry.comments > 0 && (
-            <span className="flex items-center gap-1 text-muted-foreground">
-              <CommentIcon size={10} color="#666" />
-              {entry.comments}
-            </span>
-          )
-        )}
+        <CommentBadge count={entry.comments} onClick={onCommentClick} />
 
         {/* Edit / Delete for own posts */}
         {entry.isOwn && (

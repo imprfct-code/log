@@ -1,10 +1,13 @@
 declare module "plyr" {
-  interface PlyrOptions {
+  export interface PlyrOptions {
     controls?: string[];
     settings?: string[];
     speed?: { selected: number; options: number[] };
     tooltips?: { controls: boolean; seek: boolean };
     ratio?: string;
+    invertTime?: boolean;
+    displayDuration?: boolean;
+    duration?: number;
   }
 
   class Plyr {

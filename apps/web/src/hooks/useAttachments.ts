@@ -1,0 +1,265 @@
+import { useState, useCallback, useRef, useEffect, type RefObject } from "react";
+
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+const VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
+const COVER_IMAGE_TYPES = ["image/gif", "image/webp"];
+
+export const ALL_MEDIA_TYPES = [...IMAGE_TYPES, ...VIDEO_TYPES];
+export const MAX_ATTACHMENTS = 4;
+
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024;
+
+export interface UploadedAttachment {
+  key: string;
+  type: "image" | "video";
+  filename: string;
+  previewUrl: string;
+  inline: boolean;
+  cover: boolean;
+  duration?: number;
+}
+
+function validateFile(file: File): string | null {
+  if (!ALL_MEDIA_TYPES.includes(file.type)) {
+    return `Unsupported file type: ${file.type}`;
+  }
+  const isVideo = VIDEO_TYPES.includes(file.type);
+  const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
+  if (file.size > maxSize) {
+    return `File too large: ${(file.size / 1024 / 1024).toFixed(1)} MB (max ${isVideo ? "50" : "10"} MB)`;
+  }
+  return null;
+}
+
+function getVideoDuration(file: File): Promise<number | undefined> {
+  return new Promise((resolve) => {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.onloadedmetadata = () => {
+      const dur = Number.isFinite(video.duration) ? video.duration : undefined;
+      URL.revokeObjectURL(video.src);
+      resolve(dur);
+    };
+    video.onerror = () => {
+      URL.revokeObjectURL(video.src);
+      resolve(undefined);
+    };
+    video.src = URL.createObjectURL(file);
+  });
+}
+
+/** Insert text at the current cursor position in a textarea. */
+function insertAtCursor(
+  ref: RefObject<HTMLTextAreaElement | null>,
+  text: string,
+  setContent: (fn: (prev: string) => string) => void,
+) {
+  const el = ref.current;
+  if (!el) return;
+  const start = el.selectionStart;
+  const end = el.selectionEnd;
+  setContent((prev) => prev.slice(0, start) + text + prev.slice(end));
+  requestAnimationFrame(() => {
+    el.selectionStart = el.selectionEnd = start + text.length;
+    el.focus();
+  });
+}
+
+export function useAttachments({
+  textareaRef,
+  setContent,
+  upload,
+  initial = [],
+}: {
+  textareaRef: RefObject<HTMLTextAreaElement | null>;
+  setContent: (fn: (prev: string) => string) => void;
+  upload: (file: File) => Promise<string>;
+  initial?: UploadedAttachment[];
+}) {
+  const [uploaded, setUploaded] = useState<UploadedAttachment[]>(initial);
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Refs for concurrent upload tracking + cleanup on unmount
+  const countRef = useRef(uploaded.length);
+  const inFlightRef = useRef(0);
+  const uploadedRef = useRef(uploaded);
+
+  useEffect(() => {
+    countRef.current = uploaded.length;
+    uploadedRef.current = uploaded;
+  }, [uploaded]);
+
+  // Revoke blob URLs on unmount
+  useEffect(() => {
+    return () => {
+      for (const att of uploadedRef.current) {
+        if (att.previewUrl.startsWith("blob:")) URL.revokeObjectURL(att.previewUrl);
+      }
+    };
+  }, []);
+
+  /** Revoke all blob URLs and reset state. Call on form close/submit. */
+  const cleanup = useCallback(() => {
+    for (const att of uploadedRef.current) {
+      if (att.previewUrl.startsWith("blob:")) URL.revokeObjectURL(att.previewUrl);
+    }
+    setUploaded([]);
+    setError(null);
+  }, []);
+
+  /** Upload a single file and insert an inline markdown reference at cursor. */
+  const uploadInline = useCallback(
+    async (file: File) => {
+      if (countRef.current >= MAX_ATTACHMENTS) {
+        setError(`Maximum ${MAX_ATTACHMENTS} attachments`);
+        return;
+      }
+
+      const validationError = validateFile(file);
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
+
+      const isVideo = VIDEO_TYPES.includes(file.type);
+      // Unique placeholder avoids race conditions when multiple files upload concurrently
+      const placeholderId = crypto.randomUUID().slice(0, 8);
+      const placeholder = `![uploading-${placeholderId}]()`;
+      insertAtCursor(textareaRef, placeholder + "\n", setContent);
+
+      inFlightRef.current++;
+      setIsUploading(true);
+      try {
+        const [key, duration] = await Promise.all([
+          upload(file),
+          isVideo ? getVideoDuration(file) : Promise.resolve(undefined),
+        ]);
+        const previewUrl = URL.createObjectURL(file);
+        const resolved = `![${file.name}](upload:${key})`;
+
+        setContent((prev) => prev.replace(placeholder, resolved));
+
+        setUploaded((prev) => [
+          ...prev,
+          {
+            key,
+            type: isVideo ? "video" : "image",
+            filename: file.name,
+            previewUrl,
+            inline: true,
+            cover: isVideo || COVER_IMAGE_TYPES.includes(file.type),
+            duration,
+          },
+        ]);
+      } catch {
+        setContent((prev) => prev.replace(placeholder + "\n", ""));
+        setError("Upload failed. Please try again.");
+      } finally {
+        inFlightRef.current--;
+        if (inFlightRef.current === 0) setIsUploading(false);
+      }
+    },
+    [upload, textareaRef, setContent],
+  );
+
+  /** Upload files in parallel and append markdown references at end of content. */
+  const uploadStandalone = useCallback(
+    async (files: File[]) => {
+      const remaining = MAX_ATTACHMENTS - countRef.current;
+      if (remaining <= 0) {
+        setError(`Maximum ${MAX_ATTACHMENTS} attachments`);
+        return;
+      }
+
+      const toUpload = files.slice(0, remaining);
+      setError(null);
+      inFlightRef.current++;
+      setIsUploading(true);
+
+      try {
+        const results = await Promise.all(
+          toUpload.map(async (file) => {
+            const err = validateFile(file);
+            if (err) throw new Error(err);
+
+            const isVideo = VIDEO_TYPES.includes(file.type);
+            const [key, duration] = await Promise.all([
+              upload(file),
+              isVideo ? getVideoDuration(file) : Promise.resolve(undefined),
+            ]);
+
+            return {
+              file,
+              key,
+              type: (isVideo ? "video" : "image") as "image" | "video",
+              duration,
+              previewUrl: URL.createObjectURL(file),
+              cover: isVideo || COVER_IMAGE_TYPES.includes(file.type),
+            };
+          }),
+        );
+
+        setContent((prev) => {
+          let text = prev.trimEnd();
+          for (const r of results) {
+            const ref = `![${r.file.name}](upload:${r.key})`;
+            text = text ? `${text}\n${ref}` : ref;
+          }
+          return text + "\n";
+        });
+
+        setUploaded((prev) => [
+          ...prev,
+          ...results.map((r) => ({
+            key: r.key,
+            type: r.type,
+            filename: r.file.name,
+            previewUrl: r.previewUrl,
+            inline: true,
+            cover: r.cover,
+            duration: r.duration,
+          })),
+        ]);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Upload failed. Please try again.");
+      } finally {
+        inFlightRef.current--;
+        if (inFlightRef.current === 0) setIsUploading(false);
+      }
+    },
+    [upload, setContent],
+  );
+
+  function removeAttachment(index: number) {
+    const att = uploaded[index];
+    if (!att) return;
+
+    if (att.inline) {
+      const ref = `![${att.filename}](upload:${att.key})`;
+      setContent((prev) => prev.replace(ref + "\n", "").replace(ref, ""));
+    }
+
+    if (att.previewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(att.previewUrl);
+    }
+    setUploaded((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function toggleCover(index: number) {
+    setUploaded((prev) => prev.map((a, i) => (i === index ? { ...a, cover: !a.cover } : a)));
+  }
+
+  return {
+    uploaded,
+    isUploading,
+    error,
+    setError,
+    uploadInline,
+    uploadStandalone,
+    removeAttachment,
+    toggleCover,
+    cleanup,
+  };
+}

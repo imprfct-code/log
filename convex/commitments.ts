@@ -123,7 +123,8 @@ export const listFeed = query({
             const entry = redactEntry(e, flags, commitment.isPrivate, isAuthor);
             return {
               ...entry,
-              resolvedAttachments: await resolveAttachments(e.attachments),
+              // Feed preview only needs the first attachment (thumbnail/cover)
+              resolvedAttachments: await resolveAttachments(e.attachments?.slice(0, 1)),
             };
           }),
         );

@@ -88,6 +88,12 @@ describe("extractTitle", () => {
     expect(extractTitle("\n\nBody only")).toBe("");
   });
 
+  test("strips markdown heading prefix", () => {
+    expect(extractTitle("# Hello world")).toBe("Hello world");
+    expect(extractTitle("## Second level")).toBe("Second level");
+    expect(extractTitle("###### Deep heading")).toBe("Deep heading");
+  });
+
   test("strips inline media references", () => {
     expect(extractTitle("![video.mp4](upload:abc123)")).toBe("");
   });
@@ -143,6 +149,78 @@ describe("devlog mutations", () => {
     await expect(
       as.mutation(api.devlog.create, { commitmentId, type: "post", content: "test" }),
     ).rejects.toThrow("Cannot post to shipped commitment");
+  });
+
+  test("update post changes content and title", async () => {
+    const t = testCtx();
+    const { as, commitmentId } = await setupUserWithCommitment(t);
+
+    const entryId = await as.mutation(api.devlog.create, {
+      commitmentId,
+      type: "post",
+      content: "Original title\n\nOriginal body.",
+    });
+
+    await as.mutation(api.devlog.update, {
+      entryId,
+      content: "Updated title\n\nUpdated body text.",
+    });
+
+    const entry = await t.run(async (ctx) => ctx.db.get(entryId));
+    expect(entry!.text).toBe("Updated title");
+    expect(entry!.body).toBe("Updated title\n\nUpdated body text.");
+  });
+
+  test("update blocks empty post", async () => {
+    const t = testCtx();
+    const { as, commitmentId } = await setupUserWithCommitment(t);
+
+    const entryId = await as.mutation(api.devlog.create, {
+      commitmentId,
+      type: "post",
+      content: "Some content",
+    });
+
+    await expect(
+      as.mutation(api.devlog.update, { entryId, content: "   ", attachments: [] }),
+    ).rejects.toThrow("Post cannot be empty");
+  });
+
+  test("update blocks non-owner edit", async () => {
+    const t = testCtx();
+    const { as, commitmentId } = await setupUserWithCommitment(t);
+    const { as: other } = await setupUser(t, "user2", "other");
+
+    const entryId = await as.mutation(api.devlog.create, {
+      commitmentId,
+      type: "post",
+      content: "My post",
+    });
+
+    await expect(other.mutation(api.devlog.update, { entryId, content: "Hacked" })).rejects.toThrow(
+      "Not the owner",
+    );
+  });
+
+  test("update blocks editing git commits", async () => {
+    const t = testCtx();
+    const { userId, as, commitmentId } = await setupUserWithCommitment(t);
+
+    const entryId = await t.run(async (ctx) =>
+      ctx.db.insert("devlogEntries", {
+        commitmentId,
+        userId,
+        type: "git_commit",
+        text: "fix: something",
+        hash: "abc1234",
+        committedAt: Date.now(),
+        commentCount: 0,
+      }),
+    );
+
+    await expect(as.mutation(api.devlog.update, { entryId, content: "changed" })).rejects.toThrow(
+      "Can only edit posts",
+    );
   });
 
   test("remove deletes post and associated comments", async () => {

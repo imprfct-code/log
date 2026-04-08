@@ -1,85 +1,19 @@
-import {
-  useState,
-  useRef,
-  useCallback,
-  useEffect,
-  type DragEvent,
-  type ClipboardEvent,
-  type RefObject,
-} from "react";
+import { useState, useRef, useEffect, type DragEvent, type ClipboardEvent } from "react";
 import { useMutation } from "convex/react";
 import { useUploadFile } from "@convex-dev/r2/react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { X, Loader2, Eye, EyeOff, Play, Paperclip, Maximize2, Minimize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  useAttachments,
+  ALL_MEDIA_TYPES,
+  MAX_ATTACHMENTS,
+  type UploadedAttachment,
+} from "@/hooks/useAttachments";
 import { MarkdownBody } from "./MarkdownBody";
 
-const IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
-const VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
-const COVER_IMAGE_TYPES = ["image/gif", "image/webp"];
-const ALL_TYPES = [...IMAGE_TYPES, ...VIDEO_TYPES];
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
-const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50 MB
-const MAX_ATTACHMENTS = 4;
 const CHAR_SOFT_LIMIT = 10_000;
-
-function validateFile(file: File): string | null {
-  if (!ALL_TYPES.includes(file.type)) {
-    return `Unsupported file type: ${file.type}`;
-  }
-  const isVideo = VIDEO_TYPES.includes(file.type);
-  const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
-  if (file.size > maxSize) {
-    return `File too large: ${(file.size / 1024 / 1024).toFixed(1)} MB (max ${isVideo ? "50" : "10"} MB)`;
-  }
-  return null;
-}
-
-/** Insert text at the current cursor position in a textarea. */
-function insertAtCursor(
-  ref: RefObject<HTMLTextAreaElement | null>,
-  text: string,
-  setContent: (fn: (prev: string) => string) => void,
-) {
-  const el = ref.current;
-  if (!el) return;
-  const start = el.selectionStart;
-  const end = el.selectionEnd;
-  setContent((prev) => prev.slice(0, start) + text + prev.slice(end));
-  requestAnimationFrame(() => {
-    el.selectionStart = el.selectionEnd = start + text.length;
-    el.focus();
-  });
-}
-
-interface UploadedAttachment {
-  key: string;
-  type: "image" | "video";
-  filename: string;
-  previewUrl: string;
-  inline: boolean;
-  cover: boolean;
-  duration?: number;
-}
-
-/** Read video duration from a File using a temporary video element. */
-function getVideoDuration(file: File): Promise<number | undefined> {
-  return new Promise((resolve) => {
-    const video = document.createElement("video");
-    video.preload = "metadata";
-    video.onloadedmetadata = () => {
-      const dur = Number.isFinite(video.duration) ? video.duration : undefined;
-      URL.revokeObjectURL(video.src);
-      resolve(dur);
-    };
-    video.onerror = () => {
-      URL.revokeObjectURL(video.src);
-      resolve(undefined);
-    };
-    video.src = URL.createObjectURL(file);
-  });
-}
 
 interface EditData {
   id: string;
@@ -95,6 +29,19 @@ interface EditData {
   }>;
 }
 
+function toInitialAttachments(edit?: EditData): UploadedAttachment[] {
+  if (!edit?.attachments) return [];
+  return edit.attachments.map((att) => ({
+    key: att.key,
+    type: att.type,
+    filename: att.filename,
+    previewUrl: att.url,
+    inline: att.inline ?? false,
+    cover: att.cover ?? att.type === "video",
+    duration: att.duration,
+  }));
+}
+
 export function CreatePostForm({
   commitmentId,
   editEntry,
@@ -106,23 +53,9 @@ export function CreatePostForm({
 }) {
   const isEditing = !!editEntry;
   const [content, setContent] = useState(editEntry?.body ?? "");
-  const [uploaded, setUploaded] = useState<UploadedAttachment[]>(() => {
-    if (!editEntry?.attachments) return [];
-    return editEntry.attachments.map((att) => ({
-      key: att.key,
-      type: att.type,
-      filename: att.filename,
-      previewUrl: att.url,
-      inline: att.inline ?? false,
-      cover: att.cover ?? att.type === "video",
-      duration: att.duration,
-    }));
-  });
-  const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [dragOver, setDragOver] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -130,6 +63,13 @@ export function CreatePostForm({
   const createPost = useMutation(api.devlog.create);
   const updatePost = useMutation(api.devlog.update);
   const upload = useUploadFile(api.r2);
+
+  const attachments = useAttachments({
+    textareaRef,
+    setContent,
+    upload,
+    initial: toInitialAttachments(editEntry),
+  });
 
   // Auto-grow textarea (also re-trigger when switching back from preview)
   useEffect(() => {
@@ -139,161 +79,34 @@ export function CreatePostForm({
     el.style.height = `${el.scrollHeight}px`;
   }, [content, showPreview]);
 
-  /** Upload a single file and insert an inline markdown reference at cursor. */
-  const uploadInline = useCallback(
-    async (file: File) => {
-      const validationError = validateFile(file);
-      if (validationError) {
-        setError(validationError);
-        return;
-      }
-
-      const isVideo = VIDEO_TYPES.includes(file.type);
-
-      // Insert placeholder at cursor
-      const placeholder = `![uploading ${file.name}...]()`;
-      insertAtCursor(textareaRef, placeholder + "\n", setContent);
-
-      setIsUploading(true);
-      try {
-        const [key, duration] = await Promise.all([
-          upload(file),
-          isVideo ? getVideoDuration(file) : Promise.resolve(undefined),
-        ]);
-        const previewUrl = URL.createObjectURL(file);
-        const resolved = `![${file.name}](upload:${key})`;
-
-        // Replace placeholder with resolved reference
-        setContent((prev) => prev.replace(placeholder, resolved));
-
-        setUploaded((prev) => [
-          ...prev,
-          {
-            key,
-            type: isVideo ? "video" : "image",
-            filename: file.name,
-            previewUrl,
-            inline: true,
-            cover: isVideo || COVER_IMAGE_TYPES.includes(file.type),
-            duration,
-          },
-        ]);
-      } catch {
-        // Remove placeholder on failure
-        setContent((prev) => prev.replace(placeholder + "\n", ""));
-        setError("Upload failed. Please try again.");
-      } finally {
-        setIsUploading(false);
-      }
-    },
-    [upload],
-  );
-
-  /** Upload files via attach button — inserts inline markdown refs at end of content. */
-  const uploadStandalone = useCallback(
-    async (files: File[]) => {
-      const remaining = MAX_ATTACHMENTS - uploaded.length;
-      if (remaining <= 0) {
-        setError(`Maximum ${MAX_ATTACHMENTS} attachments`);
-        return;
-      }
-
-      const toUpload = files.slice(0, remaining);
-      setError(null);
-      setIsUploading(true);
-
-      try {
-        for (const file of toUpload) {
-          const validationError = validateFile(file);
-          if (validationError) {
-            setError(validationError);
-            continue;
-          }
-
-          const isVideo = VIDEO_TYPES.includes(file.type);
-          const [key, duration] = await Promise.all([
-            upload(file),
-            isVideo ? getVideoDuration(file) : Promise.resolve(undefined),
-          ]);
-          const previewUrl = URL.createObjectURL(file);
-
-          // Insert markdown reference at end of content
-          const ref = `![${file.name}](upload:${key})`;
-          setContent((prev) => {
-            const trimmed = prev.trimEnd();
-            return trimmed ? `${trimmed}\n${ref}\n` : `${ref}\n`;
-          });
-
-          setUploaded((prev) => [
-            ...prev,
-            {
-              key,
-              type: isVideo ? "video" : "image",
-              filename: file.name,
-              previewUrl,
-              inline: true,
-              cover: isVideo || COVER_IMAGE_TYPES.includes(file.type),
-              duration,
-            },
-          ]);
-        }
-      } catch {
-        setError("Upload failed. Please try again.");
-      } finally {
-        setIsUploading(false);
-      }
-    },
-    [uploaded.length, upload],
-  );
-
-  function removeAttachment(index: number) {
-    const att = uploaded[index];
-    if (!att) return;
-
-    // If inline, also remove the markdown reference from body
-    if (att.inline) {
-      const ref = `![${att.filename}](upload:${att.key})`;
-      setContent((prev) => prev.replace(ref + "\n", "").replace(ref, ""));
-    }
-
-    if (att.previewUrl.startsWith("blob:")) {
-      URL.revokeObjectURL(att.previewUrl);
-    }
-    setUploaded((prev) => prev.filter((_, i) => i !== index));
+  function handleClose() {
+    attachments.cleanup();
+    onClose();
   }
 
-  const handleDrop = useCallback(
-    (e: DragEvent) => {
-      e.preventDefault();
-      setDragOver(false);
-      const files = Array.from(e.dataTransfer.files);
-      if (files.length === 0) return;
+  function handleDrop(e: DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    const files = Array.from(e.dataTransfer.files);
+    for (const file of files) {
+      void attachments.uploadInline(file);
+    }
+  }
 
-      for (const file of files) {
-        void uploadInline(file);
-      }
-    },
-    [uploadInline],
-  );
+  function handlePaste(e: ClipboardEvent) {
+    const files = Array.from(e.clipboardData.files);
+    if (files.length === 0) return;
+    e.preventDefault();
+    for (const file of files) {
+      void attachments.uploadInline(file);
+    }
+  }
 
-  const handlePaste = useCallback(
-    (e: ClipboardEvent) => {
-      const files = Array.from(e.clipboardData.files);
-      if (files.length === 0) return;
-      e.preventDefault();
-
-      for (const file of files) {
-        void uploadInline(file);
-      }
-    },
-    [uploadInline],
-  );
-
-  const handleSubmit = useCallback(async () => {
+  async function handleSubmit() {
     const trimmed = content.trim();
-    if (!trimmed && uploaded.length === 0) return;
+    if (!trimmed && attachments.uploaded.length === 0) return;
     setIsSubmitting(true);
-    setError(null);
+    attachments.setError(null);
 
     try {
       // Detect orphaned inline attachments: inline keys not referenced in body
@@ -304,7 +117,7 @@ export function CreatePostForm({
         referencedKeys.add(match[1]);
       }
 
-      const attachments = uploaded
+      const atts = attachments.uploaded
         .filter((att) => !att.inline || referencedKeys.has(att.key))
         .map(({ key, type, filename, inline, cover, duration }) => ({
           key,
@@ -319,40 +132,46 @@ export function CreatePostForm({
         await updatePost({
           entryId: editEntry.id as Id<"devlogEntries">,
           content: trimmed || undefined,
-          attachments: attachments.length > 0 ? attachments : undefined,
+          attachments: atts.length > 0 ? atts : undefined,
         });
       } else {
         await createPost({
           commitmentId,
           type: "post",
           content: trimmed || undefined,
-          attachments: attachments.length > 0 ? attachments : undefined,
+          attachments: atts.length > 0 ? atts : undefined,
         });
       }
 
-      // Cleanup local blob preview URLs
-      for (const att of uploaded) {
-        if (att.previewUrl.startsWith("blob:")) URL.revokeObjectURL(att.previewUrl);
-      }
+      attachments.cleanup();
       setContent("");
-      setUploaded([]);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to post");
+      attachments.setError(err instanceof Error ? err.message : "Failed to post");
     } finally {
       setIsSubmitting(false);
     }
-  }, [content, uploaded, isEditing, editEntry, commitmentId, createPost, updatePost, onClose]);
+  }
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-        e.preventDefault();
-        void handleSubmit();
-      }
-    },
-    [handleSubmit],
-  );
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      void handleSubmit();
+    }
+  }
+
+  /** Update the width in `![alt|XX%](src)` when slider is dragged in preview. */
+  function handleImageResize(src: string, width: number) {
+    setContent((prev) => {
+      const escaped = src.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const pattern = new RegExp(`!\\[([^|\\]]*?)(?:\\|\\d{1,3}%)?\\]\\(${escaped}\\)`);
+      const m = prev.match(pattern);
+      if (!m) return prev;
+      const altBase = m[1];
+      const widthSuffix = width < 100 ? `|${width}%` : "";
+      return prev.replace(pattern, `![${altBase}${widthSuffix}](${src})`);
+    });
+  }
 
   const charCount = content.length;
   const charColorClass =
@@ -365,30 +184,18 @@ export function CreatePostForm({
           : "text-[#333]";
 
   const canSubmit =
-    (content.trim().length > 0 || uploaded.length > 0) && !isUploading && !isSubmitting;
+    (content.trim().length > 0 || attachments.uploaded.length > 0) &&
+    !attachments.isUploading &&
+    !isSubmitting;
 
-  // Build preview attachment map from uploaded items (key → previewUrl)
-  const previewAttachments = uploaded.map((att) => ({
+  // Build preview attachment map from uploaded items (key -> previewUrl)
+  const previewAttachments = attachments.uploaded.map((att) => ({
     url: att.previewUrl,
     key: att.key,
     type: att.type,
     filename: att.filename,
     inline: att.inline,
   }));
-
-  /** Update the width in `![alt|XX%](src)` when slider is dragged in preview. */
-  const handleImageResize = useCallback((src: string, width: number) => {
-    setContent((prev) => {
-      // Match ![...](src) — optionally with existing |XX% in alt
-      const escaped = src.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const pattern = new RegExp(`!\\[([^|\\]]*?)(?:\\|\\d{1,3}%)?\\]\\(${escaped}\\)`);
-      const match = prev.match(pattern);
-      if (!match) return prev;
-      const altBase = match[1];
-      const widthSuffix = width < 100 ? `|${width}%` : "";
-      return prev.replace(pattern, `![${altBase}${widthSuffix}](${src})`);
-    });
-  }, []);
 
   return (
     <div
@@ -426,18 +233,18 @@ export function CreatePostForm({
       <input
         ref={fileInputRef}
         type="file"
-        accept={ALL_TYPES.join(",")}
+        accept={ALL_MEDIA_TYPES.join(",")}
         multiple
         onChange={(e) => {
           const files = Array.from(e.target.files ?? []);
-          if (files.length > 0) void uploadStandalone(files);
+          if (files.length > 0) void attachments.uploadStandalone(files);
           e.target.value = "";
         }}
         className="hidden"
       />
 
       {/* Upload progress */}
-      {isUploading && (
+      {attachments.isUploading && (
         <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
           <Loader2 size={12} className="animate-spin" />
           uploading...
@@ -445,9 +252,9 @@ export function CreatePostForm({
       )}
 
       {/* Attachment previews */}
-      {uploaded.length > 0 && (
+      {attachments.uploaded.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-2">
-          {uploaded.map((att, idx) => (
+          {attachments.uploaded.map((att, idx) => (
             <div key={att.key} className="group/att relative">
               {att.type === "video" ? (
                 <div className="relative flex h-16 w-24 items-center justify-center border border-border bg-muted">
@@ -465,11 +272,7 @@ export function CreatePostForm({
               )}
               <button
                 type="button"
-                onClick={() =>
-                  setUploaded((prev) =>
-                    prev.map((a, i) => (i === idx ? { ...a, cover: !a.cover } : a)),
-                  )
-                }
+                onClick={() => attachments.toggleCover(idx)}
                 title={att.cover ? "large preview in feed" : "small preview in feed"}
                 className={cn(
                   "absolute bottom-0.5 left-0.5 flex h-4 w-4 cursor-pointer items-center justify-center border bg-card text-[10px] transition-opacity group-hover/att:opacity-100",
@@ -482,7 +285,7 @@ export function CreatePostForm({
               </button>
               <button
                 type="button"
-                onClick={() => removeAttachment(idx)}
+                onClick={() => attachments.removeAttachment(idx)}
                 className="absolute -top-1.5 -right-1.5 flex h-4 w-4 cursor-pointer items-center justify-center border border-border bg-card text-[10px] text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/att:opacity-100"
               >
                 <X size={10} />
@@ -493,7 +296,9 @@ export function CreatePostForm({
       )}
 
       {/* Error */}
-      {error && <div className="mt-2 text-[11px] text-destructive">{error}</div>}
+      {attachments.error && (
+        <div className="mt-2 text-[11px] text-destructive">{attachments.error}</div>
+      )}
 
       {/* Footer: char count + buttons */}
       <div className="mt-2 flex items-center justify-end gap-3">
@@ -512,7 +317,7 @@ export function CreatePostForm({
           {showPreview ? "edit" : "preview"}
         </button>
 
-        {uploaded.length < MAX_ATTACHMENTS && (
+        {attachments.uploaded.length < MAX_ATTACHMENTS && (
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -525,7 +330,7 @@ export function CreatePostForm({
 
         <button
           type="button"
-          onClick={onClose}
+          onClick={handleClose}
           className="cursor-pointer border-none bg-transparent font-mono text-[11px] text-[#444] transition-colors hover:text-muted-foreground"
         >
           cancel

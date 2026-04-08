@@ -10,11 +10,11 @@ export function AttachmentGrid({ attachments }: { attachments: Attachment[] }) {
 
   return (
     <div className={cn("mt-2 grid gap-1", gridClass)}>
-      {attachments.map((att, i) => {
+      {attachments.map((att) => {
         if (att.type === "video") {
           return (
             <div
-              key={i}
+              key={att.key}
               className={cn(
                 "w-full border border-border overflow-hidden",
                 count === 1 ? "max-h-96" : "h-56",
@@ -25,7 +25,7 @@ export function AttachmentGrid({ attachments }: { attachments: Attachment[] }) {
           );
         }
         return (
-          <div key={i} className="group/img relative">
+          <div key={att.key} className="group/img relative">
             <img
               src={att.url}
               alt=""

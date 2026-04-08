@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Plyr from "plyr";
+import type { PlyrOptions } from "plyr";
 import "plyr/dist/plyr.css";
 
 interface VideoPlayerProps {
@@ -65,6 +66,7 @@ function PlayOverlay({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
 export function VideoPlayer({ url, title, mode = "full", duration }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const plyrRef = useRef<Plyr | null>(null);
+  const videoCleanupRef = useRef<(() => void) | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activated, setActivated] = useState(mode === "full");
 
@@ -86,22 +88,17 @@ export function VideoPlayer({ url, title, mode = "full", duration }: VideoPlayer
     (controls: string[]) => {
       if (!videoRef.current || plyrRef.current) return null;
 
-      // Plyr's bundled types are stricter than its actual API — cast to satisfy TS
-      const options = {
+      const options: PlyrOptions = {
         controls,
         settings: mode === "full" ? ["speed"] : [],
         speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] },
         tooltips: { controls: true, seek: true },
-        // Show elapsed time (0:05 / 0:30) instead of countdown (-0:25).
         invertTime: false,
         displayDuration: true,
-        // Pre-set duration when known — avoids 0:00 display while metadata loads.
-        ...(duration ? { duration: Math.round(duration) } : {}),
-      } satisfies Record<string, unknown>;
+        ...(duration != null ? { duration: Math.round(duration) } : {}),
+      };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const player = new Plyr(videoRef.current, options as any);
-
+      const player = new Plyr(videoRef.current, options);
       plyrRef.current = player;
       return player;
     },
@@ -124,6 +121,8 @@ export function VideoPlayer({ url, title, mode = "full", duration }: VideoPlayer
   useEffect(() => {
     if (mode !== "inline") return;
     return () => {
+      videoCleanupRef.current?.();
+      videoCleanupRef.current = null;
       plyrRef.current?.destroy();
       plyrRef.current = null;
     };
@@ -137,26 +136,11 @@ export function VideoPlayer({ url, title, mode = "full", duration }: VideoPlayer
     setActivated(true);
     setIsLoading(true);
 
-    const video = videoRef.current;
-    const cleanup = attachVideoEvents(video);
+    videoCleanupRef.current = attachVideoEvents(videoRef.current);
 
-    // Give React a tick to remove the overlay, then init Plyr
     requestAnimationFrame(() => {
-      const player = initPlyr(INLINE_CONTROLS);
-      if (player) {
-        void video.play();
-      }
-
-      // Store cleanup for unmount — inline effect handles Plyr destroy,
-      // but we need video event cleanup too
-      const prevCleanup = plyrRef.current;
-      const origDestroy = prevCleanup?.destroy.bind(prevCleanup);
-      if (prevCleanup && origDestroy) {
-        prevCleanup.destroy = (...args: Parameters<Plyr["destroy"]>) => {
-          cleanup();
-          origDestroy(...args);
-        };
-      }
+      initPlyr(INLINE_CONTROLS);
+      void videoRef.current?.play();
     });
   }
 

@@ -30,6 +30,7 @@ interface RawDevlogEntry {
     filename: string;
     inline: boolean;
     cover?: boolean;
+    duration?: number;
   }>;
 }
 
