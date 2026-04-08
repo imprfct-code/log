@@ -451,8 +451,30 @@
   @apply text-black;
 }
 
+.video-player-wrapper {
+  container-type: inline-size;
+}
+
 .video-player-wrapper .plyr {
   @apply w-full;
+}
+
+/* Hide less important controls when player is narrow */
+@container (max-width: 450px) {
+  .plyr__volume input[type="range"] {
+    display: none !important;
+    width: 0 !important;
+  }
+
+  .plyr__time--duration {
+    display: none !important;
+  }
+}
+
+@container (max-width: 300px) {
+  .plyr__time--current {
+    display: none !important;
+  }
 }
 
 /* ── Video loading overlay ── */

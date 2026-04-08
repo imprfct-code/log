@@ -21,6 +21,16 @@ function stripBodyForPreview(body: string): string {
     .trim();
 }
 
+/** Extract width percent from `![...|50%](upload:KEY)` in body for a given attachment key. */
+function parseMediaWidth(body: string, key: string): number | null {
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = body.match(new RegExp(`!\\[([^\\]]*)\\]\\(upload:${escaped}\\)`));
+  if (!match) return null;
+  const altMatch = match[1].match(/\|(\d{1,3})%$/);
+  if (!altMatch) return null;
+  return Math.min(100, Math.max(10, Number(altMatch[1])));
+}
+
 export function PostEntry({
   entry,
   commitmentId,
@@ -73,6 +83,7 @@ export function PostEntry({
   })();
   const feedThumb = !isDetailPage ? allAtts[0] : undefined;
   const isCover = feedThumb?.cover ?? feedThumb?.type === "video";
+  const thumbWidth = feedThumb && entry.body ? parseMediaWidth(entry.body, feedThumb.key) : null;
   const feedBodyPreview = (() => {
     if (isDetailPage || !entry.body) return null;
     const clean = stripBodyForPreview(entry.body);
@@ -151,7 +162,14 @@ export function PostEntry({
           {entry.text && (
             <p className="mt-1 text-[13px] font-semibold text-foreground-bright">{entry.text}</p>
           )}
-          {cover && <CoverMedia url={cover.url} type={cover.type} duration={cover.duration} />}
+          {cover && (
+            <CoverMedia
+              url={cover.url}
+              type={cover.type}
+              duration={cover.duration}
+              widthPercent={entry.body ? parseMediaWidth(entry.body, cover.key) : null}
+            />
+          )}
           {detailBody && (
             <div className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
               <MarkdownBody content={detailBody} attachments={entry.attachments} />
@@ -186,7 +204,10 @@ export function PostEntry({
             )}
           </div>
           {feedThumb && isCover && (
-            <div className="mt-2 overflow-hidden">
+            <div
+              className="mt-2 overflow-hidden"
+              style={thumbWidth ? { width: `${thumbWidth}%` } : undefined}
+            >
               {feedThumb.type === "video" ? (
                 <VideoPlayer url={feedThumb.url} mode="inline" duration={feedThumb.duration} />
               ) : (
