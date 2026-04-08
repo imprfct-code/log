@@ -42,7 +42,7 @@ export async function resolveAttachments(
   if (!attachments?.length) return [];
   return Promise.all(
     attachments.map(async (att) => ({
-      url: await r2.getUrl(att.key),
+      url: await r2.getUrl(att.key, { expiresIn: 60 * 60 * 24 }),
       key: att.key,
       type: att.type,
       filename: att.filename,
