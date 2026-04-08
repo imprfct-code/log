@@ -12,6 +12,7 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    environment: development
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -20,6 +21,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Generate Convex types
+        run: npx convex codegen
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
       - name: Format
         run: pnpm run fmt:check
       - name: Lint
