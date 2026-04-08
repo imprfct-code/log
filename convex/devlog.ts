@@ -7,6 +7,8 @@ import { computeVisibility, redactEntry } from "./privacy";
 import { attachmentValidator } from "./schema";
 import { r2 } from "./r2";
 
+const MAX_CONTENT_LENGTH = 20_000;
+
 /** Shift activity array to account for days passed, then increment today. */
 export function updateActivity(current: number[], lastActivityAt: number): number[] {
   const now = Date.now();
@@ -73,7 +75,9 @@ export async function resolveAttachments(
 
 export const getFileUrl = query({
   args: { key: v.string() },
-  handler: async (_ctx, { key }) => {
+  handler: async (ctx, { key }) => {
+    const user = await getUserByToken(ctx);
+    if (!user) throw new Error("Not authenticated");
     return r2.getUrl(key, { expiresIn: 60 * 60 * 24 });
   },
 });
@@ -105,6 +109,9 @@ export const create = mutation({
 
     if (args.type === "post") {
       const content = args.content?.trim();
+      if (content && content.length > MAX_CONTENT_LENGTH) {
+        throw new Error(`Content too long (max ${MAX_CONTENT_LENGTH} characters)`);
+      }
       const hasAttachments = args.attachments && args.attachments.length > 0;
       if (!content && !hasAttachments) throw new Error("Post cannot be empty");
       text = (content && extractTitle(content)) || "media update";
@@ -155,6 +162,9 @@ export const update = mutation({
     if (entry.type !== "post") throw new Error("Can only edit posts");
 
     // Use provided values or fall back to existing entry values
+    if (args.content !== undefined && args.content.trim().length > MAX_CONTENT_LENGTH) {
+      throw new Error(`Content too long (max ${MAX_CONTENT_LENGTH} characters)`);
+    }
     const trimmedContent = args.content !== undefined ? args.content.trim() : entry.body;
     const effectiveAttachments =
       args.attachments !== undefined ? args.attachments : (entry.attachments ?? []);

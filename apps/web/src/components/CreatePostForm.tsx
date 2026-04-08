@@ -18,7 +18,7 @@ const CHAR_WARN_THRESHOLD = 8_000;
 const CHAR_DANGER_THRESHOLD = 9_500;
 
 interface EditData {
-  id: string;
+  id: Id<"devlogEntries">;
   body?: string;
   attachments?: Array<{
     url: string;
@@ -132,7 +132,7 @@ export function CreatePostForm({
 
       if (isEditing && editEntry) {
         await updatePost({
-          entryId: editEntry.id as Id<"devlogEntries">,
+          entryId: editEntry.id,
           content: trimmed || undefined,
           attachments: atts.length > 0 ? atts : undefined,
         });

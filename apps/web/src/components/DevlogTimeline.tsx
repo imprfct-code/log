@@ -32,15 +32,15 @@ export function DevlogTimeline({
   limit?: number;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [openInputs, setOpenInputs] = useState<Set<number>>(new Set());
+  const [openInputs, setOpenInputs] = useState<Set<string>>(new Set());
 
   const hasOverflow = entries.length > limit;
 
-  function toggleComment(index: number) {
+  function toggleComment(entryId: string) {
     setOpenInputs((prev) => {
       const next = new Set(prev);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
+      if (next.has(entryId)) next.delete(entryId);
+      else next.add(entryId);
       return next;
     });
   }
@@ -49,7 +49,7 @@ export function DevlogTimeline({
     const hasComments = entry.commentData && entry.commentData.length > 0;
 
     return (
-      <div key={index}>
+      <div key={entry.id}>
         <DevlogEntry
           entry={entry}
           commitmentId={commitmentId}
@@ -62,7 +62,7 @@ export function DevlogTimeline({
           isLatest={index === 0}
           status={status}
           isDetailPage={isDetailPage}
-          onCommentClick={() => toggleComment(index)}
+          onCommentClick={() => toggleComment(entry.id)}
         />
 
         {hasComments && (
@@ -71,7 +71,7 @@ export function DevlogTimeline({
           </div>
         )}
 
-        {openInputs.has(index) && !hasComments && (
+        {openInputs.has(entry.id) && !hasComments && (
           <div className="pl-6 pb-2">
             <div className="mt-1 border-l-2 border-border-strong px-3.5 py-1.5">
               <CommentInput autoFocus />
