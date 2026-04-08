@@ -5,12 +5,13 @@ import {
   useEffect,
   type DragEvent,
   type ClipboardEvent,
+  type RefObject,
 } from "react";
 import { useMutation } from "convex/react";
 import { useUploadFile } from "@convex-dev/r2/react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
-import { X, Loader2, Eye, EyeOff, Play } from "lucide-react";
+import { X, Loader2, Eye, EyeOff, Play, Paperclip } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MarkdownBody } from "./MarkdownBody";
 
@@ -34,17 +35,41 @@ function validateFile(file: File): string | null {
   return null;
 }
 
+/** Insert text at the current cursor position in a textarea. */
+function insertAtCursor(
+  ref: RefObject<HTMLTextAreaElement | null>,
+  text: string,
+  setContent: (fn: (prev: string) => string) => void,
+) {
+  const el = ref.current;
+  if (!el) return;
+  const start = el.selectionStart;
+  const end = el.selectionEnd;
+  setContent((prev) => prev.slice(0, start) + text + prev.slice(end));
+  requestAnimationFrame(() => {
+    el.selectionStart = el.selectionEnd = start + text.length;
+    el.focus();
+  });
+}
+
 interface UploadedAttachment {
   key: string;
   type: "image" | "video";
   filename: string;
   previewUrl: string;
+  inline: boolean;
 }
 
 interface EditData {
   id: string;
   body?: string;
-  attachments?: Array<{ url: string; key: string; type: "image" | "video"; filename: string }>;
+  attachments?: Array<{
+    url: string;
+    key: string;
+    type: "image" | "video";
+    filename: string;
+    inline?: boolean;
+  }>;
 }
 
 export function CreatePostForm({
@@ -65,6 +90,7 @@ export function CreatePostForm({
       type: att.type,
       filename: att.filename,
       previewUrl: att.url,
+      inline: att.inline ?? false,
     }));
   });
   const [isUploading, setIsUploading] = useState(false);
@@ -80,15 +106,55 @@ export function CreatePostForm({
   const updatePost = useMutation(api.devlog.update);
   const upload = useUploadFile(api.r2);
 
-  // Auto-grow textarea
+  // Auto-grow textarea (also re-trigger when switching back from preview)
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
-  }, [content]);
+  }, [content, showPreview]);
 
-  const handleFiles = useCallback(
+  /** Upload a single file and insert an inline markdown reference at cursor. */
+  const uploadInline = useCallback(
+    async (file: File) => {
+      const validationError = validateFile(file);
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
+
+      const isVideo = VIDEO_TYPES.includes(file.type);
+
+      // Insert placeholder at cursor
+      const placeholder = `![uploading ${file.name}...]()`;
+      insertAtCursor(textareaRef, placeholder + "\n", setContent);
+
+      setIsUploading(true);
+      try {
+        const key = await upload(file);
+        const previewUrl = URL.createObjectURL(file);
+        const resolved = `![${file.name}](upload:${key})`;
+
+        // Replace placeholder with resolved reference
+        setContent((prev) => prev.replace(placeholder, resolved));
+
+        setUploaded((prev) => [
+          ...prev,
+          { key, type: isVideo ? "video" : "image", filename: file.name, previewUrl, inline: true },
+        ]);
+      } catch {
+        // Remove placeholder on failure
+        setContent((prev) => prev.replace(placeholder + "\n", ""));
+        setError("Upload failed. Please try again.");
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    [upload],
+  );
+
+  /** Upload files as standalone (non-inline) attachments. */
+  const uploadStandalone = useCallback(
     async (files: File[]) => {
       const remaining = MAX_ATTACHMENTS - uploaded.length;
       if (remaining <= 0) {
@@ -119,6 +185,7 @@ export function CreatePostForm({
               type: isVideo ? "video" : "image",
               filename: file.name,
               previewUrl,
+              inline: false,
             },
           ]);
         }
@@ -132,13 +199,19 @@ export function CreatePostForm({
   );
 
   function removeAttachment(index: number) {
-    setUploaded((prev) => {
-      const removed = prev[index];
-      if (removed && removed.previewUrl.startsWith("blob:")) {
-        URL.revokeObjectURL(removed.previewUrl);
-      }
-      return prev.filter((_, i) => i !== index);
-    });
+    const att = uploaded[index];
+    if (!att) return;
+
+    // If inline, also remove the markdown reference from body
+    if (att.inline) {
+      const ref = `![${att.filename}](upload:${att.key})`;
+      setContent((prev) => prev.replace(ref + "\n", "").replace(ref, ""));
+    }
+
+    if (att.previewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(att.previewUrl);
+    }
+    setUploaded((prev) => prev.filter((_, i) => i !== index));
   }
 
   const handleDrop = useCallback(
@@ -146,20 +219,26 @@ export function CreatePostForm({
       e.preventDefault();
       setDragOver(false);
       const files = Array.from(e.dataTransfer.files);
-      if (files.length > 0) void handleFiles(files);
+      if (files.length === 0) return;
+
+      for (const file of files) {
+        void uploadInline(file);
+      }
     },
-    [handleFiles],
+    [uploadInline],
   );
 
   const handlePaste = useCallback(
     (e: ClipboardEvent) => {
       const files = Array.from(e.clipboardData.files);
-      if (files.length > 0) {
-        e.preventDefault();
-        void handleFiles(files);
+      if (files.length === 0) return;
+      e.preventDefault();
+
+      for (const file of files) {
+        void uploadInline(file);
       }
     },
-    [handleFiles],
+    [uploadInline],
   );
 
   const handleSubmit = useCallback(async () => {
@@ -169,7 +248,17 @@ export function CreatePostForm({
     setError(null);
 
     try {
-      const attachments = uploaded.map(({ key, type, filename }) => ({ key, type, filename }));
+      // Detect orphaned inline attachments: inline keys not referenced in body
+      const referencedKeys = new Set<string>();
+      const refPattern = /!\[.*?\]\(upload:([^)]+)\)/g;
+      let match;
+      while ((match = refPattern.exec(trimmed)) !== null) {
+        referencedKeys.add(match[1]);
+      }
+
+      const attachments = uploaded
+        .filter((att) => !att.inline || referencedKeys.has(att.key))
+        .map(({ key, type, filename, inline }) => ({ key, type, filename, inline }));
 
       if (isEditing && editEntry) {
         await updatePost({
@@ -220,8 +309,32 @@ export function CreatePostForm({
           ? "text-yellow-500"
           : "text-[#333]";
 
+  const standaloneUploaded = uploaded.filter((a) => !a.inline);
   const canSubmit =
     (content.trim().length > 0 || uploaded.length > 0) && !isUploading && !isSubmitting;
+
+  // Build preview attachment map from uploaded items (key → previewUrl)
+  const previewAttachments = uploaded.map((att) => ({
+    url: att.previewUrl,
+    key: att.key,
+    type: att.type,
+    filename: att.filename,
+    inline: att.inline,
+  }));
+
+  /** Update the width in `![alt|XX%](src)` when slider is dragged in preview. */
+  const handleImageResize = useCallback((src: string, width: number) => {
+    setContent((prev) => {
+      // Match ![...](src) — optionally with existing |XX% in alt
+      const escaped = src.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const pattern = new RegExp(`!\\[([^|\\]]*?)(?:\\|\\d{1,3}%)?\\]\\(${escaped}\\)`);
+      const match = prev.match(pattern);
+      if (!match) return prev;
+      const altBase = match[1];
+      const widthSuffix = width < 100 ? `|${width}%` : "";
+      return prev.replace(pattern, `![${altBase}${widthSuffix}](${src})`);
+    });
+  }, []);
 
   return (
     <div
@@ -235,8 +348,12 @@ export function CreatePostForm({
     >
       {/* Textarea / Preview */}
       {showPreview && content ? (
-        <div className="min-h-[80px] text-[13px] text-muted-foreground">
-          <MarkdownBody content={content} />
+        <div className="min-h-[80px] overflow-x-hidden text-[13px] text-muted-foreground">
+          <MarkdownBody
+            content={content}
+            attachments={previewAttachments}
+            onImageResize={handleImageResize}
+          />
         </div>
       ) : (
         <textarea
@@ -245,25 +362,11 @@ export function CreatePostForm({
           onChange={(e) => setContent(e.target.value)}
           onPaste={handlePaste}
           onKeyDown={handleKeyDown}
-          placeholder="write something..."
+          placeholder="write something... drop media to embed inline"
           className="w-full resize-none border-none bg-transparent font-mono text-[13px] text-foreground-bright placeholder:text-[#333] focus:outline-none"
           style={{ minHeight: "80px" }}
           autoFocus
         />
-      )}
-
-      {/* Drop zone */}
-      {uploaded.length < MAX_ATTACHMENTS && (
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          className={cn(
-            "mt-2 w-full cursor-pointer border border-dashed border-border-strong bg-transparent p-2 font-mono text-[11px] text-[#444] transition-colors hover:border-accent/40 hover:text-muted-foreground",
-            dragOver && "border-accent/40 text-accent",
-          )}
-        >
-          drop files or click &middot; img / vid / gif
-        </button>
       )}
 
       <input
@@ -273,7 +376,7 @@ export function CreatePostForm({
         multiple
         onChange={(e) => {
           const files = Array.from(e.target.files ?? []);
-          if (files.length > 0) void handleFiles(files);
+          if (files.length > 0) void uploadStandalone(files);
           e.target.value = "";
         }}
         className="hidden"
@@ -287,32 +390,37 @@ export function CreatePostForm({
         </div>
       )}
 
-      {/* Attachment previews */}
-      {uploaded.length > 0 && (
+      {/* Standalone attachment previews */}
+      {standaloneUploaded.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-2">
-          {uploaded.map((att, i) => (
-            <div key={att.key} className="group/att relative">
-              {att.type === "video" ? (
-                <div className="relative flex h-16 w-24 items-center justify-center border border-border bg-muted">
-                  <Play size={16} className="text-muted-foreground" />
-                  <span className="absolute bottom-0.5 right-0.5 text-[9px] text-[#444]">vid</span>
-                </div>
-              ) : (
-                <img
-                  src={att.previewUrl}
-                  alt={att.filename}
-                  className="h-16 w-24 border border-border object-cover"
-                />
-              )}
-              <button
-                type="button"
-                onClick={() => removeAttachment(i)}
-                className="absolute -top-1.5 -right-1.5 flex h-4 w-4 cursor-pointer items-center justify-center border border-border bg-card text-[10px] text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/att:opacity-100"
-              >
-                <X size={10} />
-              </button>
-            </div>
-          ))}
+          {standaloneUploaded.map((att) => {
+            const globalIdx = uploaded.indexOf(att);
+            return (
+              <div key={att.key} className="group/att relative">
+                {att.type === "video" ? (
+                  <div className="relative flex h-16 w-24 items-center justify-center border border-border bg-muted">
+                    <Play size={16} className="text-muted-foreground" />
+                    <span className="absolute bottom-0.5 right-0.5 text-[9px] text-[#444]">
+                      vid
+                    </span>
+                  </div>
+                ) : (
+                  <img
+                    src={att.previewUrl}
+                    alt={att.filename}
+                    className="h-16 w-24 border border-border object-cover"
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={() => removeAttachment(globalIdx)}
+                  className="absolute -top-1.5 -right-1.5 flex h-4 w-4 cursor-pointer items-center justify-center border border-border bg-card text-[10px] text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/att:opacity-100"
+                >
+                  <X size={10} />
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -335,6 +443,17 @@ export function CreatePostForm({
           {showPreview ? <EyeOff size={11} /> : <Eye size={11} />}
           {showPreview ? "edit" : "preview"}
         </button>
+
+        {uploaded.length < MAX_ATTACHMENTS && (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex cursor-pointer items-center gap-1 border-none bg-transparent font-mono text-[11px] text-[#444] transition-colors hover:text-muted-foreground"
+          >
+            <Paperclip size={11} />
+            attach
+          </button>
+        )}
 
         <button
           type="button"

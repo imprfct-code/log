@@ -11,6 +11,7 @@ export interface Attachment {
   key: string;
   type: "image" | "video";
   filename: string;
+  inline?: boolean;
 }
 
 export interface DevlogEntry {

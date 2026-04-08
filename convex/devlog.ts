@@ -10,6 +10,7 @@ const attachmentValidator = v.object({
   key: v.string(),
   type: v.union(v.literal("image"), v.literal("video")),
   filename: v.string(),
+  inline: v.optional(v.boolean()),
 });
 
 /** Shift activity array to account for days passed, then increment today. */
@@ -29,16 +30,26 @@ export function updateActivity(current: number[], lastActivityAt: number): numbe
   return shifted;
 }
 
-/** Extract first line (max 100 chars) from content for feed preview. */
+/** Extract first line (max 100 chars) from content for feed preview. Strips markdown heading prefix. */
 export function extractTitle(content: string): string {
-  const firstLine = content.split("\n")[0].trim();
+  const firstLine = content
+    .split("\n")[0]
+    .trim()
+    .replace(/^#{1,6}\s+/, "");
   return firstLine.length > 100 ? firstLine.slice(0, 100) + "\u2026" : firstLine;
 }
 
 /** Resolve R2 attachment keys to signed URLs. */
 export async function resolveAttachments(
-  attachments?: Array<{ key: string; type: "image" | "video"; filename: string }>,
-): Promise<Array<{ url: string; key: string; type: "image" | "video"; filename: string }>> {
+  attachments?: Array<{
+    key: string;
+    type: "image" | "video";
+    filename: string;
+    inline?: boolean;
+  }>,
+): Promise<
+  Array<{ url: string; key: string; type: "image" | "video"; filename: string; inline: boolean }>
+> {
   if (!attachments?.length) return [];
   return Promise.all(
     attachments.map(async (att) => ({
@@ -46,9 +57,17 @@ export async function resolveAttachments(
       key: att.key,
       type: att.type,
       filename: att.filename,
+      inline: att.inline ?? false,
     })),
   );
 }
+
+export const getFileUrl = query({
+  args: { key: v.string() },
+  handler: async (_ctx, { key }) => {
+    return r2.getUrl(key, { expiresIn: 60 * 60 * 24 });
+  },
+});
 
 export const create = mutation({
   // Posts: use `content` (auto-splits into text/body). Commits: use `text` + `body`.

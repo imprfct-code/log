@@ -4,58 +4,15 @@ import { useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { GitBranch, Pencil, Trash2 } from "lucide-react";
-import type { DevlogEntry as DevlogEntryType, Attachment } from "@/types";
+import type { DevlogEntry as DevlogEntryType } from "@/types";
 import { canAccessExternalLink } from "@/lib/privacy";
 import { CommentIcon } from "./Icons";
 import { MarkdownBody } from "./MarkdownBody";
 import { CreatePostForm } from "./CreatePostForm";
+import { AttachmentGrid } from "./AttachmentGrid";
+import { CoverMedia } from "./CoverMedia";
+import { VideoPlayer } from "./VideoPlayer";
 import { cn } from "@/lib/utils";
-
-function AttachmentGrid({ attachments }: { attachments: Attachment[] }) {
-  const count = attachments.length;
-  const gridClass = count === 1 ? "grid-cols-1" : "grid-cols-2";
-
-  return (
-    <div className={cn("mt-2 grid gap-1", gridClass)}>
-      {attachments.map((att, i) => {
-        if (att.type === "video") {
-          return (
-            <video
-              key={i}
-              src={att.url}
-              controls
-              muted
-              loop
-              playsInline
-              preload="metadata"
-              className="w-full border border-border"
-            />
-          );
-        }
-        // GIFs and images
-        return (
-          <div key={i} className="group/img relative">
-            <img
-              src={att.url}
-              alt=""
-              className={cn(
-                "w-full border border-border object-cover",
-                count === 1 ? "max-h-80" : "h-40",
-              )}
-            />
-            <div className="pointer-events-none absolute right-0 bottom-full z-10 mb-2 origin-bottom-right scale-95 opacity-0 transition-all duration-200 group-hover/img:scale-100 group-hover/img:opacity-100">
-              <img
-                src={att.url}
-                alt=""
-                className="w-72 border border-border-strong object-cover shadow-lg shadow-black/40"
-              />
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 export function DevlogEntry({
   entry,
@@ -196,6 +153,14 @@ export function DevlogEntry({
     );
   }
 
+  const allAtts = entry.attachments ?? [];
+  const standaloneAtts = allAtts.filter((a) => !a.inline);
+  // Detail page: cover + remaining standalone (inline rendered in MarkdownBody)
+  const cover = standaloneAtts[0];
+  const remainingAtts = standaloneAtts.slice(1);
+  // Feed: first image as small thumbnail on the right
+  const feedThumb = !isDetailPage ? allAtts[0] : undefined;
+
   return (
     <div className="relative py-2.5 pl-6">
       <span
@@ -282,50 +247,78 @@ export function DevlogEntry({
 
       {/* Post content */}
       {isDetailPage && entry.body ? (
-        <div className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
-          <MarkdownBody content={entry.body} />
-        </div>
+        <>
+          {cover && <CoverMedia url={cover.url} type={cover.type} />}
+          <div className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
+            <MarkdownBody content={entry.body} attachments={entry.attachments} />
+          </div>
+          {remainingAtts.length > 0 && <AttachmentGrid attachments={remainingAtts} />}
+        </>
       ) : (
         <>
-          {!isDetailPage && (
-            <Link
-              to={`/commitment/${commitmentId}`}
-              className="mt-1 block text-[13px] font-semibold text-foreground-bright no-underline transition-colors hover:text-accent"
-            >
-              {entry.text}
-            </Link>
-          )}
-          {isDetailPage && entry.text && (
-            <p className="mt-1 text-[13px] text-foreground-bright">{entry.text}</p>
-          )}
-          {entry.body && !isDetailPage && (
-            <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
-              {entry.body.length > 160 ? `${entry.body.slice(0, 160)}\u2026` : entry.body}
-            </p>
-          )}
+          <div className="mt-1 flex gap-3">
+            <div className="min-w-0 flex-1">
+              {!isDetailPage && (
+                <Link
+                  to={`/commitment/${commitmentId}`}
+                  className="block text-[13px] font-semibold text-foreground-bright no-underline transition-colors hover:text-accent"
+                >
+                  {entry.text}
+                </Link>
+              )}
+              {isDetailPage && entry.text && (
+                <p className="text-[13px] text-foreground-bright">{entry.text}</p>
+              )}
+              {entry.body &&
+                !isDetailPage &&
+                (() => {
+                  // Remove first line (already shown as title) + strip image refs
+                  const withoutFirstLine = entry.body.replace(/^.*\n?/, "");
+                  const clean = withoutFirstLine.replace(/!\[[^\]]*?\]\([^)]+\)\n?/g, "").trim();
+                  if (!clean) return null;
+                  const truncated = clean.length > 200 ? `${clean.slice(0, 200)}\u2026` : clean;
+                  return (
+                    <div className="mt-0.5 line-clamp-3 text-[12px] leading-relaxed text-muted-foreground">
+                      <MarkdownBody content={truncated} />
+                    </div>
+                  );
+                })()}
+            </div>
+            {feedThumb && (
+              <Link to={`/commitment/${commitmentId}`} className="shrink-0">
+                {feedThumb.type === "video" ? (
+                  <div className="h-16 w-24 overflow-hidden border border-border transition-opacity hover:opacity-80">
+                    <VideoPlayer url={feedThumb.url} mode="thumbnail" />
+                  </div>
+                ) : (
+                  <img
+                    src={feedThumb.url}
+                    alt=""
+                    className="h-16 w-24 border border-border object-cover transition-opacity hover:opacity-80"
+                  />
+                )}
+              </Link>
+            )}
+          </div>
         </>
       )}
 
-      {/* Attachments */}
-      {entry.attachments && entry.attachments.length > 0 ? (
-        <AttachmentGrid attachments={entry.attachments} />
-      ) : (
-        entry.image && (
-          <div className="group/img relative mt-2 shrink-0">
+      {/* Legacy single image support */}
+      {!entry.attachments?.length && entry.image && (
+        <div className="group/img relative mt-2 shrink-0">
+          <img
+            src={entry.image}
+            alt=""
+            className="h-16 w-24 border border-border object-cover transition-opacity group-hover/img:opacity-80"
+          />
+          <div className="pointer-events-none absolute right-0 bottom-full z-10 mb-2 origin-bottom-right scale-95 opacity-0 transition-all duration-200 group-hover/img:scale-100 group-hover/img:opacity-100">
             <img
               src={entry.image}
               alt=""
-              className="h-16 w-24 border border-border object-cover transition-opacity group-hover/img:opacity-80"
+              className="w-72 border border-border-strong object-cover shadow-lg shadow-black/40"
             />
-            <div className="pointer-events-none absolute right-0 bottom-full z-10 mb-2 origin-bottom-right scale-95 opacity-0 transition-all duration-200 group-hover/img:scale-100 group-hover/img:opacity-100">
-              <img
-                src={entry.image}
-                alt=""
-                className="w-72 border border-border-strong object-cover shadow-lg shadow-black/40"
-              />
-            </div>
           </div>
-        )
+        </div>
       )}
     </div>
   );

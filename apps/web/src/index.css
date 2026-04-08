@@ -68,6 +68,24 @@
     -moz-osx-font-smoothing: grayscale;
     margin: 0;
   }
+
+  /* Thin scrollbar for code blocks inside markdown */
+  .markdown-body pre::-webkit-scrollbar {
+    height: 6px;
+  }
+  .markdown-body pre::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .markdown-body pre::-webkit-scrollbar-thumb {
+    background: #26233a;
+  }
+  .markdown-body pre::-webkit-scrollbar-thumb:hover {
+    background: #6e6a86;
+  }
+  .markdown-body pre {
+    scrollbar-width: thin;
+    scrollbar-color: #26233a transparent;
+  }
 }
 
 /* ── Landing page animations ── */
@@ -366,6 +384,79 @@
 .skip-landing-anim .landing-line-grow {
   animation: none !important;
   transform: scaleY(1) !important;
+}
+
+/* ── Plyr video player custom styling ── */
+
+.plyr {
+  --plyr-color-main: var(--color-accent);
+  --plyr-video-control-background: var(--color-background);
+  --plyr-video-progress-buffered-background: var(--color-border-strong);
+  --plyr-video-control-text-color: var(--color-foreground);
+  --plyr-control-radius: 0;
+  --plyr-font-family: var(--font-mono);
+  --plyr-font-size-base: 13px;
+}
+
+.plyr {
+  @apply border border-border;
+}
+
+.plyr__controls {
+  @apply gap-1 bg-background/80 px-2 py-1;
+  backdrop-filter: blur(4px);
+}
+
+.plyr__control {
+  @apply border border-transparent transition-colors;
+  color: var(--color-foreground);
+  padding: 4px;
+}
+
+.plyr__control:hover,
+.plyr__control.active {
+  @apply border-border-strong;
+  color: var(--color-accent);
+}
+
+.plyr__progress {
+  @apply bg-border-strong;
+}
+
+.plyr__progress__fill {
+  @apply bg-accent;
+}
+
+.plyr__time {
+  @apply text-[11px] text-muted-foreground;
+}
+
+.plyr__menu__container {
+  @apply bg-muted border border-border-strong;
+}
+
+.plyr__menu__container [data-plyr="language"] option,
+.plyr__menu__container [data-plyr="speed"] option,
+.plyr__menu__container [data-plyr="quality"] option {
+  @apply bg-muted text-foreground;
+}
+
+.plyr__menu__container [data-plyr="language"] option:checked,
+.plyr__menu__container [data-plyr="speed"] option:checked,
+.plyr__menu__container [data-plyr="quality"] option:checked {
+  @apply bg-accent text-foreground;
+}
+
+.plyr--video .plyr__play-large {
+  @apply bg-white/90;
+}
+
+.plyr--video .plyr__play-large svg {
+  @apply text-black;
+}
+
+.video-player-wrapper .plyr {
+  @apply w-full;
 }
 
 @media (prefers-reduced-motion: reduce) {
