@@ -6,7 +6,6 @@ import { CommitCard } from "@/components/CommitCard";
 import { daysSince, formatTimeAgo } from "@/lib/formatTime";
 import { cn } from "@/lib/utils";
 import type { Commitment, DevlogEntry } from "@/types";
-import { computeVisibilityFlags } from "@/lib/privacy";
 
 const TABS = ["all", "building", "shipped"] as const;
 type Tab = (typeof TABS)[number];
@@ -34,12 +33,12 @@ interface RawFeedItem {
   commentCount: number;
   respectCount: number;
   _creationTime: number;
+  showMessages: boolean;
+  showHashes: boolean;
+  showBranches: boolean;
   user: {
     username: string;
     avatarUrl?: string;
-    privateShowMessages?: boolean;
-    privateShowHashes?: boolean;
-    privateShowBranches?: boolean;
   } | null;
   recentEntries?: RawDevlogEntry[];
   hasMore?: boolean;
@@ -60,10 +59,6 @@ function toDevlogEntry(entry: RawDevlogEntry): DevlogEntry {
 }
 
 function toCommitment(item: RawFeedItem): Commitment {
-  const { showMessages, showHashes, showBranches } = computeVisibilityFlags(
-    item.isPrivate,
-    item.user ?? undefined,
-  );
   return {
     id: item._id,
     user: item.user?.username ?? "unknown",
@@ -71,9 +66,9 @@ function toCommitment(item: RawFeedItem): Commitment {
     text: item.text,
     repo: item.repo ?? "",
     isPrivate: item.isPrivate,
-    showMessages,
-    showHashes,
-    showBranches,
+    showMessages: item.showMessages,
+    showHashes: item.showHashes,
+    showBranches: item.showBranches,
     day: daysSince(item._creationTime),
     comments: item.commentCount,
     devlog: (item.recentEntries ?? []).map(toDevlogEntry),

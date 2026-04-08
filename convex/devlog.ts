@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { DAY_MS } from "./dates";
 import { getUserByToken, updateStreak } from "./users";
+import { computeVisibility, redactEntry } from "./privacy";
 
 /** Shift activity array to account for days passed, then increment today. */
 export function updateActivity(current: number[], lastActivityAt: number): number[] {
@@ -63,32 +64,61 @@ export const create = mutation({
 });
 
 export const listByCommitment = query({
-  args: { commitmentId: v.id("commitments") },
-  handler: async (ctx, { commitmentId }) => {
+  args: {
+    commitmentId: v.id("commitments"),
+    viewAsGuest: v.optional(v.boolean()),
+  },
+  handler: async (ctx, { commitmentId, viewAsGuest }) => {
+    const commitment = await ctx.db.get(commitmentId);
+    if (!commitment) return [];
+
+    const owner = await ctx.db.get(commitment.userId);
+    const viewer = await getUserByToken(ctx);
+    const isAuthor = viewer !== null && viewer._id === commitment.userId;
+    const effectiveAuthor = isAuthor && !viewAsGuest;
+    const flags = computeVisibility({
+      isPrivate: commitment.isPrivate,
+      ownerPrefs: owner ?? undefined,
+      isAuthor: effectiveAuthor,
+    });
+
     // committedAt is set on all new entries. Old entries without it sort last (desc order).
-    return await ctx.db
+    const entries = await ctx.db
       .query("devlogEntries")
       .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", commitmentId))
       .order("desc")
       .take(200);
+
+    return entries.map((e) => redactEntry(e, flags, commitment.isPrivate, effectiveAuthor));
   },
 });
 
 export const listByUser = query({
   args: { userId: v.id("users"), limit: v.optional(v.number()) },
   handler: async (ctx, { userId, limit }) => {
+    const viewer = await getUserByToken(ctx);
+    const owner = await ctx.db.get(userId);
+
     const entries = await ctx.db
       .query("devlogEntries")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .order("desc")
       .take(limit ?? 10);
 
+    const isAuthor = viewer !== null && viewer._id === userId;
+
     // Attach commitment title for profile activity display
     return await Promise.all(
       entries.map(async (entry) => {
         const commitment = await ctx.db.get(entry.commitmentId);
+        const flags = computeVisibility({
+          isPrivate: commitment?.isPrivate,
+          ownerPrefs: owner ?? undefined,
+          isAuthor,
+        });
+        const redacted = redactEntry(entry, flags, commitment?.isPrivate, isAuthor);
         return {
-          ...entry,
+          ...redacted,
           commitmentTitle: commitment?.text ?? "",
         };
       }),

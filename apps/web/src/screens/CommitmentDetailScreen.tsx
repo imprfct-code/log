@@ -5,7 +5,6 @@ import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { Eye, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { computeVisibilityFlags } from "@/lib/privacy";
 import { CommitmentMeta } from "@/components/CommitmentMeta";
 import { ConnectRepoForm } from "@/components/ConnectRepoForm";
 import { DevlogTimeline } from "@/components/DevlogTimeline";
@@ -36,13 +35,19 @@ export function CommitmentDetailScreen() {
   const commitmentId = id as Id<"commitments"> | undefined;
 
   const me = useQuery(api.users.getMe);
-  const data = useQuery(api.commitments.getById, commitmentId ? { id: commitmentId } : "skip");
-  const entries = useQuery(api.devlog.listByCommitment, commitmentId ? { commitmentId } : "skip");
-  const triggerSync = useAction(api.github.triggerSync);
   const [connectingRepo, setConnectingRepo] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [viewAsGuest, setViewAsGuest] = useState(false);
+  const data = useQuery(
+    api.commitments.getById,
+    commitmentId ? { id: commitmentId, viewAsGuest } : "skip",
+  );
+  const entries = useQuery(
+    api.devlog.listByCommitment,
+    commitmentId ? { commitmentId, viewAsGuest } : "skip",
+  );
+  const triggerSync = useAction(api.github.triggerSync);
 
   if (!commitmentId) {
     return (
@@ -68,14 +73,9 @@ export function CommitmentDetailScreen() {
     );
   }
 
-  const { user, ...commitment } = data;
+  const { user, showMessages, showHashes, showBranches, ...commitment } = data;
   const isAuthor = me?._id === commitment.userId;
   const effectiveAuthor = isAuthor && !viewAsGuest;
-  const { showMessages, showHashes, showBranches } = computeVisibilityFlags(
-    commitment.isPrivate,
-    user ?? undefined,
-    effectiveAuthor,
-  );
   const canConnect = isAuthor && !commitment.repo && commitment.status === "building";
   const canSync =
     isAuthor && commitment.repo && !commitment.webhookId && commitment.status === "building";

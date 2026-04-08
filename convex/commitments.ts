@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { paginationOptsValidator } from "convex/server";
 import { getUserByToken } from "./users";
+import { computeVisibility, redactEntry } from "./privacy";
 
 const REPO_RE = /^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/;
 
@@ -62,13 +63,23 @@ export const create = mutation({
 });
 
 export const getById = query({
-  args: { id: v.id("commitments") },
-  handler: async (ctx, { id }) => {
+  args: { id: v.id("commitments"), viewAsGuest: v.optional(v.boolean()) },
+  handler: async (ctx, { id, viewAsGuest }) => {
     const commitment = await ctx.db.get(id);
     if (!commitment) return null;
 
     const user = await ctx.db.get(commitment.userId);
-    return { ...commitment, user };
+    const viewer = await getUserByToken(ctx);
+    const isAuthor = viewer !== null && viewer._id === commitment.userId;
+    const effectiveAuthor = isAuthor && !viewAsGuest;
+
+    const { showMessages, showHashes, showBranches } = computeVisibility({
+      isPrivate: commitment.isPrivate,
+      ownerPrefs: user ?? undefined,
+      isAuthor: effectiveAuthor,
+    });
+
+    return { ...commitment, user, showMessages, showHashes, showBranches };
   },
 });
 
@@ -78,6 +89,8 @@ export const listFeed = query({
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, { status, paginationOpts }) => {
+    const viewer = await getUserByToken(ctx);
+
     const baseQuery = status
       ? ctx.db
           .query("commitments")
@@ -89,6 +102,13 @@ export const listFeed = query({
     const itemsWithData = await Promise.all(
       page.page.map(async (commitment) => {
         const user = await ctx.db.get(commitment.userId);
+        const isAuthor = viewer !== null && viewer._id === commitment.userId;
+        const flags = computeVisibility({
+          isPrivate: commitment.isPrivate,
+          ownerPrefs: user ?? undefined,
+          isAuthor,
+        });
+
         // Fetch 5 entries to detect "has more" without reading the entire collection
         const entries = await ctx.db
           .query("devlogEntries")
@@ -97,11 +117,18 @@ export const listFeed = query({
           .take(5);
 
         const hasMore = entries.length > 4;
+        const redacted = entries
+          .slice(0, 4)
+          .map((e) => redactEntry(e, flags, commitment.isPrivate, isAuthor));
+
         return {
           ...commitment,
           user,
-          recentEntries: entries.slice(0, 4),
+          recentEntries: redacted,
           hasMore,
+          showMessages: flags.showMessages,
+          showHashes: flags.showHashes,
+          showBranches: flags.showBranches,
         };
       }),
     );
@@ -116,6 +143,8 @@ export const search = query({
     status: v.optional(v.union(v.literal("building"), v.literal("shipped"))),
   },
   handler: async (ctx, { query: searchQuery, status }) => {
+    const viewer = await getUserByToken(ctx);
+
     const q = ctx.db.query("commitments").withSearchIndex("search_text", (s) => {
       const base = s.search("text", searchQuery);
       return status ? base.eq("status", status) : base;
@@ -126,7 +155,13 @@ export const search = query({
     return await Promise.all(
       results.map(async (commitment) => {
         const user = await ctx.db.get(commitment.userId);
-        return { ...commitment, user };
+        const isAuthor = viewer !== null && viewer._id === commitment.userId;
+        const flags = computeVisibility({
+          isPrivate: commitment.isPrivate,
+          ownerPrefs: user ?? undefined,
+          isAuthor,
+        });
+        return { ...commitment, user, ...flags };
       }),
     );
   },
