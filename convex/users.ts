@@ -157,6 +157,19 @@ export const updateSyncMode = mutation({
   },
 });
 
+export const updatePrivacySettings = mutation({
+  args: {
+    privateShowMessages: v.optional(v.boolean()),
+    privateShowHashes: v.optional(v.boolean()),
+    privateShowBranches: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken(ctx);
+    if (!user) throw new Error("Not authenticated");
+    await ctx.db.patch(user._id, args);
+  },
+});
+
 export const updateProfile = mutation({
   args: {
     username: v.optional(v.string()),

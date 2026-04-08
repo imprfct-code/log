@@ -28,6 +28,7 @@ export const create = mutation({
       userId: user._id,
       text,
       repo,
+      isPrivate: false,
       status: "building",
       commentCount: 0,
       respectCount: 0,
@@ -37,6 +38,14 @@ export const create = mutation({
 
     // Set up GitHub commit tracking if repo provided
     if (repo) {
+      if (user.clerkUserId) {
+        await ctx.scheduler.runAfter(0, internal.github.checkRepoPrivacy, {
+          commitmentId,
+          repo,
+          clerkUserId: user.clerkUserId,
+        });
+      }
+
       const syncMode = user.syncMode ?? "polling";
       if (syncMode === "webhook") {
         await ctx.scheduler.runAfter(0, internal.github.registerWebhook, { commitmentId, repo });
@@ -162,7 +171,16 @@ export const connectRepo = mutation({
     if (commitment.repo) throw new Error("Repo already connected");
 
     validateRepo(repo);
-    await ctx.db.patch(id, { repo });
+
+    await ctx.db.patch(id, { repo, isPrivate: false });
+
+    if (user.clerkUserId) {
+      await ctx.scheduler.runAfter(0, internal.github.checkRepoPrivacy, {
+        commitmentId: id,
+        repo,
+        clerkUserId: user.clerkUserId,
+      });
+    }
 
     // Set up GitHub commit tracking based on user preference
     const syncMode = user.syncMode ?? "polling";

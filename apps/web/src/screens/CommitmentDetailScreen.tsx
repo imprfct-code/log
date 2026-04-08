@@ -3,7 +3,9 @@ import { Link, useParams } from "react-router";
 import { useAction, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
-import { RefreshCw } from "lucide-react";
+import { Eye, RefreshCw } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { computeVisibilityFlags } from "@/lib/privacy";
 import { CommitmentMeta } from "@/components/CommitmentMeta";
 import { ConnectRepoForm } from "@/components/ConnectRepoForm";
 import { DevlogTimeline } from "@/components/DevlogTimeline";
@@ -40,6 +42,7 @@ export function CommitmentDetailScreen() {
   const [connectingRepo, setConnectingRepo] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
+  const [viewAsGuest, setViewAsGuest] = useState(false);
 
   if (!commitmentId) {
     return (
@@ -67,6 +70,12 @@ export function CommitmentDetailScreen() {
 
   const { user, ...commitment } = data;
   const isAuthor = me?._id === commitment.userId;
+  const effectiveAuthor = isAuthor && !viewAsGuest;
+  const { showMessages, showHashes, showBranches } = computeVisibilityFlags(
+    commitment.isPrivate,
+    user ?? undefined,
+    effectiveAuthor,
+  );
   const canConnect = isAuthor && !commitment.repo && commitment.status === "building";
   const canSync =
     isAuthor && commitment.repo && !commitment.webhookId && commitment.status === "building";
@@ -108,6 +117,8 @@ export function CommitmentDetailScreen() {
           username={user?.username ?? "unknown"}
           repo={commitment.repo}
           repoHref={commitment.repo ? `https://github.com/${commitment.repo}` : undefined}
+          isPrivate={commitment.isPrivate}
+          authorLinks={effectiveAuthor}
           activity={commitment.activity}
           statusLabel={
             commitment.status === "shipped" ? (
@@ -158,14 +169,34 @@ export function CommitmentDetailScreen() {
 
       {devlog.length > 0 ? (
         <div className="feed-in opacity-0" style={{ animationDelay: "60ms" }}>
-          <div className="mb-3 flex items-center gap-3 text-[11px] text-muted-foreground">
-            <span>devlog</span>
-            <div className="h-px flex-1 bg-border" />
-          </div>
+          {isAuthor && commitment.isPrivate && (
+            <div className="mb-3 flex items-center gap-3 text-[11px] text-muted-foreground">
+              <span>activity</span>
+              <div className="h-px flex-1 bg-border" />
+              <button
+                type="button"
+                onClick={() => setViewAsGuest((v) => !v)}
+                className={cn(
+                  "flex shrink-0 cursor-pointer items-center gap-1.5 border px-2 py-1 font-mono text-[11px] transition-colors",
+                  viewAsGuest
+                    ? "border-accent/40 bg-accent/10 text-accent"
+                    : "border-border bg-transparent text-muted-foreground hover:border-border-strong hover:text-foreground",
+                )}
+              >
+                <Eye size={11} />
+                {viewAsGuest ? "viewing as guest" : "view as guest"}
+              </button>
+            </div>
+          )}
           <DevlogTimeline
             entries={devlog}
             commitmentId={commitment._id}
             repo={commitment.repo}
+            isPrivate={commitment.isPrivate}
+            showMessages={showMessages}
+            showHashes={showHashes}
+            showBranches={showBranches}
+            authorLinks={effectiveAuthor}
             status={commitment.status}
             limit={20}
           />

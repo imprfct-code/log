@@ -24,6 +24,10 @@ export interface Commitment {
   avatar: string;
   text: string;
   repo: string;
+  isPrivate?: boolean;
+  showMessages: boolean;
+  showHashes: boolean;
+  showBranches: boolean;
   day: number;
   comments: number;
   devlog: DevlogEntry[];

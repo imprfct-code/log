@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
+import { Lock } from "lucide-react";
+import { canAccessExternalLink } from "@/lib/privacy";
 import { GhIcon } from "./Icons";
 import { ActivitySparkline } from "./ActivitySparkline";
 
@@ -7,6 +9,8 @@ export function CommitmentMeta({
   username,
   repo,
   repoHref,
+  isPrivate,
+  authorLinks = false,
   activity,
   statusLabel,
   connectSlot,
@@ -14,6 +18,8 @@ export function CommitmentMeta({
   username: string;
   repo?: string;
   repoHref?: string;
+  isPrivate?: boolean;
+  authorLinks?: boolean;
   activity: number[];
   statusLabel: ReactNode;
   connectSlot?: ReactNode;
@@ -30,7 +36,7 @@ export function CommitmentMeta({
       {repo ? (
         <>
           <span className="text-[#333]">/</span>
-          {repoHref ? (
+          {canAccessExternalLink(isPrivate, authorLinks) && repoHref ? (
             <a
               href={repoHref}
               target="_blank"
@@ -42,6 +48,7 @@ export function CommitmentMeta({
             </a>
           ) : (
             <span className="flex items-center gap-1 truncate text-muted-foreground">
+              {isPrivate && <Lock size={11} />}
               <GhIcon size={11} color="#666" />
               {repo}
             </span>

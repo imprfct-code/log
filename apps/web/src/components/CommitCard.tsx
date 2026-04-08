@@ -9,6 +9,7 @@ export function CommitCard({ item, preview }: { item: Commitment; preview?: bool
       <CommitmentMeta
         username={item.user}
         repo={item.repo || undefined}
+        isPrivate={item.isPrivate}
         activity={item.activity}
         statusLabel={
           item.status === "shipped" ? (
@@ -38,6 +39,10 @@ export function CommitCard({ item, preview }: { item: Commitment; preview?: bool
             entries={item.devlog}
             commitmentId={item.id}
             repo={item.repo || undefined}
+            isPrivate={item.isPrivate}
+            showMessages={item.showMessages}
+            showHashes={item.showHashes}
+            showBranches={item.showBranches}
             status={item.status}
           />
           {!preview && item.hasMore && (

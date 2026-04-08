@@ -135,3 +135,18 @@ export async function findExistingHook(
   const match = hooks.find((h) => h.config.url === webhookUrl);
   return match?.id ?? null;
 }
+
+/** Check if a repository is private. Returns true on error (fail-closed). */
+export async function isRepositoryPrivate(repo: string, token: string): Promise<boolean> {
+  const res = await fetch(`https://api.github.com/repos/${repo}`, {
+    headers: githubApiHeaders(token),
+  });
+
+  if (!res.ok) {
+    console.error("Failed to check repo privacy", { repo, status: res.status });
+    return true;
+  }
+
+  const data: { private?: boolean } = await res.json();
+  return data.private ?? false;
+}

@@ -16,6 +16,9 @@ export default defineSchema({
     syncMode: v.optional(v.union(v.literal("polling"), v.literal("webhook"))),
     streak: v.number(),
     lastActiveDate: v.optional(v.string()),
+    privateShowMessages: v.optional(v.boolean()),
+    privateShowHashes: v.optional(v.boolean()),
+    privateShowBranches: v.optional(v.boolean()),
   })
     .index("by_tokenIdentifier", ["tokenIdentifier"])
     .index("by_username", ["username"]),
@@ -24,6 +27,7 @@ export default defineSchema({
     userId: v.id("users"),
     text: v.string(),
     repo: v.optional(v.string()),
+    isPrivate: v.optional(v.boolean()),
     status: v.union(v.literal("building"), v.literal("shipped")),
     shipUrl: v.optional(v.string()),
     shipNote: v.optional(v.string()),

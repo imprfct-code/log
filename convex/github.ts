@@ -11,6 +11,7 @@ import {
   fetchNewCommitsAllBranches,
   mapGitHubCommits,
   findExistingHook,
+  isRepositoryPrivate,
 } from "./githubApi";
 
 export const getCommitmentsByRepo = internalQuery({
@@ -322,6 +323,27 @@ export const deleteRepoWebhook = internalAction({
     if (!res.ok && res.status !== 404) {
       console.error("Failed to remove GitHub webhook:", { repo, status: res.status });
     }
+  },
+});
+
+export const patchRepoPrivacy = internalMutation({
+  args: { commitmentId: v.id("commitments"), isPrivate: v.boolean() },
+  handler: async (ctx, { commitmentId, isPrivate }) => {
+    const commitment = await ctx.db.get(commitmentId);
+    if (commitment && commitment.isPrivate !== isPrivate) {
+      await ctx.db.patch(commitmentId, { isPrivate });
+    }
+  },
+});
+
+export const checkRepoPrivacy = internalAction({
+  args: { commitmentId: v.id("commitments"), repo: v.string(), clerkUserId: v.string() },
+  handler: async (ctx, { commitmentId, repo, clerkUserId }) => {
+    const token = await fetchGitHubToken(clerkUserId);
+    if (!token) return;
+
+    const isPrivate = await isRepositoryPrivate(repo, token);
+    await ctx.runMutation(internal.github.patchRepoPrivacy, { commitmentId, isPrivate });
   },
 });
 

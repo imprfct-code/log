@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import type { Commitment } from "@/types";
+import { Lock } from "lucide-react";
 import { GhIcon, RespectIcon } from "./Icons";
 import { ActivitySparkline } from "./ActivitySparkline";
 import { GlowCard } from "./GlowCard";
@@ -30,6 +31,7 @@ export function ProfilePinned({ items }: { items: Commitment[] }) {
                 {item.status}
               </span>
               <span className="flex items-center gap-1 truncate text-muted-foreground">
+                {item.isPrivate && <Lock size={10} />}
                 <GhIcon size={10} color="#666" />
                 {item.repo}
               </span>

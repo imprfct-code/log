@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { GitBranch } from "lucide-react";
 import type { DevlogEntry as DevlogEntryType } from "@/types";
+import { canAccessExternalLink } from "@/lib/privacy";
 import { CommentIcon } from "./Icons";
 import { cn } from "@/lib/utils";
 
@@ -8,6 +9,11 @@ export function DevlogEntry({
   entry,
   commitmentId,
   repo,
+  isPrivate,
+  showMessages = true,
+  showHashes = true,
+  showBranches = true,
+  authorLinks = false,
   isLatest = false,
   status = "building",
   onCommentClick,
@@ -15,6 +21,11 @@ export function DevlogEntry({
   entry: DevlogEntryType;
   commitmentId: string;
   repo?: string;
+  isPrivate?: boolean;
+  showMessages?: boolean;
+  showHashes?: boolean;
+  showBranches?: boolean;
+  authorLinks?: boolean;
   isLatest?: boolean;
   status?: "building" | "shipped";
   onCommentClick?: () => void;
@@ -22,9 +33,10 @@ export function DevlogEntry({
   const showPulse = isLatest && status === "building";
 
   if (entry.type === "commit" || entry.type === "git_commit") {
-    const hashDisplay = entry.hash ? entry.hash.slice(0, 7) : undefined;
+    const hashDisplay = showHashes && entry.hash ? entry.hash.slice(0, 7) : undefined;
+    const canLink = canAccessExternalLink(isPrivate, authorLinks);
     const hashElement = hashDisplay ? (
-      entry.gitUrl ? (
+      canLink && entry.gitUrl ? (
         <a
           href={entry.gitUrl}
           target="_blank"
@@ -39,9 +51,31 @@ export function DevlogEntry({
     ) : null;
 
     const showBranch =
-      entry.gitBranch && entry.gitBranch !== "main" && entry.gitBranch !== "master";
+      showBranches && entry.gitBranch && entry.gitBranch !== "main" && entry.gitBranch !== "master";
     const branchHref =
-      showBranch && repo ? `https://github.com/${repo}/tree/${entry.gitBranch}` : undefined;
+      showBranch && repo && canLink
+        ? `https://github.com/${repo}/tree/${entry.gitBranch}`
+        : undefined;
+
+    const branchBadgeClass =
+      "flex shrink-0 items-center gap-1 border border-border px-1 py-px text-[10px] text-[#555]";
+    const renderBranchBadge = () =>
+      branchHref ? (
+        <a
+          href={branchHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`${branchBadgeClass} no-underline transition-colors hover:border-accent/40 hover:text-accent`}
+        >
+          <GitBranch size={10} />
+          {entry.gitBranch}
+        </a>
+      ) : (
+        <span className={branchBadgeClass}>
+          <GitBranch size={10} />
+          {entry.gitBranch}
+        </span>
+      );
 
     return (
       <div className="relative flex items-baseline gap-2.5 py-1.5 pl-6 text-[13px]">
@@ -53,24 +87,12 @@ export function DevlogEntry({
         />
 
         {hashElement}
-        {showBranch &&
-          (branchHref ? (
-            <a
-              href={branchHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex shrink-0 items-center gap-1 border border-border px-1 py-px text-[10px] text-[#555] no-underline transition-colors hover:border-accent/40 hover:text-accent"
-            >
-              <GitBranch size={10} />
-              {entry.gitBranch}
-            </a>
-          ) : (
-            <span className="flex shrink-0 items-center gap-1 border border-border px-1 py-px text-[10px] text-[#555]">
-              <GitBranch size={10} />
-              {entry.gitBranch}
-            </span>
-          ))}
-        <span className="min-w-0 flex-1 truncate text-muted-foreground">{entry.text}</span>
+        {showBranch && renderBranchBadge()}
+        <span
+          className={cn("min-w-0 flex-1 truncate text-muted-foreground", !showMessages && "italic")}
+        >
+          {showMessages ? entry.text : "private commit"}
+        </span>
         {onCommentClick ? (
           <button
             onClick={onCommentClick}

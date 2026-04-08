@@ -3,8 +3,19 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { useUser } from "@clerk/react";
 import { useSearchParams } from "react-router";
 import { api } from "@convex/_generated/api";
-import { Radio, Wifi, ExternalLink, Loader2, Check } from "lucide-react";
+import {
+  Radio,
+  Wifi,
+  ExternalLink,
+  Loader2,
+  Check,
+  Lock,
+  MessageSquare,
+  Hash,
+  GitBranch,
+} from "lucide-react";
 import { GhIcon } from "@/components/Icons";
+import { PrivacyToggle } from "@/components/PrivacyToggle";
 import { cn } from "@/lib/utils";
 
 type SyncMode = "polling" | "webhook";
@@ -84,6 +95,7 @@ export function SettingsScreen() {
   const me = useQuery(api.users.getMe);
   const { user } = useUser();
   const updateSyncMode = useMutation(api.users.updateSyncMode);
+  const updatePrivacySettings = useMutation(api.users.updatePrivacySettings);
   const checkWebhookScope = useAction(api.github.checkWebhookScope);
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -280,6 +292,48 @@ export function SettingsScreen() {
               </div>
             </div>
           )}
+        </SettingsSection>
+
+        {/* Privacy */}
+        <SettingsSection
+          label="privacy for private repos"
+          description="Control what others see on your devlog for private repositories."
+          delay={120}
+        >
+          <div className="divide-y divide-border border border-border">
+            <PrivacyToggle
+              label="Show commit messages"
+              description="When off, commit messages are replaced with 'private commit'."
+              icon={MessageSquare}
+              checked={me.privateShowMessages ?? true}
+              onChange={(value) => void updatePrivacySettings({ privateShowMessages: value })}
+              disabled={busy}
+            />
+            <PrivacyToggle
+              label="Show commit hashes"
+              description="When off, short SHAs like a1b2c3d are hidden."
+              icon={Hash}
+              checked={me.privateShowHashes ?? false}
+              onChange={(value) => void updatePrivacySettings({ privateShowHashes: value })}
+              disabled={busy}
+            />
+            <PrivacyToggle
+              label="Show branch names"
+              description="When off, branch badges like feature/auth are hidden."
+              icon={GitBranch}
+              checked={me.privateShowBranches ?? false}
+              onChange={(value) => void updatePrivacySettings({ privateShowBranches: value })}
+              disabled={busy}
+            />
+          </div>
+
+          <div className="mt-3 flex items-start gap-2.5 text-[12px] leading-relaxed text-muted-foreground">
+            <Lock size={14} className="mt-0.5 shrink-0" />
+            <p>
+              Links to commits and repos are always hidden for private repositories. These settings
+              only affect what text is visible on your devlog.
+            </p>
+          </div>
         </SettingsSection>
       </div>
     </div>

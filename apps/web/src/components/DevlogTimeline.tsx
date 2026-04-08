@@ -9,12 +9,22 @@ export function DevlogTimeline({
   entries,
   commitmentId,
   repo,
+  isPrivate,
+  showMessages = true,
+  showHashes = true,
+  showBranches = true,
+  authorLinks = false,
   status,
   limit = 4,
 }: {
   entries: DevlogEntryType[];
   commitmentId: string;
   repo?: string;
+  isPrivate?: boolean;
+  showMessages?: boolean;
+  showHashes?: boolean;
+  showBranches?: boolean;
+  authorLinks?: boolean;
   status: "building" | "shipped";
   limit?: number;
 }) {
@@ -41,6 +51,11 @@ export function DevlogTimeline({
           entry={entry}
           commitmentId={commitmentId}
           repo={repo}
+          isPrivate={isPrivate}
+          showMessages={showMessages}
+          showHashes={showHashes}
+          showBranches={showBranches}
+          authorLinks={authorLinks}
           isLatest={index === 0}
           status={status}
           onCommentClick={() => toggleComment(index)}
