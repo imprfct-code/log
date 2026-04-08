@@ -29,6 +29,7 @@ interface RawDevlogEntry {
     type: "image" | "video";
     filename: string;
     inline: boolean;
+    cover?: boolean;
   }>;
 }
 

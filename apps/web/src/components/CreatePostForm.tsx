@@ -11,12 +11,13 @@ import { useMutation } from "convex/react";
 import { useUploadFile } from "@convex-dev/r2/react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
-import { X, Loader2, Eye, EyeOff, Play, Paperclip } from "lucide-react";
+import { X, Loader2, Eye, EyeOff, Play, Paperclip, Maximize2, Minimize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MarkdownBody } from "./MarkdownBody";
 
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 const VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
+const COVER_IMAGE_TYPES = ["image/gif", "image/webp"];
 const ALL_TYPES = [...IMAGE_TYPES, ...VIDEO_TYPES];
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
 const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50 MB
@@ -58,6 +59,26 @@ interface UploadedAttachment {
   filename: string;
   previewUrl: string;
   inline: boolean;
+  cover: boolean;
+  duration?: number;
+}
+
+/** Read video duration from a File using a temporary video element. */
+function getVideoDuration(file: File): Promise<number | undefined> {
+  return new Promise((resolve) => {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.onloadedmetadata = () => {
+      const dur = Number.isFinite(video.duration) ? video.duration : undefined;
+      URL.revokeObjectURL(video.src);
+      resolve(dur);
+    };
+    video.onerror = () => {
+      URL.revokeObjectURL(video.src);
+      resolve(undefined);
+    };
+    video.src = URL.createObjectURL(file);
+  });
 }
 
 interface EditData {
@@ -69,6 +90,8 @@ interface EditData {
     type: "image" | "video";
     filename: string;
     inline?: boolean;
+    cover?: boolean;
+    duration?: number;
   }>;
 }
 
@@ -91,6 +114,8 @@ export function CreatePostForm({
       filename: att.filename,
       previewUrl: att.url,
       inline: att.inline ?? false,
+      cover: att.cover ?? att.type === "video",
+      duration: att.duration,
     }));
   });
   const [isUploading, setIsUploading] = useState(false);
@@ -131,7 +156,10 @@ export function CreatePostForm({
 
       setIsUploading(true);
       try {
-        const key = await upload(file);
+        const [key, duration] = await Promise.all([
+          upload(file),
+          isVideo ? getVideoDuration(file) : Promise.resolve(undefined),
+        ]);
         const previewUrl = URL.createObjectURL(file);
         const resolved = `![${file.name}](upload:${key})`;
 
@@ -140,7 +168,15 @@ export function CreatePostForm({
 
         setUploaded((prev) => [
           ...prev,
-          { key, type: isVideo ? "video" : "image", filename: file.name, previewUrl, inline: true },
+          {
+            key,
+            type: isVideo ? "video" : "image",
+            filename: file.name,
+            previewUrl,
+            inline: true,
+            cover: isVideo || COVER_IMAGE_TYPES.includes(file.type),
+            duration,
+          },
         ]);
       } catch {
         // Remove placeholder on failure
@@ -153,7 +189,7 @@ export function CreatePostForm({
     [upload],
   );
 
-  /** Upload files as standalone (non-inline) attachments. */
+  /** Upload files via attach button — inserts inline markdown refs at end of content. */
   const uploadStandalone = useCallback(
     async (files: File[]) => {
       const remaining = MAX_ATTACHMENTS - uploaded.length;
@@ -174,9 +210,19 @@ export function CreatePostForm({
             continue;
           }
 
-          const key = await upload(file);
           const isVideo = VIDEO_TYPES.includes(file.type);
+          const [key, duration] = await Promise.all([
+            upload(file),
+            isVideo ? getVideoDuration(file) : Promise.resolve(undefined),
+          ]);
           const previewUrl = URL.createObjectURL(file);
+
+          // Insert markdown reference at end of content
+          const ref = `![${file.name}](upload:${key})`;
+          setContent((prev) => {
+            const trimmed = prev.trimEnd();
+            return trimmed ? `${trimmed}\n${ref}\n` : `${ref}\n`;
+          });
 
           setUploaded((prev) => [
             ...prev,
@@ -185,7 +231,9 @@ export function CreatePostForm({
               type: isVideo ? "video" : "image",
               filename: file.name,
               previewUrl,
-              inline: false,
+              inline: true,
+              cover: isVideo || COVER_IMAGE_TYPES.includes(file.type),
+              duration,
             },
           ]);
         }
@@ -258,7 +306,14 @@ export function CreatePostForm({
 
       const attachments = uploaded
         .filter((att) => !att.inline || referencedKeys.has(att.key))
-        .map(({ key, type, filename, inline }) => ({ key, type, filename, inline }));
+        .map(({ key, type, filename, inline, cover, duration }) => ({
+          key,
+          type,
+          filename,
+          inline,
+          cover,
+          duration,
+        }));
 
       if (isEditing && editEntry) {
         await updatePost({
@@ -309,7 +364,6 @@ export function CreatePostForm({
           ? "text-yellow-500"
           : "text-[#333]";
 
-  const standaloneUploaded = uploaded.filter((a) => !a.inline);
   const canSubmit =
     (content.trim().length > 0 || uploaded.length > 0) && !isUploading && !isSubmitting;
 
@@ -390,37 +444,51 @@ export function CreatePostForm({
         </div>
       )}
 
-      {/* Standalone attachment previews */}
-      {standaloneUploaded.length > 0 && (
+      {/* Attachment previews */}
+      {uploaded.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-2">
-          {standaloneUploaded.map((att) => {
-            const globalIdx = uploaded.indexOf(att);
-            return (
-              <div key={att.key} className="group/att relative">
-                {att.type === "video" ? (
-                  <div className="relative flex h-16 w-24 items-center justify-center border border-border bg-muted">
-                    <Play size={16} className="text-muted-foreground" />
-                    <span className="absolute bottom-0.5 right-0.5 text-[9px] text-[#444]">
-                      vid
-                    </span>
-                  </div>
-                ) : (
-                  <img
-                    src={att.previewUrl}
-                    alt={att.filename}
-                    className="h-16 w-24 border border-border object-cover"
-                  />
+          {uploaded.map((att, idx) => (
+            <div key={att.key} className="group/att relative">
+              {att.type === "video" ? (
+                <div className="relative flex h-16 w-24 items-center justify-center border border-border bg-muted">
+                  <Play size={16} className="text-muted-foreground" />
+                  <span className="absolute bottom-0.5 right-0.5 max-w-[88px] truncate text-[9px] text-[#444]">
+                    {att.filename}
+                  </span>
+                </div>
+              ) : (
+                <img
+                  src={att.previewUrl}
+                  alt={att.filename}
+                  className="h-16 w-24 border border-border object-cover"
+                />
+              )}
+              <button
+                type="button"
+                onClick={() =>
+                  setUploaded((prev) =>
+                    prev.map((a, i) => (i === idx ? { ...a, cover: !a.cover } : a)),
+                  )
+                }
+                title={att.cover ? "large preview in feed" : "small preview in feed"}
+                className={cn(
+                  "absolute bottom-0.5 left-0.5 flex h-4 w-4 cursor-pointer items-center justify-center border bg-card text-[10px] transition-opacity group-hover/att:opacity-100",
+                  att.cover
+                    ? "border-accent/40 text-accent opacity-100"
+                    : "border-border text-muted-foreground opacity-0 hover:text-foreground",
                 )}
-                <button
-                  type="button"
-                  onClick={() => removeAttachment(globalIdx)}
-                  className="absolute -top-1.5 -right-1.5 flex h-4 w-4 cursor-pointer items-center justify-center border border-border bg-card text-[10px] text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/att:opacity-100"
-                >
-                  <X size={10} />
-                </button>
-              </div>
-            );
-          })}
+              >
+                {att.cover ? <Maximize2 size={8} /> : <Minimize2 size={8} />}
+              </button>
+              <button
+                type="button"
+                onClick={() => removeAttachment(idx)}
+                className="absolute -top-1.5 -right-1.5 flex h-4 w-4 cursor-pointer items-center justify-center border border-border bg-card text-[10px] text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/att:opacity-100"
+              >
+                <X size={10} />
+              </button>
+            </div>
+          ))}
         </div>
       )}
 

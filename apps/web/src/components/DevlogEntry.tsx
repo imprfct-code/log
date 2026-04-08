@@ -154,12 +154,25 @@ export function DevlogEntry({
   }
 
   const allAtts = entry.attachments ?? [];
-  const standaloneAtts = allAtts.filter((a) => !a.inline);
-  // Detail page: cover + remaining standalone (inline rendered in MarkdownBody)
-  const cover = standaloneAtts[0];
-  const remainingAtts = standaloneAtts.slice(1);
-  // Feed: first image as small thumbnail on the right
+  // Detail page: first attachment as cover (regardless of inline), rest in grid
+  const cover = isDetailPage ? allAtts[0] : undefined;
+  const remainingAtts = isDetailPage ? allAtts.slice(1).filter((a) => !a.inline) : [];
+  // Strip title (first line) and cover's markdown ref from body to avoid rendering them twice
+  const detailBody = (() => {
+    if (!isDetailPage || !entry.body) return entry.body;
+    // Strip first line (title — shown separately above cover)
+    let body = entry.body.replace(/^.*\n?/, "");
+    // Strip cover attachment markdown ref
+    if (cover) {
+      const escaped = cover.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      body = body.replace(new RegExp(`!\\[[^\\]]*?\\]\\(upload:${escaped}\\)\\n?`, "g"), "");
+    }
+    return body.trim() || undefined;
+  })();
+  // Feed: first attachment as thumbnail or cover
   const feedThumb = !isDetailPage ? allAtts[0] : undefined;
+  // cover: explicit flag, fallback to type-based (video = cover) for old posts
+  const isCover = feedThumb?.cover ?? feedThumb?.type === "video";
 
   return (
     <div className="relative py-2.5 pl-6">
@@ -246,58 +259,74 @@ export function DevlogEntry({
       </div>
 
       {/* Post content */}
-      {isDetailPage && entry.body ? (
+      {isDetailPage && (entry.body || cover) ? (
         <>
-          {cover && <CoverMedia url={cover.url} type={cover.type} />}
-          <div className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
-            <MarkdownBody content={entry.body} attachments={entry.attachments} />
-          </div>
+          {entry.text && (
+            <p className="mt-1 text-[13px] font-semibold text-foreground-bright">{entry.text}</p>
+          )}
+          {cover && <CoverMedia url={cover.url} type={cover.type} duration={cover.duration} />}
+          {detailBody && (
+            <div className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
+              <MarkdownBody content={detailBody} attachments={entry.attachments} />
+            </div>
+          )}
           {remainingAtts.length > 0 && <AttachmentGrid attachments={remainingAtts} />}
         </>
       ) : (
         <>
-          <div className="mt-1 flex gap-3">
-            <div className="min-w-0 flex-1">
-              {!isDetailPage && (
-                <Link
-                  to={`/commitment/${commitmentId}`}
-                  className="block text-[13px] font-semibold text-foreground-bright no-underline transition-colors hover:text-accent"
-                >
-                  {entry.text}
-                </Link>
-              )}
-              {isDetailPage && entry.text && (
-                <p className="text-[13px] text-foreground-bright">{entry.text}</p>
-              )}
-              {entry.body &&
-                !isDetailPage &&
-                (() => {
-                  // Remove first line (already shown as title) + strip image refs
-                  const withoutFirstLine = entry.body.replace(/^.*\n?/, "");
-                  const clean = withoutFirstLine.replace(/!\[[^\]]*?\]\([^)]+\)\n?/g, "").trim();
-                  if (!clean) return null;
-                  const truncated = clean.length > 200 ? `${clean.slice(0, 200)}\u2026` : clean;
-                  return (
-                    <div className="mt-0.5 line-clamp-3 text-[12px] leading-relaxed text-muted-foreground">
-                      <MarkdownBody content={truncated} />
-                    </div>
-                  );
-                })()}
-            </div>
-            {feedThumb && (
-              <Link to={`/commitment/${commitmentId}`} className="shrink-0">
-                {feedThumb.type === "video" ? (
-                  <div className="h-16 w-24 overflow-hidden border border-border transition-opacity hover:opacity-80">
-                    <VideoPlayer url={feedThumb.url} mode="thumbnail" />
-                  </div>
-                ) : (
+          <div className="mt-1">
+            <div className="flex gap-3">
+              <div className="min-w-0 flex-1">
+                {!isDetailPage && (
+                  <Link
+                    to={`/commitment/${commitmentId}`}
+                    className="block text-[13px] font-semibold text-foreground-bright no-underline transition-colors hover:text-accent"
+                  >
+                    {entry.text}
+                  </Link>
+                )}
+                {isDetailPage && entry.text && (
+                  <p className="text-[13px] text-foreground-bright">{entry.text}</p>
+                )}
+                {entry.body &&
+                  !isDetailPage &&
+                  (() => {
+                    // Remove first line (already shown as title) + strip image refs
+                    const withoutFirstLine = entry.body.replace(/^.*\n?/, "");
+                    const clean = withoutFirstLine.replace(/!\[[^\]]*?\]\([^)]+\)\n?/g, "").trim();
+                    if (!clean) return null;
+                    const truncated = clean.length > 200 ? `${clean.slice(0, 200)}\u2026` : clean;
+                    return (
+                      <div className="mt-0.5 line-clamp-3 text-[12px] leading-relaxed text-muted-foreground">
+                        <MarkdownBody content={truncated} />
+                      </div>
+                    );
+                  })()}
+              </div>
+              {feedThumb && !isCover && (
+                <Link to={`/commitment/${commitmentId}`} className="shrink-0">
                   <img
                     src={feedThumb.url}
                     alt=""
                     className="h-16 w-24 border border-border object-cover transition-opacity hover:opacity-80"
                   />
+                </Link>
+              )}
+            </div>
+            {feedThumb && isCover && (
+              <div className="mt-2 overflow-hidden">
+                {feedThumb.type === "video" ? (
+                  <VideoPlayer url={feedThumb.url} mode="inline" duration={feedThumb.duration} />
+                ) : (
+                  <Link to={`/commitment/${commitmentId}`}>
+                    <img
+                      src={feedThumb.url}
+                      alt=""
+                      className="w-full border border-border object-cover transition-opacity hover:opacity-80"
+                    />
+                  </Link>
                 )}
-              </Link>
+              </div>
             )}
           </div>
         </>

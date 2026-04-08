@@ -87,6 +87,14 @@ describe("extractTitle", () => {
   test("handles newline-only content", () => {
     expect(extractTitle("\n\nBody only")).toBe("");
   });
+
+  test("strips inline media references", () => {
+    expect(extractTitle("![video.mp4](upload:abc123)")).toBe("");
+  });
+
+  test("keeps text around media references", () => {
+    expect(extractTitle("Check this ![cat.gif](upload:abc) out")).toBe("Check this out");
+  });
 });
 
 describe("devlog mutations", () => {

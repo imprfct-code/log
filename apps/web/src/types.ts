@@ -12,6 +12,8 @@ export interface Attachment {
   type: "image" | "video";
   filename: string;
   inline?: boolean;
+  cover?: boolean;
+  duration?: number;
 }
 
 export interface DevlogEntry {

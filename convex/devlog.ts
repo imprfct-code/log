@@ -11,6 +11,8 @@ const attachmentValidator = v.object({
   type: v.union(v.literal("image"), v.literal("video")),
   filename: v.string(),
   inline: v.optional(v.boolean()),
+  cover: v.optional(v.boolean()),
+  duration: v.optional(v.number()),
 });
 
 /** Shift activity array to account for days passed, then increment today. */
@@ -30,12 +32,15 @@ export function updateActivity(current: number[], lastActivityAt: number): numbe
   return shifted;
 }
 
-/** Extract first line (max 100 chars) from content for feed preview. Strips markdown heading prefix. */
+/** Extract first line (max 100 chars) from content for feed preview. Strips markdown heading prefix and inline media refs. */
 export function extractTitle(content: string): string {
   const firstLine = content
     .split("\n")[0]
     .trim()
-    .replace(/^#{1,6}\s+/, "");
+    .replace(/^#{1,6}\s+/, "")
+    .replace(/!\[[^\]]*?\]\([^)]+\)/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
   return firstLine.length > 100 ? firstLine.slice(0, 100) + "\u2026" : firstLine;
 }
 
@@ -46,9 +51,19 @@ export async function resolveAttachments(
     type: "image" | "video";
     filename: string;
     inline?: boolean;
+    cover?: boolean;
+    duration?: number;
   }>,
 ): Promise<
-  Array<{ url: string; key: string; type: "image" | "video"; filename: string; inline: boolean }>
+  Array<{
+    url: string;
+    key: string;
+    type: "image" | "video";
+    filename: string;
+    inline: boolean;
+    cover?: boolean;
+    duration?: number;
+  }>
 > {
   if (!attachments?.length) return [];
   return Promise.all(
@@ -58,6 +73,8 @@ export async function resolveAttachments(
       type: att.type,
       filename: att.filename,
       inline: att.inline ?? false,
+      cover: att.cover,
+      duration: att.duration,
     })),
   );
 }
@@ -98,7 +115,7 @@ export const create = mutation({
       const content = args.content?.trim();
       const hasAttachments = args.attachments && args.attachments.length > 0;
       if (!content && !hasAttachments) throw new Error("Post cannot be empty");
-      text = content ? extractTitle(content) : "media update";
+      text = (content && extractTitle(content)) || "media update";
       body = content || undefined;
     } else {
       if (!args.text) throw new Error("Text is required");

@@ -1,8 +1,16 @@
 import { VideoPlayer } from "./VideoPlayer";
 
-export function CoverMedia({ url, type }: { url: string; type: "image" | "video" }) {
+export function CoverMedia({
+  url,
+  type,
+  duration,
+}: {
+  url: string;
+  type: "image" | "video";
+  duration?: number;
+}) {
   if (type === "video") {
-    return <VideoPlayer url={url} />;
+    return <VideoPlayer url={url} mode="inline" duration={duration} />;
   }
   return (
     <img

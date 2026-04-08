@@ -1,88 +1,192 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Plyr from "plyr";
 import "plyr/dist/plyr.css";
 
 interface VideoPlayerProps {
   url: string;
   title?: string;
-  mode?: "full" | "thumbnail";
+  mode?: "full" | "inline" | "thumbnail";
+  /** Known duration in seconds — avoids progressive download duration issues. */
+  duration?: number;
 }
 
-export function VideoPlayer({ url, title, mode = "full" }: VideoPlayerProps) {
-  const playerRef = useRef<HTMLVideoElement>(null);
+const FULL_CONTROLS = [
+  "play-large",
+  "play",
+  "progress",
+  "current-time",
+  "duration",
+  "mute",
+  "volume",
+  "settings",
+  "pip",
+  "fullscreen",
+];
+
+const INLINE_CONTROLS = [
+  "play",
+  "progress",
+  "current-time",
+  "duration",
+  "mute",
+  "volume",
+  "fullscreen",
+];
+
+function LoadingOverlay() {
+  return (
+    <div className="video-loading-overlay">
+      <div className="video-loading-bars">
+        <span />
+        <span />
+        <span />
+      </div>
+    </div>
+  );
+}
+
+function PlayOverlay({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="video-inline-overlay"
+      aria-label="Play video"
+    >
+      <span className="video-inline-play">
+        <svg className="h-5 w-5 text-black" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      </span>
+    </button>
+  );
+}
+
+export function VideoPlayer({ url, title, mode = "full", duration }: VideoPlayerProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
   const plyrRef = useRef<Plyr | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [activated, setActivated] = useState(mode === "full");
 
-  useEffect(() => {
-    if (!playerRef.current || mode === "thumbnail") return;
-
-    // Initialize Plyr with custom config for full player
-    const player = new Plyr(playerRef.current, {
-      controls: [
-        "play-large",
-        "play",
-        "progress",
-        "current-time",
-        "mute",
-        "volume",
-        "settings",
-        "pip",
-        "fullscreen",
-      ],
-      settings: ["speed"],
-      speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] },
-      tooltips: { controls: true, seek: true },
-      ratio: "16:9",
-    });
-
-    plyrRef.current = player;
-
+  const attachVideoEvents = useCallback((video: HTMLVideoElement) => {
+    const onWaiting = () => setIsLoading(true);
+    const onCanPlay = () => setIsLoading(false);
+    const onPlaying = () => setIsLoading(false);
+    video.addEventListener("waiting", onWaiting);
+    video.addEventListener("canplay", onCanPlay);
+    video.addEventListener("playing", onPlaying);
     return () => {
-      if (plyrRef.current) {
-        plyrRef.current.destroy();
-      }
+      video.removeEventListener("waiting", onWaiting);
+      video.removeEventListener("canplay", onCanPlay);
+      video.removeEventListener("playing", onPlaying);
+    };
+  }, []);
+
+  const initPlyr = useCallback(
+    (controls: string[]) => {
+      if (!videoRef.current || plyrRef.current) return null;
+
+      // Plyr's bundled types are stricter than its actual API — cast to satisfy TS
+      const options = {
+        controls,
+        settings: mode === "full" ? ["speed"] : [],
+        speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] },
+        tooltips: { controls: true, seek: true },
+        // Show elapsed time (0:05 / 0:30) instead of countdown (-0:25).
+        invertTime: false,
+        displayDuration: true,
+        // Pre-set duration when known — avoids 0:00 display while metadata loads.
+        ...(duration ? { duration: Math.round(duration) } : {}),
+      } satisfies Record<string, unknown>;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const player = new Plyr(videoRef.current, options as any);
+
+      plyrRef.current = player;
+      return player;
+    },
+    [mode, duration],
+  );
+
+  // Full mode: init Plyr + events immediately
+  useEffect(() => {
+    if (mode !== "full" || !videoRef.current) return;
+    const cleanup = attachVideoEvents(videoRef.current);
+    initPlyr(FULL_CONTROLS);
+    return () => {
+      cleanup();
+      plyrRef.current?.destroy();
+      plyrRef.current = null;
+    };
+  }, [mode, initPlyr, attachVideoEvents]);
+
+  // Cleanup for inline mode on unmount
+  useEffect(() => {
+    if (mode !== "inline") return;
+    return () => {
+      plyrRef.current?.destroy();
+      plyrRef.current = null;
     };
   }, [mode]);
+
+  function handleInlinePlay(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!videoRef.current) return;
+
+    setActivated(true);
+    setIsLoading(true);
+
+    const video = videoRef.current;
+    const cleanup = attachVideoEvents(video);
+
+    // Give React a tick to remove the overlay, then init Plyr
+    requestAnimationFrame(() => {
+      const player = initPlyr(INLINE_CONTROLS);
+      if (player) {
+        void video.play();
+      }
+
+      // Store cleanup for unmount — inline effect handles Plyr destroy,
+      // but we need video event cleanup too
+      const prevCleanup = plyrRef.current;
+      const origDestroy = prevCleanup?.destroy.bind(prevCleanup);
+      if (prevCleanup && origDestroy) {
+        prevCleanup.destroy = (...args: Parameters<Plyr["destroy"]>) => {
+          cleanup();
+          origDestroy(...args);
+        };
+      }
+    });
+  }
 
   if (mode === "thumbnail") {
     return (
       <div className="group/video relative h-full w-full overflow-hidden bg-card">
         <video src={url} preload="metadata" className="h-full w-full object-cover" />
-        {/* Play button overlay */}
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20 transition-all duration-200 group-hover/video:bg-black/40">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              const video = (e.currentTarget.closest(".group/video") as HTMLElement)?.querySelector(
-                "video",
-              ) as HTMLVideoElement;
-              if (video) {
-                void video.play();
-              }
-            }}
-            className="pointer-events-auto flex items-center justify-center bg-white/90 p-2 shadow-lg transition-transform hover:scale-110 active:scale-95"
-            aria-label="Play video"
-          >
+          <span className="flex items-center justify-center bg-white/90 p-2 shadow-lg">
             <svg className="h-5 w-5 text-black" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z" />
             </svg>
-          </button>
+          </span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="video-player-wrapper">
+    <div className="video-player-wrapper relative">
       <video
-        ref={playerRef}
+        ref={videoRef}
         src={url}
         title={title}
         preload="metadata"
         playsInline
         className="mt-2 w-full border border-border"
       />
+      {isLoading && <LoadingOverlay />}
+      {mode === "inline" && !activated && <PlayOverlay onClick={handleInlinePlay} />}
     </div>
   );
 }

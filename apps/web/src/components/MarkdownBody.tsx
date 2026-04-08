@@ -5,6 +5,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { cn } from "@/lib/utils";
 import type { Attachment } from "@/types";
 import { ResizableMedia } from "./ResizableImage";
+import { VideoPlayer } from "./VideoPlayer";
 
 /** Parse `![alt|50%](url)` → { cleanAlt, widthPercent } */
 function parseAltWidth(alt: string | undefined): { cleanAlt: string; widthPercent: number | null } {
@@ -120,11 +121,11 @@ export function MarkdownBody({
   /** Editor callback: called with (src, newWidthPercent) when the user drags the slider. */
   onImageResize?: (src: string, width: number) => void;
 }) {
-  // Build key → { url, type } lookup for resolving upload:KEY references
+  // Build key → { url, type, duration } lookup for resolving upload:KEY references
   const urlMap = useMemo(() => {
-    const map = new Map<string, { url: string; type: "image" | "video" }>();
+    const map = new Map<string, { url: string; type: "image" | "video"; duration?: number }>();
     for (const att of attachments ?? []) {
-      map.set(att.key, { url: att.url, type: att.type });
+      map.set(att.key, { url: att.url, type: att.type, duration: att.duration });
     }
     return map;
   }, [attachments]);
@@ -213,9 +214,9 @@ export function MarkdownBody({
             </h3>
           ),
           p: ({ children, ...props }) => (
-            <p className="my-1.5 leading-relaxed" {...props}>
+            <div className="my-1.5 leading-relaxed" {...props}>
               {children}
-            </p>
+            </div>
           ),
           table: ({ children, ...props }) => (
             <div className="my-2 overflow-x-auto">
@@ -242,50 +243,60 @@ export function MarkdownBody({
             const rawSrc = src ?? "";
             let resolvedSrc = rawSrc;
             let mediaType: "image" | "video" = "image";
+            let mediaDuration: number | undefined;
             if (rawSrc.startsWith("upload:")) {
               const entry = urlMap.get(rawSrc.slice(7));
               if (entry) {
                 resolvedSrc = entry.url;
                 mediaType = entry.type;
+                mediaDuration = entry.duration;
               }
             }
 
             const { cleanAlt, widthPercent } = parseAltWidth(alt);
             const width = widthPercent ?? 100;
 
-            const mediaEl =
-              mediaType === "video" ? (
-                <video
-                  src={resolvedSrc}
-                  controls
-                  muted
-                  loop
-                  playsInline
-                  preload="metadata"
-                  className="w-full border border-border"
-                />
-              ) : (
-                <img
-                  src={resolvedSrc}
-                  alt={cleanAlt}
-                  loading="lazy"
-                  className="w-full border border-border"
-                  {...props}
-                />
+            if (mediaType === "video") {
+              const videoEl = (
+                <VideoPlayer url={resolvedSrc} mode="full" duration={mediaDuration} />
               );
 
-            // Resizable in editor preview
+              if (onImageResize) {
+                return (
+                  <ResizableMedia widthPercent={width} onResize={(w) => onImageResize(rawSrc, w)}>
+                    {videoEl}
+                  </ResizableMedia>
+                );
+              }
+
+              return (
+                <span className="my-2 block" style={{ width: `${width}%` }}>
+                  {videoEl}
+                </span>
+              );
+            }
+
+            const imageEl = (
+              <img
+                src={resolvedSrc}
+                alt={cleanAlt}
+                loading="lazy"
+                className="w-full border border-border"
+                {...props}
+              />
+            );
+
             if (onImageResize) {
               return (
                 <ResizableMedia widthPercent={width} onResize={(w) => onImageResize(rawSrc, w)}>
-                  {mediaEl}
+                  {imageEl}
                 </ResizableMedia>
               );
             }
 
             return (
               <span className="my-2 block" style={{ width: `${width}%` }}>
-                {mediaEl}
+                {imageEl}
               </span>
             );
           },

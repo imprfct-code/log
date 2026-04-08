@@ -63,6 +63,8 @@ export default defineSchema({
           type: v.union(v.literal("image"), v.literal("video")),
           filename: v.string(),
           inline: v.optional(v.boolean()),
+          cover: v.optional(v.boolean()),
+          duration: v.optional(v.number()),
         }),
       ),
     ),

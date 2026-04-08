@@ -393,18 +393,18 @@
   --plyr-video-control-background: var(--color-background);
   --plyr-video-progress-buffered-background: var(--color-border-strong);
   --plyr-video-control-text-color: var(--color-foreground);
+  --plyr-range-track-height: 3px;
   --plyr-control-radius: 0;
   --plyr-font-family: var(--font-mono);
   --plyr-font-size-base: 13px;
 }
 
 .plyr {
-  @apply border border-border;
+  @apply border border-border overflow-hidden;
 }
 
 .plyr__controls {
-  @apply gap-1 bg-background/80 px-2 py-1;
-  backdrop-filter: blur(4px);
+  @apply gap-1 bg-background px-2 py-1;
 }
 
 .plyr__control {
@@ -419,16 +419,12 @@
   color: var(--color-accent);
 }
 
-.plyr__progress {
-  @apply bg-border-strong;
-}
-
-.plyr__progress__fill {
-  @apply bg-accent;
+.plyr__progress input[type="range"] {
+  color: var(--color-accent);
 }
 
 .plyr__time {
-  @apply text-[11px] text-muted-foreground;
+  @apply text-[11px] text-foreground;
 }
 
 .plyr__menu__container {
@@ -459,6 +455,60 @@
   @apply w-full;
 }
 
+/* ── Video loading overlay ── */
+
+.video-loading-overlay {
+  @apply pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/50;
+  backdrop-filter: blur(2px);
+}
+
+.video-loading-bars {
+  @apply flex gap-1;
+}
+
+.video-loading-bars span {
+  @apply block h-4 w-1 bg-accent;
+  animation: loading-bar 0.8s ease-in-out infinite;
+}
+
+.video-loading-bars span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.video-loading-bars span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes loading-bar {
+  0%,
+  100% {
+    transform: scaleY(0.4);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+/* ── Inline video play overlay ── */
+
+.video-inline-overlay {
+  @apply absolute inset-0 z-10 flex cursor-pointer items-center justify-center border-none bg-black/30 transition-all duration-200;
+}
+
+.video-inline-overlay:hover {
+  @apply bg-black/50;
+}
+
+.video-inline-play {
+  @apply flex h-12 w-12 items-center justify-center bg-white/90 shadow-lg transition-transform;
+}
+
+.video-inline-overlay:hover .video-inline-play {
+  transform: scale(1.08);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .landing-up,
   .landing-word-in,
@@ -477,6 +527,11 @@
     animation: none !important;
     opacity: 1 !important;
     transition: none !important;
+  }
+
+  .video-loading-bars span {
+    animation: none !important;
+    opacity: 0.6;
   }
 
   .landing-orb,
