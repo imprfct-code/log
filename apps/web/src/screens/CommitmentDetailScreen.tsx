@@ -7,6 +7,7 @@ import { Eye, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CommitmentMeta } from "@/components/CommitmentMeta";
 import { ConnectRepoForm } from "@/components/ConnectRepoForm";
+import { CreatePostForm } from "@/components/CreatePostForm";
 import { DevlogTimeline } from "@/components/DevlogTimeline";
 import { daysSince, formatTimeAgo } from "@/lib/formatTime";
 import type { DevlogEntry as DevlogEntryType } from "@/types";
@@ -16,7 +17,7 @@ function DetailLayout({ children }: { children: ReactNode }) {
     <div className="mx-auto max-w-[720px] px-4 py-8 sm:px-12">
       <div className="feed-in mb-8 text-[13px] opacity-0">
         <Link to="/feed" className="text-muted-foreground no-underline hover:text-foreground">
-          ← feed
+          &larr; feed
         </Link>
       </div>
       {children}
@@ -39,6 +40,7 @@ export function CommitmentDetailScreen() {
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [viewAsGuest, setViewAsGuest] = useState(false);
+  const [showPostForm, setShowPostForm] = useState(false);
   const data = useQuery(
     api.commitments.getById,
     commitmentId ? { id: commitmentId, viewAsGuest } : "skip",
@@ -79,6 +81,7 @@ export function CommitmentDetailScreen() {
   const canConnect = isAuthor && !commitment.repo && commitment.status === "building";
   const canSync =
     isAuthor && commitment.repo && !commitment.webhookId && commitment.status === "building";
+  const canPost = isAuthor && commitment.status === "building";
   const day = daysSince(commitment._creationTime);
 
   async function handleSync() {
@@ -99,15 +102,18 @@ export function CommitmentDetailScreen() {
   }
 
   const devlog: DevlogEntryType[] = entries.map((e) => ({
+    id: e._id,
     type: e.type,
     text: e.text,
     body: e.body,
+    attachments: e.resolvedAttachments,
     time: formatTimeAgo(e.committedAt ?? e._creationTime),
     hash: e.hash,
     gitAuthor: e.gitAuthor,
     gitUrl: e.gitUrl,
     gitBranch: e.gitBranch,
     comments: e.commentCount,
+    isOwn: isAuthor,
   }));
 
   return (
@@ -167,6 +173,23 @@ export function CommitmentDetailScreen() {
         </div>
       </div>
 
+      {/* Add update button / form */}
+      {canPost && (
+        <div className="feed-in mb-4 opacity-0" style={{ animationDelay: "30ms" }}>
+          {showPostForm ? (
+            <CreatePostForm commitmentId={commitment._id} onClose={() => setShowPostForm(false)} />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowPostForm(true)}
+              className="cursor-pointer border-none bg-transparent p-0 font-mono text-[13px] text-accent transition-colors hover:text-foreground-bright"
+            >
+              + add update
+            </button>
+          )}
+        </div>
+      )}
+
       {devlog.length > 0 ? (
         <div className="feed-in opacity-0" style={{ animationDelay: "60ms" }}>
           {isAuthor && commitment.isPrivate && (
@@ -198,6 +221,7 @@ export function CommitmentDetailScreen() {
             showBranches={showBranches}
             authorLinks={effectiveAuthor}
             status={commitment.status}
+            isDetailPage
             limit={20}
           />
         </div>

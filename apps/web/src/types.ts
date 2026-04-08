@@ -1,14 +1,25 @@
+import type { Id } from "@convex/_generated/dataModel";
+
 export interface Comment {
   user: string;
   text: string;
   time: string;
 }
 
+export interface Attachment {
+  url: string;
+  key: string;
+  type: "image" | "video";
+  filename: string;
+}
+
 export interface DevlogEntry {
+  id: Id<"devlogEntries">;
   type: "commit" | "post" | "git_commit";
   text: string;
   body?: string;
   image?: string;
+  attachments?: Attachment[];
   time: string;
   hash?: string;
   gitAuthor?: string;
@@ -16,10 +27,11 @@ export interface DevlogEntry {
   gitBranch?: string;
   comments: number;
   commentData?: Comment[];
+  isOwn?: boolean;
 }
 
 export interface Commitment {
-  id: string;
+  id: Id<"commitments">;
   user: string;
   avatar: string;
   text: string;

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Search, Loader2 } from "lucide-react";
+import type { Id } from "@convex/_generated/dataModel";
 import { CommitCard } from "@/components/CommitCard";
 import { daysSince, formatTimeAgo } from "@/lib/formatTime";
 import { cn } from "@/lib/utils";
@@ -11,6 +12,7 @@ const TABS = ["all", "building", "shipped"] as const;
 type Tab = (typeof TABS)[number];
 
 interface RawDevlogEntry {
+  _id: Id<"devlogEntries">;
   type: "commit" | "post" | "git_commit";
   text: string;
   body?: string;
@@ -21,10 +23,16 @@ interface RawDevlogEntry {
   committedAt?: number;
   commentCount: number;
   _creationTime: number;
+  resolvedAttachments?: Array<{
+    url: string;
+    key: string;
+    type: "image" | "video";
+    filename: string;
+  }>;
 }
 
 interface RawFeedItem {
-  _id: string;
+  _id: Id<"commitments">;
   text: string;
   repo?: string;
   isPrivate?: boolean;
@@ -46,9 +54,11 @@ interface RawFeedItem {
 
 function toDevlogEntry(entry: RawDevlogEntry): DevlogEntry {
   return {
+    id: entry._id,
     type: entry.type,
     text: entry.text,
     body: entry.body,
+    attachments: entry.resolvedAttachments,
     time: formatTimeAgo(entry.committedAt ?? entry._creationTime),
     hash: entry.hash,
     gitAuthor: entry.gitAuthor,

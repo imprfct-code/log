@@ -16,6 +16,9 @@
     "check": "vp check",
     "prepare": "vp config"
   },
+  "dependencies": {
+    "@convex-dev/r2": "catalog:"
+  },
   "devDependencies": {
     "@edge-runtime/vm": "catalog:",
     "convex": "catalog:",

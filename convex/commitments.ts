@@ -4,6 +4,7 @@ import { internal } from "./_generated/api";
 import { paginationOptsValidator } from "convex/server";
 import { getUserByToken } from "./users";
 import { computeVisibility, redactEntry } from "./privacy";
+import { resolveAttachments } from "./devlog";
 
 const REPO_RE = /^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/;
 
@@ -117,9 +118,15 @@ export const listFeed = query({
           .take(5);
 
         const hasMore = entries.length > 4;
-        const redacted = entries
-          .slice(0, 4)
-          .map((e) => redactEntry(e, flags, commitment.isPrivate, isAuthor));
+        const redacted = await Promise.all(
+          entries.slice(0, 4).map(async (e) => {
+            const entry = redactEntry(e, flags, commitment.isPrivate, isAuthor);
+            return {
+              ...entry,
+              resolvedAttachments: await resolveAttachments(e.attachments),
+            };
+          }),
+        );
 
         return {
           ...commitment,

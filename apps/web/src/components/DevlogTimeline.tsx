@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { Id } from "@convex/_generated/dataModel";
 import type { DevlogEntry as DevlogEntryType } from "@/types";
 import { DevlogEntry } from "./DevlogEntry";
 import { CommentThread } from "./CommentThread";
@@ -15,10 +16,11 @@ export function DevlogTimeline({
   showBranches = true,
   authorLinks = false,
   status,
+  isDetailPage = false,
   limit = 4,
 }: {
   entries: DevlogEntryType[];
-  commitmentId: string;
+  commitmentId: Id<"commitments">;
   repo?: string;
   isPrivate?: boolean;
   showMessages?: boolean;
@@ -26,6 +28,7 @@ export function DevlogTimeline({
   showBranches?: boolean;
   authorLinks?: boolean;
   status: "building" | "shipped";
+  isDetailPage?: boolean;
   limit?: number;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -58,6 +61,7 @@ export function DevlogTimeline({
           authorLinks={authorLinks}
           isLatest={index === 0}
           status={status}
+          isDetailPage={isDetailPage}
           onCommentClick={() => toggleComment(index)}
         />
 

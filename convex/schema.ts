@@ -55,7 +55,16 @@ export default defineSchema({
     type: v.union(v.literal("commit"), v.literal("post"), v.literal("git_commit")),
     text: v.string(),
     body: v.optional(v.string()),
-    imageStorageId: v.optional(v.id("_storage")),
+    imageStorageId: v.optional(v.id("_storage")), // legacy, unused
+    attachments: v.optional(
+      v.array(
+        v.object({
+          key: v.string(),
+          type: v.union(v.literal("image"), v.literal("video")),
+          filename: v.string(),
+        }),
+      ),
+    ),
     hash: v.optional(v.string()),
     gitAuthor: v.optional(v.string()),
     gitUrl: v.optional(v.string()),
