@@ -23,11 +23,11 @@ export function CommitCard({ item, preview }: { item: Commitment; preview?: bool
       />
 
       {preview ? (
-        <div className="mt-1 mb-3 text-sm font-medium text-foreground">{item.text}</div>
+        <div className="mt-1 mb-1 text-sm font-medium text-foreground">{item.text}</div>
       ) : (
         <Link
           to={`/commitment/${item.id}`}
-          className="mt-1 mb-3 block text-sm font-medium text-foreground no-underline transition-colors hover:text-foreground-bright"
+          className="mt-1 mb-1 block text-sm font-medium text-foreground no-underline transition-colors hover:text-foreground-bright"
         >
           {item.text}
         </Link>

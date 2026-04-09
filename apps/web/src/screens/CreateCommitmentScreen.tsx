@@ -7,6 +7,7 @@ import { CommitCard } from "@/components/CommitCard";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { stripGithubUrl } from "@/lib/github";
+import type { Id } from "@convex/_generated/dataModel";
 import type { Commitment } from "@/types";
 
 const MAX_DECLARATION = 80;
@@ -42,7 +43,7 @@ function buildPreviewCommitment(
   avatar?: string,
 ): Commitment {
   return {
-    id: "",
+    id: "" as Id<"commitments">,
     user: username ?? "you",
     avatar: avatar ?? "",
     text,

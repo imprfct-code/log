@@ -32,7 +32,7 @@ export const getPollingTargets = internalQuery({
       repo: string;
       userId: Id<"users">;
       clerkUserId: string;
-      lastPolledAt: number | undefined;
+      latestCommitTime: number | undefined;
     }> = [];
 
     for (const c of commitments) {
@@ -41,12 +41,20 @@ export const getPollingTargets = internalQuery({
       const user = await ctx.db.get(c.userId);
       if (!user?.clerkUserId) continue;
 
+      // Use the latest commit timestamp from DB — not lastPolledAt which can be
+      // ahead if a backfill was scheduled but failed partway through.
+      const latestEntry = await ctx.db
+        .query("devlogEntries")
+        .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", c._id))
+        .order("desc")
+        .first();
+
       targets.push({
         commitmentId: c._id,
         repo: c.repo,
         userId: c.userId,
         clerkUserId: user.clerkUserId,
-        lastPolledAt: c.lastPolledAt,
+        latestCommitTime: latestEntry?.committedAt,
       });
     }
 
@@ -66,13 +74,13 @@ export const setupPolling = internalAction({
     const token = await fetchGitHubToken(user.clerkUserId);
 
     const branches = token ? await fetchBranches(repo, token) : [];
-    for (const branch of branches.length > 0 ? branches : [undefined]) {
-      await ctx.scheduler.runAfter(0, internal.github.backfillAllCommits, {
-        commitmentId,
-        repo,
-        branch,
-      });
-    }
+    // Schedule a single serialized backfill chain instead of parallel per-branch
+    await ctx.scheduler.runAfter(0, internal.github.backfillAllCommits, {
+      commitmentId,
+      repo,
+      branch: branches[0],
+      remainingBranches: branches.slice(1),
+    });
 
     await ctx.runMutation(internal.githubPolling.updateLastPolledAt, {
       commitmentIds: [commitmentId],
@@ -93,7 +101,7 @@ export const dispatchPolling = internalAction({
         commitmentIds: Id<"commitments">[];
         userIds: Id<"users">[];
         clerkUserId: string;
-        oldestLastPolledAt: number | undefined;
+        oldestCommitTime: number | undefined;
       }
     >();
 
@@ -102,19 +110,22 @@ export const dispatchPolling = internalAction({
       if (existing) {
         existing.commitmentIds.push(t.commitmentId);
         existing.userIds.push(t.userId);
-        if (
-          t.lastPolledAt !== undefined &&
-          (existing.oldestLastPolledAt === undefined ||
-            t.lastPolledAt < existing.oldestLastPolledAt)
+        // If any target has no commits yet (undefined), clear the group's oldest time
+        // so the poll fetches full history instead of using a `since` cutoff.
+        if (t.latestCommitTime === undefined) {
+          existing.oldestCommitTime = undefined;
+        } else if (
+          existing.oldestCommitTime !== undefined &&
+          t.latestCommitTime < existing.oldestCommitTime
         ) {
-          existing.oldestLastPolledAt = t.lastPolledAt;
+          existing.oldestCommitTime = t.latestCommitTime;
         }
       } else {
         repoGroups.set(t.repo, {
           commitmentIds: [t.commitmentId],
           userIds: [t.userId],
           clerkUserId: t.clerkUserId,
-          oldestLastPolledAt: t.lastPolledAt,
+          oldestCommitTime: t.latestCommitTime,
         });
       }
     }
@@ -125,9 +136,7 @@ export const dispatchPolling = internalAction({
         commitmentIds: group.commitmentIds,
         userIds: group.userIds,
         clerkUserId: group.clerkUserId,
-        since: group.oldestLastPolledAt
-          ? new Date(group.oldestLastPolledAt).toISOString()
-          : undefined,
+        since: group.oldestCommitTime ? new Date(group.oldestCommitTime).toISOString() : undefined,
       });
     }
   },
@@ -163,5 +172,10 @@ export const pollRepo = internalAction({
     }
 
     await ctx.runMutation(internal.githubPolling.updateLastPolledAt, { commitmentIds });
+
+    // Successful poll means any interrupted initial sync can be considered complete
+    for (const id of commitmentIds) {
+      await ctx.runMutation(internal.github.markInitialSyncComplete, { commitmentId: id });
+    }
   },
 });

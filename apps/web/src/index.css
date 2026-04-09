@@ -68,6 +68,24 @@
     -moz-osx-font-smoothing: grayscale;
     margin: 0;
   }
+
+  /* Thin scrollbar for code blocks inside markdown */
+  .markdown-body pre::-webkit-scrollbar {
+    height: 6px;
+  }
+  .markdown-body pre::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .markdown-body pre::-webkit-scrollbar-thumb {
+    background: #26233a;
+  }
+  .markdown-body pre::-webkit-scrollbar-thumb:hover {
+    background: #6e6a86;
+  }
+  .markdown-body pre {
+    scrollbar-width: thin;
+    scrollbar-color: #26233a transparent;
+  }
 }
 
 /* ── Landing page animations ── */
@@ -306,6 +324,26 @@
   animation: pulse-dot 2s ease-in-out infinite;
 }
 
+@keyframes dots {
+  0% {
+    content: "";
+  }
+  25% {
+    content: ".";
+  }
+  50% {
+    content: "..";
+  }
+  75% {
+    content: "...";
+  }
+}
+
+.dots-loading::after {
+  content: "";
+  animation: dots 1.5s steps(1) infinite;
+}
+
 /* ── Commit preview pulse ── */
 
 @keyframes commit-pulse {
@@ -368,6 +406,155 @@
   transform: scaleY(1) !important;
 }
 
+/* ── Plyr video player custom styling ── */
+
+.plyr {
+  --plyr-color-main: var(--color-accent);
+  --plyr-video-control-background: var(--color-background);
+  --plyr-video-progress-buffered-background: var(--color-border-strong);
+  --plyr-video-control-text-color: var(--color-foreground);
+  --plyr-range-track-height: 3px;
+  --plyr-control-radius: 0;
+  --plyr-font-family: var(--font-mono);
+  --plyr-font-size-base: 13px;
+}
+
+.plyr {
+  @apply border border-border overflow-hidden;
+}
+
+.plyr__controls {
+  @apply gap-1 bg-background px-2 py-1;
+}
+
+.plyr__control {
+  @apply border border-transparent transition-colors;
+
+  color: var(--color-foreground);
+  padding: 4px;
+}
+
+.plyr__control:hover,
+.plyr__control.active {
+  @apply border-border-strong;
+
+  color: var(--color-accent);
+}
+
+.plyr__progress input[type="range"] {
+  color: var(--color-accent);
+}
+
+.plyr__time {
+  @apply text-[11px] text-foreground;
+}
+
+.plyr__menu__container {
+  @apply bg-muted border border-border-strong;
+}
+
+.plyr__menu__container [data-plyr="language"] option,
+.plyr__menu__container [data-plyr="speed"] option,
+.plyr__menu__container [data-plyr="quality"] option {
+  @apply bg-muted text-foreground;
+}
+
+.plyr__menu__container [data-plyr="language"] option:checked,
+.plyr__menu__container [data-plyr="speed"] option:checked,
+.plyr__menu__container [data-plyr="quality"] option:checked {
+  @apply bg-accent text-foreground;
+}
+
+.plyr--video .plyr__play-large {
+  @apply bg-white/90;
+}
+
+.plyr--video .plyr__play-large svg {
+  @apply text-black;
+}
+
+.video-player-wrapper {
+  container-type: inline-size;
+}
+
+.video-player-wrapper .plyr {
+  @apply w-full;
+}
+
+/* Hide less important controls when player is narrow */
+@container (max-width: 450px) {
+  .plyr__volume input[type="range"] {
+    display: none !important;
+    width: 0 !important;
+  }
+
+  .plyr__time--duration {
+    display: none !important;
+  }
+}
+
+@container (max-width: 300px) {
+  .plyr__time--current {
+    display: none !important;
+  }
+}
+
+/* ── Video loading overlay ── */
+
+.video-loading-overlay {
+  @apply pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/50;
+
+  backdrop-filter: blur(2px);
+}
+
+.video-loading-bars {
+  @apply flex gap-1;
+}
+
+.video-loading-bars span {
+  @apply block h-4 w-1 bg-accent;
+
+  animation: loading-bar 0.8s ease-in-out infinite;
+}
+
+.video-loading-bars span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.video-loading-bars span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes loading-bar {
+  0%,
+  100% {
+    transform: scaleY(0.4);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+/* ── Inline video play overlay ── */
+
+.video-inline-overlay {
+  @apply absolute inset-0 z-10 flex cursor-pointer items-center justify-center border-none bg-black/30 transition-all duration-200;
+}
+
+.video-inline-overlay:hover {
+  @apply bg-black/50;
+}
+
+.video-inline-play {
+  @apply flex h-12 w-12 items-center justify-center bg-white/90 shadow-lg transition-transform;
+}
+
+.video-inline-overlay:hover .video-inline-play {
+  transform: scale(1.08);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .landing-up,
   .landing-word-in,
@@ -386,6 +573,11 @@
     animation: none !important;
     opacity: 1 !important;
     transition: none !important;
+  }
+
+  .video-loading-bars span {
+    animation: none !important;
+    opacity: 0.6;
   }
 
   .landing-orb,

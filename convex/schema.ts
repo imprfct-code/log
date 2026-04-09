@@ -1,6 +1,15 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+export const attachmentValidator = v.object({
+  key: v.string(),
+  type: v.union(v.literal("image"), v.literal("video")),
+  filename: v.string(),
+  hasMarkdownRef: v.optional(v.boolean()),
+  cover: v.optional(v.boolean()),
+  duration: v.optional(v.number()),
+});
+
 export default defineSchema({
   waitlist: defineTable({
     email: v.string(),
@@ -34,6 +43,8 @@ export default defineSchema({
     shippedAt: v.optional(v.number()),
     webhookId: v.optional(v.number()),
     lastPolledAt: v.optional(v.number()),
+    initialSyncStatus: v.optional(v.union(v.literal("syncing"), v.literal("ready"))),
+    syncCurrentBranch: v.optional(v.string()),
     commentCount: v.number(),
     respectCount: v.number(),
     lastActivityAt: v.number(),
@@ -55,7 +66,8 @@ export default defineSchema({
     type: v.union(v.literal("commit"), v.literal("post"), v.literal("git_commit")),
     text: v.string(),
     body: v.optional(v.string()),
-    imageStorageId: v.optional(v.id("_storage")),
+    imageStorageId: v.optional(v.id("_storage")), // legacy, unused
+    attachments: v.optional(v.array(attachmentValidator)),
     hash: v.optional(v.string()),
     gitAuthor: v.optional(v.string()),
     gitUrl: v.optional(v.string()),

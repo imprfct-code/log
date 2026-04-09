@@ -11,6 +11,7 @@ import { CommitCard } from "@/components/CommitCard";
 import { useReveal } from "@/hooks/useReveal";
 import { useGithubLogin } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import type { Id } from "@convex/_generated/dataModel";
 import type { Commitment } from "@/types";
 
 const WORDS = ["content", "portfolio", "devlog"];
@@ -51,8 +52,9 @@ const PERSONAS = [
   },
 ];
 
+// Cast unavoidable: mock preview data for landing page, not real DB records.
 const PREVIEW_COMMITMENT: Commitment = {
-  id: "preview",
+  id: "preview" as Id<"commitments">,
   user: "danielle",
   avatar: "D",
   text: "an AI recipe generator",
@@ -67,6 +69,7 @@ const PREVIEW_COMMITMENT: Commitment = {
   activity: [0, 2, 1, 0, 3, 1, 2],
   devlog: [
     {
+      id: "preview-1" as Id<"devlogEntries">,
       type: "commit",
       hash: "f1a2b3c",
       text: "add OpenAI integration for recipe parsing",
@@ -74,12 +77,14 @@ const PREVIEW_COMMITMENT: Commitment = {
       comments: 0,
     },
     {
+      id: "preview-2" as Id<"devlogEntries">,
       type: "post",
       text: "Day 7: stuck on deploy. Vercel keeps timing out.",
       time: "8h ago",
       comments: 0,
     },
     {
+      id: "preview-3" as Id<"devlogEntries">,
       type: "commit",
       hash: "a1b2c3d",
       text: "fix: timeout on serverless function",

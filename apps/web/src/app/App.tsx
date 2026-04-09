@@ -5,6 +5,7 @@ import { LandingScreen } from "@/screens/LandingScreen";
 import { FeedScreen } from "@/screens/FeedScreen";
 import { CreateCommitmentScreen } from "@/screens/CreateCommitmentScreen";
 import { CommitmentDetailScreen } from "@/screens/CommitmentDetailScreen";
+import { PostDetailScreen } from "@/screens/PostDetailScreen";
 import { ProfileScreen } from "@/screens/ProfileScreen";
 import { SettingsScreen } from "@/screens/SettingsScreen";
 import { ShipFlowScreen } from "@/screens/ShipFlowScreen";
@@ -49,6 +50,14 @@ export function App() {
           element={
             <Layout>
               <CommitmentDetailScreen />
+            </Layout>
+          }
+        />
+        <Route
+          path="post/:id"
+          element={
+            <Layout>
+              <PostDetailScreen />
             </Layout>
           }
         />

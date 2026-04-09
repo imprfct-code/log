@@ -7,16 +7,22 @@ catalog:
   "@base-ui/react": ^1.3.0
   "@clerk/clerk-react": ^5.61.3
   "@clerk/react": ^6.1.4
+  "@convex-dev/r2": ^0.9.1
   "@edge-runtime/vm": ^5.0.0
   "@fontsource-variable/geist-mono": ^5.2.7
   "@tailwindcss/vite": ^4.2.2
   "@types/node": ^24
+  "@types/react-syntax-highlighter": ^15.5.13
   class-variance-authority: ^0.7.1
   clsx: ^2.1.1
   convex: ^1.34.1
   convex-test: ^0.0.46
   lucide-react: ^1.7.0
+  plyr: ^3.8.4
+  react-markdown: ^10.1.0
   react-router: ^7.14.0
+  react-syntax-highlighter: ^16.1.1
+  remark-gfm: ^4.0.1
   shadcn: ^4.1.2
   tailwind-merge: ^3.5.0
   tailwindcss: ^4.2.2

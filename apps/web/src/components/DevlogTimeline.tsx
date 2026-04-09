@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { Id } from "@convex/_generated/dataModel";
 import type { DevlogEntry as DevlogEntryType } from "@/types";
 import { DevlogEntry } from "./DevlogEntry";
 import { CommentThread } from "./CommentThread";
@@ -15,10 +16,12 @@ export function DevlogTimeline({
   showBranches = true,
   authorLinks = false,
   status,
+  isDetailPage = false,
   limit = 4,
+  onLoadMore,
 }: {
   entries: DevlogEntryType[];
-  commitmentId: string;
+  commitmentId: Id<"commitments">;
   repo?: string;
   isPrivate?: boolean;
   showMessages?: boolean;
@@ -26,18 +29,20 @@ export function DevlogTimeline({
   showBranches?: boolean;
   authorLinks?: boolean;
   status: "building" | "shipped";
+  isDetailPage?: boolean;
   limit?: number;
+  onLoadMore?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [openInputs, setOpenInputs] = useState<Set<number>>(new Set());
+  const [openInputs, setOpenInputs] = useState<Set<string>>(new Set());
 
-  const hasOverflow = entries.length > limit;
+  const hasOverflow = !isDetailPage && entries.length > limit;
 
-  function toggleComment(index: number) {
+  function toggleComment(entryId: string) {
     setOpenInputs((prev) => {
       const next = new Set(prev);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
+      if (next.has(entryId)) next.delete(entryId);
+      else next.add(entryId);
       return next;
     });
   }
@@ -46,7 +51,7 @@ export function DevlogTimeline({
     const hasComments = entry.commentData && entry.commentData.length > 0;
 
     return (
-      <div key={index}>
+      <div key={entry.id}>
         <DevlogEntry
           entry={entry}
           commitmentId={commitmentId}
@@ -58,7 +63,8 @@ export function DevlogTimeline({
           authorLinks={authorLinks}
           isLatest={index === 0}
           status={status}
-          onCommentClick={() => toggleComment(index)}
+          isDetailPage={isDetailPage}
+          onCommentClick={() => toggleComment(entry.id)}
         />
 
         {hasComments && (
@@ -67,7 +73,7 @@ export function DevlogTimeline({
           </div>
         )}
 
-        {openInputs.has(index) && !hasComments && (
+        {openInputs.has(entry.id) && !hasComments && (
           <div className="pl-6 pb-2">
             <div className="mt-1 border-l-2 border-border-strong px-3.5 py-1.5">
               <CommentInput autoFocus />
@@ -80,7 +86,7 @@ export function DevlogTimeline({
 
   return (
     <div className="relative overflow-visible border-l border-border-strong">
-      {entries.slice(0, limit).map((entry, i) => renderEntry(entry, i))}
+      {(isDetailPage ? entries : entries.slice(0, limit)).map((entry, i) => renderEntry(entry, i))}
 
       {hasOverflow && (
         <div
@@ -102,6 +108,15 @@ export function DevlogTimeline({
           className="cursor-pointer border-none bg-transparent py-1.5 pl-6 font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground"
         >
           {expanded ? "show less" : `+${entries.length - limit} more`}
+        </button>
+      )}
+
+      {isDetailPage && onLoadMore && (
+        <button
+          onClick={onLoadMore}
+          className="cursor-pointer border-none bg-transparent py-1.5 pl-6 font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+        >
+          load more
         </button>
       )}
     </div>

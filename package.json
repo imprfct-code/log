@@ -16,8 +16,14 @@
     "check": "vp check",
     "prepare": "vp config"
   },
+  "dependencies": {
+    "@convex-dev/r2": "catalog:",
+    "plyr": "catalog:",
+    "react-syntax-highlighter": "catalog:"
+  },
   "devDependencies": {
     "@edge-runtime/vm": "catalog:",
+    "@types/react-syntax-highlighter": "catalog:",
     "convex": "catalog:",
     "convex-test": "catalog:",
     "vite-plus": "catalog:"
