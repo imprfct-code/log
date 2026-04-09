@@ -187,7 +187,12 @@ export function MarkdownBody({
 
             if (mediaType === "video") {
               const videoEl = (
-                <VideoPlayer url={resolvedSrc} mode="full" duration={mediaDuration} />
+                <VideoPlayer
+                  url={resolvedSrc}
+                  storageKey={rawSrc.startsWith("upload:") ? rawSrc.slice(7) : undefined}
+                  mode="full"
+                  duration={mediaDuration}
+                />
               );
 
               if (onImageResize) {

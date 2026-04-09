@@ -2,11 +2,13 @@ import { VideoPlayer } from "./VideoPlayer";
 
 export function CoverMedia({
   url,
+  storageKey,
   type,
   duration,
   widthPercent,
 }: {
   url: string;
+  storageKey?: string;
   type: "image" | "video";
   duration?: number;
   widthPercent?: number | null;
@@ -16,7 +18,7 @@ export function CoverMedia({
   if (type === "video") {
     return (
       <div style={wrapper}>
-        <VideoPlayer url={url} mode="inline" duration={duration} />
+        <VideoPlayer url={url} storageKey={storageKey} mode="inline" duration={duration} />
       </div>
     );
   }

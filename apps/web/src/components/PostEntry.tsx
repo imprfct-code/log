@@ -151,6 +151,7 @@ export function PostEntry({
           {cover && (
             <CoverMedia
               url={cover.url}
+              storageKey={cover.key}
               type={cover.type}
               duration={cover.duration}
               widthPercent={entry.body ? parseMediaWidth(entry.body, cover.key) : null}
@@ -217,7 +218,12 @@ export function PostEntry({
               style={thumbWidth ? { width: `${thumbWidth}%` } : undefined}
             >
               {feedThumb.type === "video" ? (
-                <VideoPlayer url={feedThumb.url} mode="inline" duration={feedThumb.duration} />
+                <VideoPlayer
+                  url={feedThumb.url}
+                  storageKey={feedThumb.key}
+                  mode="inline"
+                  duration={feedThumb.duration}
+                />
               ) : (
                 <Link to={`/post/${entry.id}`}>
                   <img

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Search, Loader2 } from "lucide-react";
@@ -129,7 +129,7 @@ export function FeedScreen() {
 
   const isSearching = !!debouncedSearch;
   const items: RawFeedItem[] = isSearching ? (searchResults ?? []) : feedResults;
-  const commitments = items.map(toCommitment);
+  const commitments = useMemo(() => items.map(toCommitment), [items]);
   const isLoading = isSearching ? searchResults === undefined : loadStatus === "LoadingFirstPage";
 
   return (

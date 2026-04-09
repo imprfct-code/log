@@ -20,7 +20,7 @@ export function AttachmentGrid({ attachments }: { attachments: Attachment[] }) {
                 count === 1 ? "max-h-96" : "h-56",
               )}
             >
-              <VideoPlayer url={att.url} duration={att.duration} />
+              <VideoPlayer url={att.url} storageKey={att.key} duration={att.duration} />
             </div>
           );
         }

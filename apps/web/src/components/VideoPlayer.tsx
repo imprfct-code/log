@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import Plyr from "plyr";
 import type { PlyrOptions } from "plyr";
 import "plyr/dist/plyr.css";
 
 interface VideoPlayerProps {
   url: string;
+  /** Stable R2 storage key — used for memo identity so presigned URL rotation doesn't remount. */
+  storageKey?: string;
   title?: string;
   mode?: "full" | "inline" | "thumbnail";
   /** Known duration in seconds — avoids progressive download duration issues. */
@@ -63,12 +65,20 @@ function PlayOverlay({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
   );
 }
 
-export function VideoPlayer({ url, title, mode = "full", duration }: VideoPlayerProps) {
+function VideoPlayerInner({ url, title, mode = "full", duration }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const plyrRef = useRef<Plyr | null>(null);
   const videoCleanupRef = useRef<(() => void) | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activated, setActivated] = useState(mode === "full");
+
+  // Silently update video src when presigned URL rotates, without remounting.
+  // Only update paused videos — playing videos keep their still-valid (24h expiry) URL.
+  useEffect(() => {
+    if (videoRef.current && videoRef.current.paused) {
+      videoRef.current.src = url;
+    }
+  }, [url]);
 
   const attachVideoEvents = useCallback((video: HTMLVideoElement) => {
     const onWaiting = () => setIsLoading(true);
@@ -174,3 +184,9 @@ export function VideoPlayer({ url, title, mode = "full", duration }: VideoPlayer
     </div>
   );
 }
+
+export const VideoPlayer = memo(VideoPlayerInner, (prev, next) => {
+  const prevId = prev.storageKey ?? prev.url;
+  const nextId = next.storageKey ?? next.url;
+  return prevId === nextId && prev.mode === next.mode && prev.duration === next.duration;
+});

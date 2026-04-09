@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
 import { useAction, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
@@ -108,20 +108,24 @@ export function CommitmentDetailScreen() {
     }
   }
 
-  const devlog: DevlogEntryType[] = entries.map((e) => ({
-    id: e._id,
-    type: e.type,
-    text: e.text,
-    body: e.body,
-    attachments: e.resolvedAttachments,
-    time: formatTimeAgo(e.committedAt ?? e._creationTime),
-    hash: e.hash,
-    gitAuthor: e.gitAuthor,
-    gitUrl: e.gitUrl,
-    gitBranch: e.gitBranch,
-    comments: e.commentCount,
-    isOwn: effectiveAuthor,
-  }));
+  const devlog: DevlogEntryType[] = useMemo(
+    () =>
+      entries.map((e) => ({
+        id: e._id,
+        type: e.type,
+        text: e.text,
+        body: e.body,
+        attachments: e.resolvedAttachments,
+        time: formatTimeAgo(e.committedAt ?? e._creationTime),
+        hash: e.hash,
+        gitAuthor: e.gitAuthor,
+        gitUrl: e.gitUrl,
+        gitBranch: e.gitBranch,
+        comments: e.commentCount,
+        isOwn: effectiveAuthor,
+      })),
+    [entries, effectiveAuthor],
+  );
 
   return (
     <DetailLayout>
