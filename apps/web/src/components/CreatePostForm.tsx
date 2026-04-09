@@ -69,6 +69,7 @@ export function CreatePostForm({
   const attachments = useAttachments({
     textareaRef,
     setContent,
+    content,
     upload,
     initial: toInitialAttachments(editEntry),
   });
@@ -134,7 +135,7 @@ export function CreatePostForm({
         await updatePost({
           entryId: editEntry.id,
           content: trimmed || undefined,
-          attachments: atts.length > 0 ? atts : undefined,
+          attachments: atts,
         });
       } else {
         await createPost({
@@ -253,8 +254,8 @@ export function CreatePostForm({
         </div>
       )}
 
-      {/* Attachment previews */}
-      {attachments.uploaded.length > 0 && (
+      {/* Attachment previews (hidden in preview — reader won't see them) */}
+      {!showPreview && attachments.uploaded.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-2">
           {attachments.uploaded.map((att, idx) => (
             <div key={att.key} className="group/att relative">

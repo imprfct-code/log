@@ -69,11 +69,13 @@ function insertAtCursor(
 export function useAttachments({
   textareaRef,
   setContent,
+  content,
   upload,
   initial = [],
 }: {
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   setContent: (fn: (prev: string) => string) => void;
+  content: string;
   upload: (file: File) => Promise<string>;
   initial?: UploadedAttachment[];
 }) {
@@ -90,6 +92,21 @@ export function useAttachments({
     countRef.current = uploaded.length;
     uploadedRef.current = uploaded;
   }, [uploaded]);
+
+  // Sync: remove inline attachments whose references were deleted from text
+  useEffect(() => {
+    if (inFlightRef.current > 0) return;
+    const refPattern = /!\[.*?\]\(upload:([^)]+)\)/g;
+    const referencedKeys = new Set<string>();
+    let match;
+    while ((match = refPattern.exec(content)) !== null) {
+      referencedKeys.add(match[1]);
+    }
+    setUploaded((prev) => {
+      const filtered = prev.filter((att) => !att.inline || referencedKeys.has(att.key));
+      return filtered.length === prev.length ? prev : filtered;
+    });
+  }, [content]);
 
   // Revoke blob URLs on unmount
   useEffect(() => {
@@ -237,8 +254,13 @@ export function useAttachments({
     if (!att) return;
 
     if (att.inline) {
-      const ref = `![${att.filename}](upload:${att.key})`;
-      setContent((prev) => prev.replace(ref + "\n", "").replace(ref, ""));
+      // Match with optional width suffix: ![name](…) or ![name|44%](…)
+      const escapedName = att.filename.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const escapedKey = att.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const pattern = new RegExp(
+        `!\\[${escapedName}(?:\\|\\d{1,3}%)?\\]\\(upload:${escapedKey}\\)\\n?`,
+      );
+      setContent((prev) => prev.replace(pattern, ""));
     }
 
     if (att.previewUrl.startsWith("blob:")) {
