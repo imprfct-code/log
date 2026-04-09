@@ -150,7 +150,10 @@ export function CreatePostForm({
       setContent("");
       onClose();
     } catch (err) {
-      attachments.setError(err instanceof Error ? err.message : "Failed to post");
+      const raw = err instanceof Error ? err.message : "";
+      // Convex errors include metadata — extract the human-readable part
+      const uncaught = raw.match(/Uncaught Error:\s*(.+?)(?:\s+at handler\b|$)/);
+      attachments.setError(uncaught?.[1] ?? "Something went wrong. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -187,10 +190,12 @@ export function CreatePostForm({
           ? "text-yellow-500"
           : "text-[#333]";
 
+  const isOverLimit = content.length > CHAR_SOFT_LIMIT;
   const canSubmit =
     (content.trim().length > 0 || attachments.uploaded.length > 0) &&
     !attachments.isUploading &&
-    !isSubmitting;
+    !isSubmitting &&
+    !isOverLimit;
 
   // Build preview attachment map from uploaded items (key -> previewUrl)
   const previewAttachments = attachments.uploaded.map((att) => ({
