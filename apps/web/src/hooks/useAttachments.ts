@@ -2,7 +2,6 @@ import { useState, useCallback, useRef, useEffect, type RefObject } from "react"
 
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 const VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
-const COVER_IMAGE_TYPES = ["image/gif", "image/webp"];
 
 export const ALL_MEDIA_TYPES = [...IMAGE_TYPES, ...VIDEO_TYPES];
 export const MAX_ATTACHMENTS = 4;
@@ -16,7 +15,6 @@ export interface UploadedAttachment {
   filename: string;
   previewUrl: string;
   inline: boolean;
-  cover: boolean;
   duration?: number;
 }
 
@@ -174,7 +172,6 @@ export function useAttachments({
             filename: file.name,
             previewUrl,
             inline: true,
-            cover: isVideo || COVER_IMAGE_TYPES.includes(file.type),
             duration,
           },
         ]);
@@ -223,7 +220,6 @@ export function useAttachments({
               type: (isVideo ? "video" : "image") as "image" | "video",
               duration,
               previewUrl: URL.createObjectURL(file),
-              cover: isVideo || COVER_IMAGE_TYPES.includes(file.type),
             };
           }),
         );
@@ -245,7 +241,6 @@ export function useAttachments({
             filename: r.file.name,
             previewUrl: r.previewUrl,
             inline: true,
-            cover: r.cover,
             duration: r.duration,
           })),
         ]);
@@ -281,10 +276,6 @@ export function useAttachments({
     setUploaded((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function toggleCover(index: number) {
-    setUploaded((prev) => prev.map((a, i) => (i === index ? { ...a, cover: !a.cover } : a)));
-  }
-
   return {
     uploaded,
     isUploading,
@@ -293,7 +284,6 @@ export function useAttachments({
     uploadInline,
     uploadStandalone,
     removeAttachment,
-    toggleCover,
     cleanup,
   };
 }

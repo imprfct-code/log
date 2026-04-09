@@ -3,7 +3,7 @@ import { useMutation } from "convex/react";
 import { useUploadFile } from "@convex-dev/r2/react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
-import { X, Loader2, Eye, EyeOff, Play, Paperclip, Maximize2, Minimize2 } from "lucide-react";
+import { Loader2, Eye, EyeOff, Paperclip } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   useAttachments,
@@ -39,7 +39,6 @@ function toInitialAttachments(edit?: EditData): UploadedAttachment[] {
     filename: att.filename,
     previewUrl: att.url,
     inline: att.inline ?? false,
-    cover: att.cover ?? att.type === "video",
     duration: att.duration,
   }));
 }
@@ -122,12 +121,12 @@ export function CreatePostForm({
 
       const atts = attachments.uploaded
         .filter((att) => !att.inline || referencedKeys.has(att.key))
-        .map(({ key, type, filename, inline, cover, duration }) => ({
+        .map(({ key, type, filename, inline, duration }, i) => ({
           key,
           type,
           filename,
           inline,
-          cover,
+          cover: i === 0,
           duration,
         }));
 
@@ -257,50 +256,6 @@ export function CreatePostForm({
         <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
           <Loader2 size={12} className="animate-spin" />
           uploading...
-        </div>
-      )}
-
-      {/* Attachment previews (hidden in preview — reader won't see them) */}
-      {!showPreview && attachments.uploaded.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-2">
-          {attachments.uploaded.map((att, idx) => (
-            <div key={att.key} className="group/att relative">
-              {att.type === "video" ? (
-                <div className="relative flex h-16 w-24 items-center justify-center border border-border bg-muted">
-                  <Play size={16} className="text-muted-foreground" />
-                  <span className="absolute bottom-0.5 right-0.5 max-w-[88px] truncate text-[9px] text-[#444]">
-                    {att.filename}
-                  </span>
-                </div>
-              ) : (
-                <img
-                  src={att.previewUrl}
-                  alt={att.filename}
-                  className="h-16 w-24 border border-border object-cover"
-                />
-              )}
-              <button
-                type="button"
-                onClick={() => attachments.toggleCover(idx)}
-                title={att.cover ? "large preview in feed" : "small preview in feed"}
-                className={cn(
-                  "absolute bottom-0.5 left-0.5 flex h-4 w-4 cursor-pointer items-center justify-center border bg-card text-[10px] transition-opacity group-hover/att:opacity-100",
-                  att.cover
-                    ? "border-accent/40 text-accent opacity-100"
-                    : "border-border text-muted-foreground opacity-0 hover:text-foreground",
-                )}
-              >
-                {att.cover ? <Maximize2 size={8} /> : <Minimize2 size={8} />}
-              </button>
-              <button
-                type="button"
-                onClick={() => attachments.removeAttachment(idx)}
-                className="absolute -top-1.5 -right-1.5 flex h-4 w-4 cursor-pointer items-center justify-center border border-border bg-card text-[10px] text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/att:opacity-100"
-              >
-                <X size={10} />
-              </button>
-            </div>
-          ))}
         </div>
       )}
 
