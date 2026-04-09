@@ -70,12 +70,14 @@ export function useAttachments({
   setContent,
   content,
   upload,
+  deleteFile,
   initial = [],
 }: {
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   setContent: (fn: (prev: string) => string) => void;
   content: string;
   upload: (file: File) => Promise<string>;
+  deleteFile: (key: string) => Promise<void>;
   initial?: UploadedAttachment[];
 }) {
   const [uploaded, setUploaded] = useState<UploadedAttachment[]>(initial);
@@ -93,6 +95,9 @@ export function useAttachments({
   const countRef = useRef(uploaded.length);
   const inFlightRef = useRef(0);
   const uploadedRef = useRef(uploaded);
+
+  // Track keys uploaded during this form session (not pre-existing from edit mode)
+  const sessionKeysRef = useRef(new Set<string>());
 
   useEffect(() => {
     countRef.current = uploaded.length;
@@ -123,14 +128,22 @@ export function useAttachments({
     };
   }, []);
 
-  /** Revoke all blob URLs and reset state. Call on form close/submit. */
-  const cleanup = useCallback(() => {
-    for (const att of uploadedRef.current) {
-      if (att.previewUrl.startsWith("blob:")) URL.revokeObjectURL(att.previewUrl);
-    }
-    setUploaded([]);
-    setError(null);
-  }, []);
+  /** Revoke all blob URLs, delete orphaned R2 uploads, and reset state. */
+  const cleanup = useCallback(
+    (keysToKeep?: Set<string>) => {
+      for (const key of sessionKeysRef.current) {
+        if (keysToKeep?.has(key)) continue;
+        void deleteFile(key).catch(() => {});
+      }
+      sessionKeysRef.current.clear();
+      for (const att of uploadedRef.current) {
+        if (att.previewUrl.startsWith("blob:")) URL.revokeObjectURL(att.previewUrl);
+      }
+      setUploaded([]);
+      setError(null);
+    },
+    [deleteFile],
+  );
 
   /** Upload a single file and insert an inline markdown reference at cursor. */
   const uploadInline = useCallback(
@@ -163,6 +176,7 @@ export function useAttachments({
         const resolved = `![${file.name}](upload:${key})`;
 
         setContent((prev) => prev.replace(placeholder, resolved));
+        sessionKeysRef.current.add(key);
 
         setUploaded((prev) => [
           ...prev,
@@ -223,6 +237,10 @@ export function useAttachments({
             };
           }),
         );
+
+        for (const r of results) {
+          sessionKeysRef.current.add(r.key);
+        }
 
         setContent((prev) => {
           let text = prev.trimEnd();

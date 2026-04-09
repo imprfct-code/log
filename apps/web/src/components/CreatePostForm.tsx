@@ -1,4 +1,12 @@
-import { useState, useRef, useEffect, useMemo, type DragEvent, type ClipboardEvent } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useMemo,
+  useCallback,
+  type DragEvent,
+  type ClipboardEvent,
+} from "react";
 import { useMutation } from "convex/react";
 import { useUploadFile } from "@convex-dev/r2/react";
 import { api } from "@convex/_generated/api";
@@ -75,12 +83,20 @@ export function CreatePostForm({
   const createPost = useMutation(api.devlog.create);
   const updatePost = useMutation(api.devlog.update);
   const upload = useUploadFile(api.r2);
+  const deleteR2Object = useMutation(api.r2.deleteObject);
+  const deleteFile = useCallback(
+    async (key: string) => {
+      await deleteR2Object({ key });
+    },
+    [deleteR2Object],
+  );
 
   const attachments = useAttachments({
     textareaRef,
     setContent,
     content,
     upload,
+    deleteFile,
     initial: toInitialAttachments(editEntry),
   });
 
@@ -174,7 +190,8 @@ export function CreatePostForm({
         });
       }
 
-      attachments.cleanup();
+      const submittedKeys = new Set(atts.map((a) => a.key));
+      attachments.cleanup(submittedKeys);
       setContent("");
       onClose();
     } catch (err) {
