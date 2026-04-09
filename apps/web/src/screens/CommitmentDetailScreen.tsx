@@ -85,10 +85,10 @@ export function CommitmentDetailScreen() {
   const isAuthor = me?._id === commitment.userId;
   const isSyncing = commitment.initialSyncStatus === "syncing";
   const effectiveAuthor = isAuthor && !viewAsGuest;
-  const canConnect = isAuthor && !commitment.repo && commitment.status === "building";
+  const canConnect = effectiveAuthor && !commitment.repo && commitment.status === "building";
   const canSync =
-    isAuthor && commitment.repo && !commitment.webhookId && commitment.status === "building";
-  const canPost = isAuthor && commitment.status === "building";
+    effectiveAuthor && commitment.repo && !commitment.webhookId && commitment.status === "building";
+  const canPost = effectiveAuthor && commitment.status === "building";
   const day = daysSince(commitment.firstEntryAt ?? commitment._creationTime);
 
   async function handleSync() {
@@ -120,7 +120,7 @@ export function CommitmentDetailScreen() {
     gitUrl: e.gitUrl,
     gitBranch: e.gitBranch,
     comments: e.commentCount,
-    isOwn: isAuthor,
+    isOwn: effectiveAuthor,
   }));
 
   return (

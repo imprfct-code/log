@@ -63,8 +63,8 @@ export function PostDetailScreen() {
   }
 
   const allAtts = data.resolvedAttachments ?? [];
-  const cover = allAtts[0];
-  const remainingAtts = allAtts.slice(1).filter((a) => !a.inline);
+  const cover = allAtts.find((a) => a.cover);
+  const remainingAtts = allAtts.filter((a) => a.key !== cover?.key && !a.inline);
 
   const detailBody = computeDetailBody(data.body, cover?.key);
 
@@ -94,11 +94,14 @@ export function PostDetailScreen() {
     );
   }
 
-  const commentData = (comments ?? []).map((c) => ({
-    user: c.username,
-    text: c.text,
-    time: formatTimeAgo(c._creationTime),
-  }));
+  const commentData =
+    comments === undefined
+      ? undefined
+      : comments.map((c) => ({
+          user: c.username,
+          text: c.text,
+          time: formatTimeAgo(c._creationTime),
+        }));
 
   return (
     <DetailLayout>
@@ -207,12 +210,13 @@ export function PostDetailScreen() {
         <div className="text-[11px] text-muted-foreground">
           {data.commentCount} {data.commentCount === 1 ? "comment" : "comments"}
         </div>
-        {commentData.length > 0 && (
+        {commentData === undefined ? (
+          <div className="mt-3 text-[11px] text-muted-foreground">loading comments...</div>
+        ) : commentData.length > 0 ? (
           <div className="mt-2">
             <CommentThread comments={commentData} />
           </div>
-        )}
-        {commentData.length === 0 && (
+        ) : (
           <div className="mt-3 border-l-2 border-border-strong px-3.5 py-1.5">
             <CommentInput />
           </div>

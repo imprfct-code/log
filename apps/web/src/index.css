@@ -429,6 +429,7 @@
 
 .plyr__control {
   @apply border border-transparent transition-colors;
+
   color: var(--color-foreground);
   padding: 4px;
 }
@@ -436,6 +437,7 @@
 .plyr__control:hover,
 .plyr__control.active {
   @apply border-border-strong;
+
   color: var(--color-accent);
 }
 
@@ -501,6 +503,7 @@
 
 .video-loading-overlay {
   @apply pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/50;
+
   backdrop-filter: blur(2px);
 }
 
@@ -510,6 +513,7 @@
 
 .video-loading-bars span {
   @apply block h-4 w-1 bg-accent;
+
   animation: loading-bar 0.8s ease-in-out infinite;
 }
 

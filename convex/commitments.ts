@@ -125,7 +125,11 @@ export const listFeed = query({
           .withIndex("by_status_and_lastActivityAt", (q) => q.eq("status", status))
       : ctx.db.query("commitments").withIndex("by_lastActivityAt");
 
-    const page = await baseQuery.order("desc").paginate(paginationOpts);
+    // Paginate with a larger batch to account for filtering
+    const page = await baseQuery.order("desc").paginate({
+      ...paginationOpts,
+      numItems: Math.ceil(paginationOpts.numItems * 1.5),
+    });
 
     // Hide commitments still doing initial sync from the feed entirely
     const visiblePage = page.page.filter((c) => c.initialSyncStatus !== "syncing");
@@ -179,7 +183,11 @@ export const listFeed = query({
       }),
     );
 
-    return { ...page, page: itemsWithData };
+    // Return only the requested number of items
+    return {
+      ...page,
+      page: itemsWithData.slice(0, paginationOpts.numItems),
+    };
   },
 });
 

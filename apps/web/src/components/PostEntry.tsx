@@ -53,11 +53,13 @@ export function PostEntry({
   }
 
   const allAtts = entry.attachments ?? [];
-  const cover = isDetailPage ? allAtts[0] : undefined;
-  const remainingAtts = isDetailPage ? allAtts.slice(1).filter((a) => !a.inline) : [];
+  const cover = isDetailPage ? allAtts.find((a) => a.cover) : undefined;
+  const remainingAtts = isDetailPage
+    ? allAtts.filter((a) => a.key !== cover?.key && !a.inline)
+    : [];
   const detailBody = isDetailPage ? computeDetailBody(entry.body, cover?.key) : undefined;
   const feedThumb = !isDetailPage ? allAtts[0] : undefined;
-  const isCover = feedThumb?.cover ?? feedThumb?.type === "video";
+  const isCover = feedThumb ? feedThumb.type === "video" || feedThumb.cover : false;
   const thumbWidth = feedThumb && entry.body ? parseMediaWidth(entry.body, feedThumb.key) : null;
   const feedBodyStripped = !isDetailPage && entry.body ? stripBodyForPreview(entry.body) : null;
   const feedBodyPreview =

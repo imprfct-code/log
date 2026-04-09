@@ -68,7 +68,7 @@ export async function fetchCommitPage(
   return await res.json();
 }
 
-/** Fetch all branch names for a repo. */
+/** Fetch all branch names for a repo. Throws on API failure. */
 export async function fetchBranches(repo: string, token: string): Promise<string[]> {
   const branches: string[] = [];
   let page = 1;
@@ -78,7 +78,12 @@ export async function fetchBranches(repo: string, token: string): Promise<string
       `https://api.github.com/repos/${repo}/branches?per_page=100&page=${page}`,
       { headers: githubApiHeaders(token) },
     );
-    if (!res.ok) break;
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(
+        `fetchBranches failed for ${repo} (page ${page}): ${res.status} ${res.statusText} ${body}`,
+      );
+    }
     const data: Array<{ name: string }> = await res.json();
     branches.push(...data.map((b) => b.name));
     if (data.length < 100) break;

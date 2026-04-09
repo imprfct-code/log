@@ -12,13 +12,17 @@ const clientApi = r2.clientApi<DataModel>({
     const user = await getUserByToken(ctx);
     if (!user) throw new Error("Not authenticated");
   },
-  checkDelete: async (ctx) => {
+  checkDelete: async (ctx, _bucket, key) => {
     const user = await getUserByToken(ctx);
     if (!user) throw new Error("Not authenticated");
+    // Keys are scoped to user: uploads/{userId}/YYYY-MM-DD/{uuid}
+    if (!key.startsWith(`uploads/${user._id}/`)) {
+      throw new Error("Not authorized to delete this file");
+    }
   },
 });
 
-// Custom generateUploadUrl with structured key: uploads/YYYY-MM-DD/{uuid}
+// Custom generateUploadUrl with user-scoped key: uploads/{userId}/YYYY-MM-DD/{uuid}
 export const generateUploadUrl = mutation({
   args: {},
   returns: v.object({ key: v.string(), url: v.string() }),
@@ -27,7 +31,7 @@ export const generateUploadUrl = mutation({
     if (!user) throw new Error("Not authenticated");
 
     const date = new Date().toISOString().slice(0, 10);
-    const key = `uploads/${date}/${crypto.randomUUID()}`;
+    const key = `uploads/${user._id}/${date}/${crypto.randomUUID()}`;
     return r2.generateUploadUrl(key);
   },
 });

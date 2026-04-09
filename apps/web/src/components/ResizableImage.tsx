@@ -12,13 +12,19 @@ export function ResizableMedia({
   const containerRef = useRef<HTMLSpanElement>(null);
   const [dragging, setDragging] = useState(false);
   const [liveWidth, setLiveWidth] = useState(widthPercent);
+  const liveWidthRef = useRef(widthPercent);
   const startXRef = useRef(0);
   const startWidthPxRef = useRef(0);
   const parentWidthRef = useRef(0);
+  const currentWidthRef = useRef(widthPercent);
 
-  // Sync external changes
+  // Sync external changes and keep currentWidthRef up to date
   useEffect(() => {
-    if (!dragging) setLiveWidth(widthPercent);
+    if (!dragging) {
+      liveWidthRef.current = widthPercent;
+      setLiveWidth(widthPercent);
+      currentWidthRef.current = widthPercent;
+    }
   }, [widthPercent, dragging]);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
@@ -40,7 +46,10 @@ export function ResizableMedia({
       const delta = e.clientX - startXRef.current;
       const newPx = startWidthPxRef.current + delta;
       const pct = Math.round((newPx / parentWidthRef.current) * 100);
-      setLiveWidth(Math.min(100, Math.max(10, pct)));
+      const newWidth = Math.min(100, Math.max(10, pct));
+      liveWidthRef.current = newWidth;
+      setLiveWidth(newWidth);
+      currentWidthRef.current = newWidth;
     },
     [dragging],
   );
@@ -48,8 +57,28 @@ export function ResizableMedia({
   const handlePointerUp = useCallback(() => {
     if (!dragging) return;
     setDragging(false);
-    onResize(liveWidth);
-  }, [dragging, liveWidth, onResize]);
+    onResize(liveWidthRef.current);
+  }, [dragging, onResize]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      const step = 5;
+      let newWidth: number | null = null;
+      if (e.key === "ArrowLeft") {
+        newWidth = Math.max(10, currentWidthRef.current - step);
+        e.preventDefault();
+      } else if (e.key === "ArrowRight") {
+        newWidth = Math.min(100, currentWidthRef.current + step);
+        e.preventDefault();
+      }
+      if (newWidth !== null) {
+        currentWidthRef.current = newWidth;
+        setLiveWidth(newWidth);
+        onResize(newWidth);
+      }
+    },
+    [onResize],
+  );
 
   return (
     <span
@@ -60,15 +89,19 @@ export function ResizableMedia({
       {children}
 
       {/* Right-edge drag handle */}
-      <span
+      <button
+        type="button"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
-        className="absolute top-0 right-0 flex h-full w-2 cursor-col-resize items-center justify-center opacity-0 transition-opacity group-hover/resize:opacity-100"
+        onKeyDown={handleKeyDown}
+        aria-label="Resize image"
+        className="absolute top-0 right-0 flex h-full w-2 cursor-col-resize items-center justify-center border-none bg-transparent p-0 opacity-0 transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent focus-visible:opacity-100 group-hover/resize:opacity-100"
+        tabIndex={0}
       >
         <span className="h-8 w-1 bg-accent/60" />
-      </span>
+      </button>
 
       {/* Width badge — visible while dragging */}
       {dragging && (

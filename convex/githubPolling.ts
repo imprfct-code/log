@@ -110,10 +110,13 @@ export const dispatchPolling = internalAction({
       if (existing) {
         existing.commitmentIds.push(t.commitmentId);
         existing.userIds.push(t.userId);
-        if (
-          t.latestCommitTime !== undefined &&
-          (existing.oldestCommitTime === undefined ||
-            t.latestCommitTime < existing.oldestCommitTime)
+        // If any target has no commits yet (undefined), clear the group's oldest time
+        // so the poll fetches full history instead of using a `since` cutoff.
+        if (t.latestCommitTime === undefined) {
+          existing.oldestCommitTime = undefined;
+        } else if (
+          existing.oldestCommitTime !== undefined &&
+          t.latestCommitTime < existing.oldestCommitTime
         ) {
           existing.oldestCommitTime = t.latestCommitTime;
         }

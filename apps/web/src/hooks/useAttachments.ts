@@ -191,6 +191,8 @@ export function useAttachments({
       }
 
       const toUpload = files.slice(0, remaining);
+      // Reserve slots immediately to prevent concurrent batches from exceeding the limit
+      countRef.current += toUpload.length;
       setError(null);
       inFlightRef.current++;
       setIsUploading(true);
@@ -240,6 +242,8 @@ export function useAttachments({
           })),
         ]);
       } catch (err) {
+        // Release reserved slots on failure so they can be reused
+        countRef.current -= toUpload.length;
         setError(err instanceof Error ? err.message : "Upload failed. Please try again.");
       } finally {
         inFlightRef.current--;

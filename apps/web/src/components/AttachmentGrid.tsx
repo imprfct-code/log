@@ -28,7 +28,7 @@ export function AttachmentGrid({ attachments }: { attachments: Attachment[] }) {
           <div key={att.key} className="group/img relative">
             <img
               src={att.url}
-              alt=""
+              alt={att.filename || "attachment"}
               loading="lazy"
               className={cn(
                 "w-full border border-border object-cover",
@@ -38,7 +38,7 @@ export function AttachmentGrid({ attachments }: { attachments: Attachment[] }) {
             <div className="pointer-events-none absolute right-0 bottom-full z-10 mb-2 origin-bottom-right scale-95 opacity-0 transition-all duration-200 group-hover/img:scale-100 group-hover/img:opacity-100">
               <img
                 src={att.url}
-                alt=""
+                alt={att.filename || "attachment"}
                 className="w-72 border border-border-strong object-cover shadow-lg shadow-black/40"
               />
             </div>

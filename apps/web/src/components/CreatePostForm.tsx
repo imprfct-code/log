@@ -13,9 +13,9 @@ import {
 } from "@/hooks/useAttachments";
 import { MarkdownBody } from "./MarkdownBody";
 
-const CHAR_SOFT_LIMIT = 10_000;
-const CHAR_WARN_THRESHOLD = 8_000;
-const CHAR_DANGER_THRESHOLD = 9_500;
+const CHAR_SOFT_LIMIT = 20_000;
+const CHAR_WARN_THRESHOLD = 16_000;
+const CHAR_DANGER_THRESHOLD = 19_000;
 
 interface EditData {
   id: Id<"devlogEntries">;
@@ -158,6 +158,7 @@ export function CreatePostForm({
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      if (!canSubmit) return;
       e.preventDefault();
       void handleSubmit();
     }

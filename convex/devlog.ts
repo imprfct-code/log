@@ -166,13 +166,17 @@ export const update = mutation({
       throw new Error("Post cannot be empty");
     }
 
-    // Delete removed attachments from R2
+    // Delete removed attachments from R2 (best-effort: log failures, don't abort the mutation)
     if (args.attachments !== undefined) {
       const oldKeys = new Set((entry.attachments ?? []).map((a) => a.key));
       const newKeys = new Set(args.attachments.map((a) => a.key));
       for (const oldKey of oldKeys) {
         if (!newKeys.has(oldKey)) {
-          await r2.deleteObject(ctx, oldKey);
+          try {
+            await r2.deleteObject(ctx, oldKey);
+          } catch (err) {
+            console.error("Failed to delete R2 object during update", { key: oldKey, err });
+          }
         }
       }
     }
@@ -202,9 +206,13 @@ export const remove = mutation({
     if (entry.userId !== user._id) throw new Error("Not the owner");
     if (entry.type !== "post") throw new Error("Can only delete posts");
 
-    // Delete attachments from R2
+    // Delete attachments from R2 (best-effort: log failures, don't abort the removal)
     for (const att of entry.attachments ?? []) {
-      await r2.deleteObject(ctx, att.key);
+      try {
+        await r2.deleteObject(ctx, att.key);
+      } catch (err) {
+        console.error("Failed to delete R2 object during remove", { key: att.key, err });
+      }
     }
 
     // Delete associated comments
