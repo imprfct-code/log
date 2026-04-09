@@ -40,6 +40,7 @@ interface RawFeedItem {
   repo?: string;
   isPrivate?: boolean;
   status: "building" | "shipped";
+  initialSyncStatus?: "syncing" | "ready";
   activity: number[];
   commentCount: number;
   respectCount: number;

@@ -88,10 +88,21 @@ export const getById = query({
       .order("asc")
       .first();
 
+    // Sync progress during initial backfill
+    let syncedCount: number | undefined;
+    if (commitment.initialSyncStatus === "syncing") {
+      const all = await ctx.db
+        .query("devlogEntries")
+        .withIndex("by_commitmentId", (q) => q.eq("commitmentId", id))
+        .collect();
+      syncedCount = all.length;
+    }
+
     return {
       ...commitment,
       activity: currentWeekActivity(commitment.activity, commitment.lastActivityAt),
       firstEntryAt: firstEntry?.committedAt,
+      syncedCount,
       user,
       showMessages,
       showHashes,
@@ -116,8 +127,11 @@ export const listFeed = query({
 
     const page = await baseQuery.order("desc").paginate(paginationOpts);
 
+    // Hide commitments still doing initial sync from the feed entirely
+    const visiblePage = page.page.filter((c) => c.initialSyncStatus !== "syncing");
+
     const itemsWithData = await Promise.all(
-      page.page.map(async (commitment) => {
+      visiblePage.map(async (commitment) => {
         const user = await ctx.db.get(commitment.userId);
         const isAuthor = viewer !== null && viewer._id === commitment.userId;
         const flags = computeVisibility({
@@ -184,8 +198,10 @@ export const search = query({
 
     const results = await q.take(20);
 
+    const visibleResults = results.filter((c) => c.initialSyncStatus !== "syncing");
+
     return await Promise.all(
-      results.map(async (commitment) => {
+      visibleResults.map(async (commitment) => {
         const user = await ctx.db.get(commitment.userId);
         const isAuthor = viewer !== null && viewer._id === commitment.userId;
         const flags = computeVisibility({
@@ -250,7 +266,7 @@ export const connectRepo = mutation({
 
     validateRepo(repo);
 
-    await ctx.db.patch(id, { repo, isPrivate: false });
+    await ctx.db.patch(id, { repo, isPrivate: false, initialSyncStatus: "syncing" });
 
     if (user.clerkUserId) {
       await ctx.scheduler.runAfter(0, internal.github.checkRepoPrivacy, {

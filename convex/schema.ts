@@ -43,6 +43,8 @@ export default defineSchema({
     shippedAt: v.optional(v.number()),
     webhookId: v.optional(v.number()),
     lastPolledAt: v.optional(v.number()),
+    initialSyncStatus: v.optional(v.union(v.literal("syncing"), v.literal("ready"))),
+    syncCurrentBranch: v.optional(v.string()),
     commentCount: v.number(),
     respectCount: v.number(),
     lastActivityAt: v.number(),

@@ -169,5 +169,10 @@ export const pollRepo = internalAction({
     }
 
     await ctx.runMutation(internal.githubPolling.updateLastPolledAt, { commitmentIds });
+
+    // Successful poll means any interrupted initial sync can be considered complete
+    for (const id of commitmentIds) {
+      await ctx.runMutation(internal.github.markInitialSyncComplete, { commitmentId: id });
+    }
   },
 });

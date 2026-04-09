@@ -140,6 +140,29 @@ export const insertGitCommits = internalMutation({
   },
 });
 
+export const updateSyncBranch = internalMutation({
+  args: { commitmentId: v.id("commitments"), branch: v.optional(v.string()) },
+  handler: async (ctx, { commitmentId, branch }) => {
+    const c = await ctx.db.get(commitmentId);
+    if (c && c.initialSyncStatus === "syncing") {
+      await ctx.db.patch(commitmentId, { syncCurrentBranch: branch ?? "default" });
+    }
+  },
+});
+
+export const markInitialSyncComplete = internalMutation({
+  args: { commitmentId: v.id("commitments") },
+  handler: async (ctx, { commitmentId }) => {
+    const c = await ctx.db.get(commitmentId);
+    if (c && c.initialSyncStatus === "syncing") {
+      await ctx.db.patch(commitmentId, {
+        initialSyncStatus: "ready",
+        syncCurrentBranch: undefined,
+      });
+    }
+  },
+});
+
 /** Paginated backfill: fetches one page at a time, self-schedules for the next page/branch. */
 export const backfillAllCommits = internalAction({
   args: {
@@ -151,6 +174,11 @@ export const backfillAllCommits = internalAction({
   },
   handler: async (ctx, { commitmentId, repo, page, branch, remainingBranches }) => {
     const currentPage = page ?? 1;
+
+    // Track which branch we're processing (only on first page of each branch)
+    if (currentPage === 1) {
+      await ctx.runMutation(internal.github.updateSyncBranch, { commitmentId, branch });
+    }
 
     const data = await ctx.runQuery(internal.github.getCommitmentWithUser, { commitmentId });
     if (!data) return;
@@ -175,6 +203,9 @@ export const backfillAllCommits = internalAction({
           branch: remainingBranches[0],
           remainingBranches: remainingBranches.slice(1),
         });
+      } else {
+        // All branches done (last one was empty)
+        await ctx.runMutation(internal.github.markInitialSyncComplete, { commitmentId });
       }
       return;
     }
@@ -204,6 +235,9 @@ export const backfillAllCommits = internalAction({
         branch: remainingBranches[0],
         remainingBranches: remainingBranches.slice(1),
       });
+    } else {
+      // All branches, all pages done — backfill complete
+      await ctx.runMutation(internal.github.markInitialSyncComplete, { commitmentId });
     }
   },
 });
@@ -443,6 +477,9 @@ export const triggerSync = action({
     await ctx.runMutation(internal.githubPolling.updateLastPolledAt, {
       commitmentIds: [commitmentId],
     });
+
+    // Manual sync implies the commitment is ready to show
+    await ctx.runMutation(internal.github.markInitialSyncComplete, { commitmentId });
 
     return { newCommits: rawCommits.length };
   },

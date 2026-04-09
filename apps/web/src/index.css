@@ -324,6 +324,26 @@
   animation: pulse-dot 2s ease-in-out infinite;
 }
 
+@keyframes dots {
+  0% {
+    content: "";
+  }
+  25% {
+    content: ".";
+  }
+  50% {
+    content: "..";
+  }
+  75% {
+    content: "...";
+  }
+}
+
+.dots-loading::after {
+  content: "";
+  animation: dots 1.5s steps(1) infinite;
+}
+
 /* ── Commit preview pulse ── */
 
 @keyframes commit-pulse {
