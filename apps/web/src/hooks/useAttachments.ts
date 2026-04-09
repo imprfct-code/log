@@ -22,7 +22,8 @@ export interface UploadedAttachment {
 
 function validateFile(file: File): string | null {
   if (!ALL_MEDIA_TYPES.includes(file.type)) {
-    return `Unsupported file type: ${file.type}`;
+    const ext = file.name.includes(".") ? `.${file.name.split(".").pop()}` : file.type || "unknown";
+    return `Unsupported file type: ${ext}`;
   }
   const isVideo = VIDEO_TYPES.includes(file.type);
   const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
@@ -82,6 +83,13 @@ export function useAttachments({
   const [uploaded, setUploaded] = useState<UploadedAttachment[]>(initial);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Auto-dismiss errors after 5 seconds
+  useEffect(() => {
+    if (!error) return;
+    const timer = setTimeout(() => setError(null), 5000);
+    return () => clearTimeout(timer);
+  }, [error]);
 
   // Refs for concurrent upload tracking + cleanup on unmount
   const countRef = useRef(uploaded.length);
