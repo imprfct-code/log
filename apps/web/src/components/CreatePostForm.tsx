@@ -84,12 +84,30 @@ export function CreatePostForm({
     initial: toInitialAttachments(editEntry),
   });
 
-  // Auto-grow textarea (also re-trigger when switching back from preview)
+  // Auto-grow textarea (also re-trigger when switching back from preview).
+  // After growing, nudge the viewport so the caret stays visible — the
+  // browser only auto-scrolls when the element itself overflows internally,
+  // which never happens here because we resize to fit.
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
+
+    const prevHeight = el.offsetHeight;
     el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
+    const newHeight = el.scrollHeight;
+    el.style.height = `${newHeight}px`;
+
+    if (document.activeElement === el && newHeight > prevHeight) {
+      requestAnimationFrame(() => {
+        const rect = el.getBoundingClientRect();
+        if (rect.bottom > window.innerHeight) {
+          window.scrollBy({
+            top: rect.bottom - window.innerHeight + 16,
+            behavior: "instant",
+          });
+        }
+      });
+    }
   }, [content, showPreview]);
 
   function handleClose() {
