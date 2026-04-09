@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type DragEvent, type ClipboardEvent } from "react";
+import { useState, useRef, useEffect, useMemo, type DragEvent, type ClipboardEvent } from "react";
 import { useMutation } from "convex/react";
 import { useUploadFile } from "@convex-dev/r2/react";
 import { api } from "@convex/_generated/api";
@@ -12,6 +12,13 @@ import {
   type UploadedAttachment,
 } from "@/hooks/useAttachments";
 import { MarkdownBody } from "./MarkdownBody";
+
+const POST_PLACEHOLDERS = [
+  "what did you build today?",
+  "document the journey...",
+  "what's the progress?",
+  "tell the story behind the commits...",
+] as const;
 
 const CHAR_SOFT_LIMIT = 20_000;
 const CHAR_WARN_THRESHOLD = 16_000;
@@ -53,6 +60,10 @@ export function CreatePostForm({
   onClose: () => void;
 }) {
   const isEditing = !!editEntry;
+  const placeholder = useMemo(
+    () => POST_PLACEHOLDERS[Math.floor(Math.random() * POST_PLACEHOLDERS.length)],
+    [],
+  );
   const [content, setContent] = useState(editEntry?.body ?? "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -231,7 +242,7 @@ export function CreatePostForm({
           onChange={(e) => setContent(e.target.value)}
           onPaste={handlePaste}
           onKeyDown={handleKeyDown}
-          placeholder="write something... drop media to embed inline"
+          placeholder={placeholder}
           className="w-full resize-none border-none bg-transparent font-mono text-[13px] text-foreground-bright placeholder:text-[#333] focus:outline-none"
           style={{ minHeight: "80px" }}
           autoFocus
