@@ -114,7 +114,16 @@ export async function fetchNewCommitsAllBranches(
   }
 
   // Check other branches
-  const branches = await fetchBranches(repo, token);
+  let branches: string[] = [];
+  try {
+    branches = await fetchBranches(repo, token);
+  } catch (err) {
+    console.error("Failed to fetch branches, continuing with already-collected commits", {
+      repo,
+      err,
+    });
+  }
+
   for (const branch of branches) {
     const commits = await fetchCommitPage(repo, token, 1, { since, sha: branch });
     if (commits === null) break; // Rate limited — stop fetching

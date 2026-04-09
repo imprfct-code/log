@@ -40,7 +40,7 @@ interface EditData {
     key: string;
     type: "image" | "video";
     filename: string;
-    inline?: boolean;
+    hasMarkdownRef?: boolean;
     cover?: boolean;
     duration?: number;
   }>;
@@ -53,7 +53,7 @@ function toInitialAttachments(edit?: EditData): UploadedAttachment[] {
     type: att.type,
     filename: att.filename,
     previewUrl: att.url,
-    inline: att.inline ?? false,
+    hasMarkdownRef: att.hasMarkdownRef ?? false,
     duration: att.duration,
   }));
 }
@@ -156,7 +156,7 @@ export function CreatePostForm({
     attachments.setError(null);
 
     try {
-      // Detect orphaned inline attachments: inline keys not referenced in body
+      // Detect orphaned attachments: keys not referenced in body
       const referencedKeys = new Set<string>();
       const refPattern = /!\[.*?\]\(upload:([^)]+)\)/g;
       let match;
@@ -165,12 +165,12 @@ export function CreatePostForm({
       }
 
       const atts = attachments.uploaded
-        .filter((att) => !att.inline || referencedKeys.has(att.key))
-        .map(({ key, type, filename, inline, duration }, i) => ({
+        .filter((att) => !att.hasMarkdownRef || referencedKeys.has(att.key))
+        .map(({ key, type, filename, hasMarkdownRef, duration }, i) => ({
           key,
           type,
           filename,
-          inline,
+          hasMarkdownRef,
           cover: i === 0,
           duration,
         }));
@@ -248,7 +248,7 @@ export function CreatePostForm({
     key: att.key,
     type: att.type,
     filename: att.filename,
-    inline: att.inline,
+    hasMarkdownRef: att.hasMarkdownRef,
   }));
 
   return (

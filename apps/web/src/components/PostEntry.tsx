@@ -62,7 +62,7 @@ export function PostEntry({
   const allAtts = entry.attachments ?? [];
   const cover = isDetailPage ? allAtts[0] : undefined;
   const remainingAtts = isDetailPage
-    ? allAtts.filter((a) => a.key !== cover?.key && !a.inline)
+    ? allAtts.filter((a) => a.key !== cover?.key && !a.hasMarkdownRef)
     : [];
   const detailBody = isDetailPage ? computeDetailBody(entry.body, cover?.key) : undefined;
   const feedThumb = !isDetailPage ? allAtts[0] : undefined;

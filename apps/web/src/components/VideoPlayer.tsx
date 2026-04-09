@@ -150,7 +150,10 @@ function VideoPlayerInner({ url, title, mode = "full", duration }: VideoPlayerPr
 
     requestAnimationFrame(() => {
       initPlyr(INLINE_CONTROLS);
-      void videoRef.current?.play();
+      videoRef.current?.play().catch((err) => {
+        console.debug("Autoplay blocked", err);
+        setIsLoading(false);
+      });
     });
   }
 

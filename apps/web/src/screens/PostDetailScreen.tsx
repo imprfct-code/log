@@ -66,7 +66,7 @@ export function PostDetailScreen() {
 
   const allAtts = data.resolvedAttachments ?? [];
   const cover = allAtts.find((a) => a.cover);
-  const remainingAtts = allAtts.filter((a) => a.key !== cover?.key && !a.inline);
+  const remainingAtts = allAtts.filter((a) => a.key !== cover?.key && !a.hasMarkdownRef);
 
   const detailBody = computeDetailBody(data.body, cover?.key);
   const isUnified = needsUnifiedDisplay(data.body);

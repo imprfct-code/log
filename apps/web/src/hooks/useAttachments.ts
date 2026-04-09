@@ -14,7 +14,7 @@ export interface UploadedAttachment {
   type: "image" | "video";
   filename: string;
   previewUrl: string;
-  inline: boolean;
+  hasMarkdownRef: boolean;
   duration?: number;
 }
 
@@ -104,7 +104,7 @@ export function useAttachments({
     uploadedRef.current = uploaded;
   }, [uploaded]);
 
-  // Sync: remove inline attachments whose references were deleted from text
+  // Sync: remove attachments with markdown refs that were deleted from text
   useEffect(() => {
     if (inFlightRef.current > 0) return;
     const refPattern = /!\[.*?\]\(upload:([^)]+)\)/g;
@@ -114,7 +114,7 @@ export function useAttachments({
       referencedKeys.add(match[1]);
     }
     setUploaded((prev) => {
-      const filtered = prev.filter((att) => !att.inline || referencedKeys.has(att.key));
+      const filtered = prev.filter((att) => !att.hasMarkdownRef || referencedKeys.has(att.key));
       return filtered.length === prev.length ? prev : filtered;
     });
   }, [content]);
@@ -185,7 +185,7 @@ export function useAttachments({
             type: isVideo ? "video" : "image",
             filename: file.name,
             previewUrl,
-            inline: true,
+            hasMarkdownRef: true,
             duration,
           },
         ]);
@@ -258,7 +258,7 @@ export function useAttachments({
             type: r.type,
             filename: r.file.name,
             previewUrl: r.previewUrl,
-            inline: true,
+            hasMarkdownRef: true,
             duration: r.duration,
           })),
         ]);
@@ -278,7 +278,7 @@ export function useAttachments({
     const att = uploaded[index];
     if (!att) return;
 
-    if (att.inline) {
+    if (att.hasMarkdownRef) {
       // Match with optional width suffix: ![name](…) or ![name|44%](…)
       const escapedName = att.filename.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const escapedKey = att.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

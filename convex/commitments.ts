@@ -6,6 +6,7 @@ import { currentWeekActivity } from "./dates";
 import { getUserByToken } from "./users";
 import { computeVisibility, redactEntry } from "./privacy";
 import { resolveAttachments } from "./devlog";
+import { r2 } from "./r2";
 
 const REPO_RE = /^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/;
 
@@ -356,12 +357,20 @@ export const devDelete = internalMutation({
       await ctx.db.delete(r._id);
     }
 
-    // 3. Delete devlog entries
+    // 3. Delete devlog entries (with R2 cleanup)
     const entries = await ctx.db
       .query("devlogEntries")
       .withIndex("by_commitmentId", (q) => q.eq("commitmentId", commitmentId))
       .collect();
     for (const e of entries) {
+      // Delete attachments from R2 (best-effort: log failures, don't abort the removal)
+      for (const att of e.attachments ?? []) {
+        try {
+          await r2.deleteObject(ctx, att.key);
+        } catch (err) {
+          console.error("Failed to delete R2 object during devDelete", { key: att.key, err });
+        }
+      }
       await ctx.db.delete(e._id);
     }
 

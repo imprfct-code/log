@@ -49,7 +49,7 @@ export async function resolveAttachments(
     key: string;
     type: "image" | "video";
     filename: string;
-    inline?: boolean;
+    hasMarkdownRef?: boolean;
     cover?: boolean;
     duration?: number;
   }>,
@@ -59,7 +59,7 @@ export async function resolveAttachments(
     key: string;
     type: "image" | "video";
     filename: string;
-    inline: boolean;
+    hasMarkdownRef: boolean;
     cover?: boolean;
     duration?: number;
   }>
@@ -71,7 +71,7 @@ export async function resolveAttachments(
       key: att.key,
       type: att.type,
       filename: att.filename,
-      inline: att.inline ?? false,
+      hasMarkdownRef: att.hasMarkdownRef ?? false,
       cover: att.cover,
       duration: att.duration,
     })),

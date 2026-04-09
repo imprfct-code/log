@@ -38,10 +38,11 @@ export function ImageLightbox({
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "";
+      document.body.style.overflow = previousOverflow;
     };
   }, [handleKeyDown]);
 
@@ -81,12 +82,14 @@ export function ImageLightbox({
         </>
       )}
 
-      <img
-        key={index}
-        src={images[index]}
-        alt=""
-        className="max-h-[90vh] max-w-[min(90vw,calc(100vw-6rem))] object-contain animate-in fade-in zoom-in-95 duration-200"
-      />
+      {images && images.length > 0 && (
+        <img
+          key={index}
+          src={images[index]}
+          alt=""
+          className="max-h-[90vh] max-w-[min(90vw,calc(100vw-6rem))] object-contain animate-in fade-in zoom-in-95 duration-200"
+        />
+      )}
 
       <div className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-3">
         {multi && (
