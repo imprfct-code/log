@@ -6,12 +6,14 @@ export function CoverMedia({
   type,
   duration,
   widthPercent,
+  onImageClick,
 }: {
   url: string;
   storageKey?: string;
   type: "image" | "video";
   duration?: number;
   widthPercent?: number | null;
+  onImageClick?: (url: string) => void;
 }) {
   const wrapper = widthPercent ? { width: `${widthPercent}%` } : undefined;
 
@@ -24,12 +26,18 @@ export function CoverMedia({
   }
   return (
     <div style={wrapper}>
-      <img
-        src={url}
-        alt=""
-        loading="lazy"
-        className="mt-2 w-full max-h-80 border border-border object-cover"
-      />
+      <button
+        type="button"
+        onClick={() => onImageClick?.(url)}
+        className="mt-2 block w-full cursor-pointer border-none bg-transparent p-0"
+      >
+        <img
+          src={url}
+          alt=""
+          loading="lazy"
+          className="w-full border border-border transition-opacity hover:opacity-80"
+        />
+      </button>
     </div>
   );
 }

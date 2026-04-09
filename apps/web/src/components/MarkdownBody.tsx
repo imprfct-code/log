@@ -20,12 +20,15 @@ export function MarkdownBody({
   className,
   attachments,
   onImageResize,
+  onImageClick,
 }: {
   content: string;
   className?: string;
   attachments?: Attachment[];
   /** Editor callback: called with (src, newWidthPercent) when the user drags the slider. */
   onImageResize?: (src: string, width: number) => void;
+  /** View callback: called with resolved URL when user clicks an image. */
+  onImageClick?: (url: string) => void;
 }) {
   // Build key → { url, type, duration } lookup for resolving upload:KEY references
   const urlMap = useMemo(() => {
@@ -225,6 +228,25 @@ export function MarkdownBody({
                 <ResizableMedia widthPercent={width} onResize={(w) => onImageResize(rawSrc, w)}>
                   {imageEl}
                 </ResizableMedia>
+              );
+            }
+
+            if (onImageClick) {
+              return (
+                <button
+                  type="button"
+                  onClick={() => onImageClick(resolvedSrc)}
+                  className="my-2 block cursor-pointer border-none bg-transparent p-0"
+                  style={{ width: `${width}%` }}
+                >
+                  <img
+                    src={resolvedSrc}
+                    alt={cleanAlt}
+                    loading="lazy"
+                    className="w-full border border-border transition-opacity hover:opacity-80"
+                    {...props}
+                  />
+                </button>
               );
             }
 

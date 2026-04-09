@@ -2,7 +2,13 @@ import { cn } from "@/lib/utils";
 import type { Attachment } from "@/types";
 import { VideoPlayer } from "./VideoPlayer";
 
-export function AttachmentGrid({ attachments }: { attachments: Attachment[] }) {
+export function AttachmentGrid({
+  attachments,
+  onImageClick,
+}: {
+  attachments: Attachment[];
+  onImageClick?: (url: string) => void;
+}) {
   if (attachments.length === 0) return null;
 
   const count = attachments.length;
@@ -16,7 +22,7 @@ export function AttachmentGrid({ attachments }: { attachments: Attachment[] }) {
             <div
               key={att.key}
               className={cn(
-                "w-full border border-border overflow-hidden",
+                "w-full overflow-hidden border border-border",
                 count === 1 ? "max-h-96" : "h-56",
               )}
             >
@@ -25,24 +31,22 @@ export function AttachmentGrid({ attachments }: { attachments: Attachment[] }) {
           );
         }
         return (
-          <div key={att.key} className="group/img relative">
+          <button
+            key={att.key}
+            type="button"
+            onClick={() => onImageClick?.(att.url)}
+            className="cursor-pointer border-none bg-transparent p-0"
+          >
             <img
               src={att.url}
               alt={att.filename || "attachment"}
               loading="lazy"
               className={cn(
-                "w-full border border-border object-cover",
+                "w-full border border-border object-cover transition-opacity hover:opacity-80",
                 count === 1 ? "max-h-48" : "h-40",
               )}
             />
-            <div className="pointer-events-none absolute right-0 bottom-full z-10 mb-2 origin-bottom-right scale-95 opacity-0 transition-all duration-200 group-hover/img:scale-100 group-hover/img:opacity-100">
-              <img
-                src={att.url}
-                alt={att.filename || "attachment"}
-                className="w-72 border border-border-strong object-cover shadow-lg shadow-black/40"
-              />
-            </div>
-          </div>
+          </button>
         );
       })}
     </div>

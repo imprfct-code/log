@@ -57,6 +57,28 @@ export function CommitmentDetailScreen() {
   );
   const triggerSync = useAction(api.github.triggerSync);
 
+  const isAuthor = !!data && !!me && me._id === data.userId;
+  const effectiveAuthor = isAuthor && !viewAsGuest;
+
+  const devlog: DevlogEntryType[] = useMemo(
+    () =>
+      entries.map((e) => ({
+        id: e._id,
+        type: e.type,
+        text: e.text,
+        body: e.body,
+        attachments: e.resolvedAttachments,
+        time: formatTimeAgo(e.committedAt ?? e._creationTime),
+        hash: e.hash,
+        gitAuthor: e.gitAuthor,
+        gitUrl: e.gitUrl,
+        gitBranch: e.gitBranch,
+        comments: e.commentCount,
+        isOwn: effectiveAuthor,
+      })),
+    [entries, effectiveAuthor],
+  );
+
   if (!commitmentId) {
     return (
       <DetailLayout>
@@ -82,9 +104,7 @@ export function CommitmentDetailScreen() {
   }
 
   const { user, showMessages, showHashes, showBranches, ...commitment } = data;
-  const isAuthor = me?._id === commitment.userId;
   const isSyncing = commitment.initialSyncStatus === "syncing";
-  const effectiveAuthor = isAuthor && !viewAsGuest;
   const canConnect = effectiveAuthor && !commitment.repo && commitment.status === "building";
   const canSync =
     effectiveAuthor && commitment.repo && !commitment.webhookId && commitment.status === "building";
@@ -107,25 +127,6 @@ export function CommitmentDetailScreen() {
       setSyncing(false);
     }
   }
-
-  const devlog: DevlogEntryType[] = useMemo(
-    () =>
-      entries.map((e) => ({
-        id: e._id,
-        type: e.type,
-        text: e.text,
-        body: e.body,
-        attachments: e.resolvedAttachments,
-        time: formatTimeAgo(e.committedAt ?? e._creationTime),
-        hash: e.hash,
-        gitAuthor: e.gitAuthor,
-        gitUrl: e.gitUrl,
-        gitBranch: e.gitBranch,
-        comments: e.commentCount,
-        isOwn: effectiveAuthor,
-      })),
-    [entries, effectiveAuthor],
-  );
 
   return (
     <DetailLayout>

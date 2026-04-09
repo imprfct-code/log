@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { Pencil, Trash2 } from "lucide-react";
+import { ImageLightbox } from "@/components/ImageLightbox";
 import { MarkdownBody } from "@/components/MarkdownBody";
 import { CoverMedia } from "@/components/CoverMedia";
 import { AttachmentGrid } from "@/components/AttachmentGrid";
@@ -36,6 +37,7 @@ export function PostDetailScreen() {
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const removePost = useMutation(api.devlog.remove);
 
   if (!entryId) {
@@ -68,6 +70,11 @@ export function PostDetailScreen() {
 
   const detailBody = computeDetailBody(data.body, cover?.key);
   const isUnified = needsUnifiedDisplay(data.body);
+  const allImageUrls = allAtts.filter((a) => a.type === "image").map((a) => a.url);
+  function openLightbox(url: string) {
+    const idx = allImageUrls.indexOf(url);
+    setLightboxIndex(idx >= 0 ? idx : 0);
+  }
 
   const timestamp = formatTimeAgo(data.committedAt ?? data._creationTime);
 
@@ -145,16 +152,23 @@ export function PostDetailScreen() {
             type={cover.type}
             duration={cover.duration}
             widthPercent={data.body ? parseMediaWidth(data.body, cover.key) : null}
+            onImageClick={openLightbox}
           />
         )}
 
         {detailBody && (
           <div className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
-            <MarkdownBody content={detailBody} attachments={data.resolvedAttachments} />
+            <MarkdownBody
+              content={detailBody}
+              attachments={data.resolvedAttachments}
+              onImageClick={openLightbox}
+            />
           </div>
         )}
 
-        {remainingAtts.length > 0 && <AttachmentGrid attachments={remainingAtts} />}
+        {remainingAtts.length > 0 && (
+          <AttachmentGrid attachments={remainingAtts} onImageClick={openLightbox} />
+        )}
 
         {data.isOwn && (
           <div className="mt-4 flex items-center gap-3 text-[11px]">
@@ -225,6 +239,14 @@ export function PostDetailScreen() {
           </div>
         )}
       </div>
+
+      {lightboxIndex !== null && (
+        <ImageLightbox
+          images={allImageUrls}
+          initialIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      )}
     </DetailLayout>
   );
 }

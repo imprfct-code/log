@@ -12,6 +12,7 @@ import {
   needsUnifiedDisplay,
 } from "@/lib/postContent";
 import { CommentBadge } from "./CommentBadge";
+import { ImageLightbox } from "./ImageLightbox";
 import { MarkdownBody } from "./MarkdownBody";
 import { CreatePostForm } from "./CreatePostForm";
 import { AttachmentGrid } from "./AttachmentGrid";
@@ -37,6 +38,7 @@ export function PostEntry({
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const removePost = useMutation(api.devlog.remove);
   const showPulse = isLatest && status === "building";
 
@@ -63,14 +65,22 @@ export function PostEntry({
     ? allAtts.filter((a) => a.key !== cover?.key && !a.inline)
     : [];
   const detailBody = isDetailPage ? computeDetailBody(entry.body, cover?.key) : undefined;
-  const isUnified = needsUnifiedDisplay(entry.body);
   const feedThumb = !isDetailPage ? allAtts[0] : undefined;
+  const bodyTextOnly = entry.body?.replace(/!\[[^\]]*?\]\([^)]+\)/g, "").trim();
+  const isMediaOnly = !!feedThumb && !bodyTextOnly;
+  const isUnified = !isMediaOnly && needsUnifiedDisplay(entry.body);
   const thumbWidth = feedThumb && entry.body ? parseMediaWidth(entry.body, feedThumb.key) : null;
   const feedBodyStripped = !isDetailPage && entry.body ? stripBodyForPreview(entry.body) : null;
   const feedBodyPreview =
     feedBodyStripped && feedBodyStripped.length > 200
       ? feedBodyStripped.slice(0, 200) + "\u2026"
       : feedBodyStripped;
+
+  const allImageUrls = allAtts.filter((a) => a.type === "image").map((a) => a.url);
+  function openLightbox(url: string) {
+    const idx = allImageUrls.indexOf(url);
+    setLightboxIndex(idx >= 0 ? idx : 0);
+  }
 
   return (
     <div className="relative py-2.5 pl-6">
@@ -155,66 +165,49 @@ export function PostEntry({
               type={cover.type}
               duration={cover.duration}
               widthPercent={entry.body ? parseMediaWidth(entry.body, cover.key) : null}
+              onImageClick={openLightbox}
             />
           )}
           {detailBody && (
             <div className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
-              <MarkdownBody content={detailBody} attachments={entry.attachments} />
+              <MarkdownBody
+                content={detailBody}
+                attachments={entry.attachments}
+                onImageClick={openLightbox}
+              />
             </div>
           )}
-          {remainingAtts.length > 0 && <AttachmentGrid attachments={remainingAtts} />}
+          {remainingAtts.length > 0 && (
+            <AttachmentGrid attachments={remainingAtts} onImageClick={openLightbox} />
+          )}
         </>
       ) : (
         <div className="mt-1">
-          <div className="flex gap-3">
-            <div className="min-w-0 flex-1">
-              {isUnified && entry.body ? (
-                <p className="line-clamp-3 text-[13px] leading-relaxed text-muted-foreground">
-                  <Link
-                    to={`/post/${entry.id}`}
-                    className="text-muted-foreground no-underline transition-colors hover:text-accent"
-                  >
+          {!isMediaOnly && (
+            <div className="flex gap-3">
+              <div className="min-w-0 flex-1">
+                {isUnified && entry.body ? (
+                  <p className="line-clamp-3 text-[13px] leading-relaxed text-muted-foreground">
                     {entry.body.length > 200 ? entry.body.slice(0, 200) + "\u2026" : entry.body}
-                  </Link>
-                  {entry.body.length > 200 && (
-                    <Link
-                      to={`/post/${entry.id}`}
-                      className="text-[11px] text-muted-foreground no-underline transition-colors hover:text-accent"
-                    >
-                      {" "}
-                      read more
-                    </Link>
-                  )}
-                </p>
-              ) : (
-                <>
-                  <Link
-                    to={`/post/${entry.id}`}
-                    className="block text-[13px] font-semibold text-foreground-bright no-underline transition-colors hover:text-accent"
-                  >
-                    {entry.text}
-                  </Link>
-                  {feedBodyPreview && (
-                    <p className="mt-0.5 line-clamp-3 text-[12px] leading-relaxed text-muted-foreground">
-                      {feedBodyPreview}
-                      {feedBodyStripped && feedBodyStripped.length > 200 ? (
-                        <Link
-                          to={`/post/${entry.id}`}
-                          className="text-[11px] text-muted-foreground no-underline transition-colors hover:text-accent"
-                        >
-                          {" "}
-                          read more
-                        </Link>
-                      ) : null}
-                    </p>
-                  )}
-                </>
-              )}
+                  </p>
+                ) : (
+                  <>
+                    <span className="block text-[13px] font-semibold text-foreground-bright">
+                      {entry.text}
+                    </span>
+                    {feedBodyPreview && (
+                      <p className="mt-0.5 line-clamp-3 text-[12px] leading-relaxed text-muted-foreground">
+                        {feedBodyPreview}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
-          </div>
+          )}
           {feedThumb && (
             <div
-              className="mt-2 overflow-hidden"
+              className={cn("overflow-hidden", isMediaOnly ? "mt-1" : "mt-2")}
               style={thumbWidth ? { width: `${thumbWidth}%` } : undefined}
             >
               {feedThumb.type === "video" ? (
@@ -225,17 +218,36 @@ export function PostEntry({
                   duration={feedThumb.duration}
                 />
               ) : (
-                <Link to={`/post/${entry.id}`}>
+                <button
+                  type="button"
+                  onClick={() => openLightbox(feedThumb.url)}
+                  className="block w-full cursor-pointer border-none bg-transparent p-0"
+                >
                   <img
                     src={feedThumb.url}
                     alt=""
                     className="w-full border border-border object-cover transition-opacity hover:opacity-80"
                   />
-                </Link>
+                </button>
               )}
             </div>
           )}
+          <Link
+            to={`/post/${entry.id}`}
+            className="mt-1.5 inline-block text-[11px] text-[#333] no-underline transition-colors hover:text-muted-foreground"
+          >
+            read more →
+          </Link>
         </div>
+      )}
+
+      {lightboxIndex !== null && (
+        <ImageLightbox
+          images={allImageUrls}
+          initialIndex={lightboxIndex}
+          postHref={`/post/${entry.id}`}
+          onClose={() => setLightboxIndex(null)}
+        />
       )}
 
       {/* Legacy single image support */}
