@@ -68,15 +68,24 @@ export async function fetchCommitPage(
   return await res.json();
 }
 
-/** Fetch all branch names for a repo (up to 100). */
+/** Fetch all branch names for a repo. */
 export async function fetchBranches(repo: string, token: string): Promise<string[]> {
-  const res = await fetch(`https://api.github.com/repos/${repo}/branches?per_page=100`, {
-    headers: githubApiHeaders(token),
-  });
+  const branches: string[] = [];
+  let page = 1;
 
-  if (!res.ok) return [];
-  const data: Array<{ name: string }> = await res.json();
-  return data.map((b) => b.name);
+  while (true) {
+    const res = await fetch(
+      `https://api.github.com/repos/${repo}/branches?per_page=100&page=${page}`,
+      { headers: githubApiHeaders(token) },
+    );
+    if (!res.ok) break;
+    const data: Array<{ name: string }> = await res.json();
+    branches.push(...data.map((b) => b.name));
+    if (data.length < 100) break;
+    page++;
+  }
+
+  return branches;
 }
 
 /** Fetch new commits from all branches since a given time. Dedup by SHA. */
@@ -85,15 +94,22 @@ export async function fetchNewCommitsAllBranches(
   token: string,
   since?: string,
 ): Promise<GitHubCommitWithBranch[]> {
-  const branches = await fetchBranches(repo, token);
-  if (branches.length === 0) {
-    const page = await fetchCommitPage(repo, token, 1, { since });
-    return page ?? [];
-  }
-
   const seen = new Set<string>();
   const allCommits: GitHubCommitWithBranch[] = [];
 
+  // Always check the default branch first (GitHub returns default branch when sha is omitted)
+  const defaultPage = await fetchCommitPage(repo, token, 1, { since });
+  if (defaultPage) {
+    for (const c of defaultPage) {
+      if (!seen.has(c.sha)) {
+        seen.add(c.sha);
+        allCommits.push(c);
+      }
+    }
+  }
+
+  // Check other branches
+  const branches = await fetchBranches(repo, token);
   for (const branch of branches) {
     const commits = await fetchCommitPage(repo, token, 1, { since, sha: branch });
     if (commits === null) break; // Rate limited — stop fetching

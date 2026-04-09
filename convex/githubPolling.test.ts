@@ -131,23 +131,33 @@ describe("getPollingTargets", () => {
     expect(targets).toHaveLength(0);
   });
 
-  test("includes lastPolledAt in targets", async () => {
+  test("includes latestCommitTime from entries", async () => {
     const t = testCtx();
     const userId = await setupPollingUser(t);
 
-    await t.run(async (ctx) => {
-      await ctx.db.insert("commitments", {
+    const commitmentId = await t.run(async (ctx) => {
+      return await ctx.db.insert("commitments", {
         ...commitmentDefaults(userId),
         repo: "owner/repo",
-        lastPolledAt: BASE_TIME - 60_000,
+      });
+    });
+
+    await t.run(async (ctx) => {
+      await ctx.db.insert("devlogEntries", {
+        commitmentId,
+        userId,
+        type: "git_commit",
+        text: "test commit",
+        committedAt: BASE_TIME - 60_000,
+        commentCount: 0,
       });
     });
 
     const targets = await t.query(internal.githubPolling.getPollingTargets, {});
-    expect(targets[0].lastPolledAt).toBe(BASE_TIME - 60_000);
+    expect(targets[0].latestCommitTime).toBe(BASE_TIME - 60_000);
   });
 
-  test("returns undefined lastPolledAt when not set", async () => {
+  test("returns undefined latestCommitTime when no entries", async () => {
     const t = testCtx();
     const userId = await setupPollingUser(t);
 
@@ -159,7 +169,7 @@ describe("getPollingTargets", () => {
     });
 
     const targets = await t.query(internal.githubPolling.getPollingTargets, {});
-    expect(targets[0].lastPolledAt).toBeUndefined();
+    expect(targets[0].latestCommitTime).toBeUndefined();
   });
 
   test("returns multiple targets from different repos", async () => {

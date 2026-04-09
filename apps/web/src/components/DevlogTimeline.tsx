@@ -18,6 +18,7 @@ export function DevlogTimeline({
   status,
   isDetailPage = false,
   limit = 4,
+  onLoadMore,
 }: {
   entries: DevlogEntryType[];
   commitmentId: Id<"commitments">;
@@ -30,11 +31,12 @@ export function DevlogTimeline({
   status: "building" | "shipped";
   isDetailPage?: boolean;
   limit?: number;
+  onLoadMore?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [openInputs, setOpenInputs] = useState<Set<string>>(new Set());
 
-  const hasOverflow = entries.length > limit;
+  const hasOverflow = !isDetailPage && entries.length > limit;
 
   function toggleComment(entryId: string) {
     setOpenInputs((prev) => {
@@ -84,7 +86,7 @@ export function DevlogTimeline({
 
   return (
     <div className="relative overflow-visible border-l border-border-strong">
-      {entries.slice(0, limit).map((entry, i) => renderEntry(entry, i))}
+      {(isDetailPage ? entries : entries.slice(0, limit)).map((entry, i) => renderEntry(entry, i))}
 
       {hasOverflow && (
         <div
@@ -106,6 +108,15 @@ export function DevlogTimeline({
           className="cursor-pointer border-none bg-transparent py-1.5 pl-6 font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground"
         >
           {expanded ? "show less" : `+${entries.length - limit} more`}
+        </button>
+      )}
+
+      {isDetailPage && onLoadMore && (
+        <button
+          onClick={onLoadMore}
+          className="cursor-pointer border-none bg-transparent py-1.5 pl-6 font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+        >
+          load more
         </button>
       )}
     </div>

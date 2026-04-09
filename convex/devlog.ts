@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 import { mutation, query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { DAY_MS, utcWeekday, utcMondayOf } from "./dates";
@@ -246,10 +247,11 @@ export const listByCommitment = query({
   args: {
     commitmentId: v.id("commitments"),
     viewAsGuest: v.optional(v.boolean()),
+    paginationOpts: paginationOptsValidator,
   },
-  handler: async (ctx, { commitmentId, viewAsGuest }) => {
+  handler: async (ctx, { commitmentId, viewAsGuest, paginationOpts }) => {
     const commitment = await ctx.db.get(commitmentId);
-    if (!commitment) return [];
+    if (!commitment) return { page: [], isDone: true, continueCursor: "" };
 
     const owner = await ctx.db.get(commitment.userId);
     const viewer = await getUserByToken(ctx);
@@ -262,21 +264,24 @@ export const listByCommitment = query({
     });
 
     // committedAt is set on all new entries. Old entries without it sort last (desc order).
-    const entries = await ctx.db
+    const result = await ctx.db
       .query("devlogEntries")
       .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", commitmentId))
       .order("desc")
-      .take(200);
+      .paginate(paginationOpts);
 
-    return Promise.all(
-      entries.map(async (e) => {
-        const redacted = redactEntry(e, flags, commitment.isPrivate, effectiveAuthor);
-        return {
-          ...redacted,
-          resolvedAttachments: await resolveAttachments(e.attachments),
-        };
-      }),
-    );
+    return {
+      ...result,
+      page: await Promise.all(
+        result.page.map(async (e) => {
+          const redacted = redactEntry(e, flags, commitment.isPrivate, effectiveAuthor);
+          return {
+            ...redacted,
+            resolvedAttachments: await resolveAttachments(e.attachments),
+          };
+        }),
+      ),
+    };
   },
 });
 

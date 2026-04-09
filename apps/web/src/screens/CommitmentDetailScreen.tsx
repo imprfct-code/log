@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
-import { useAction, useQuery } from "convex/react";
+import { useAction, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { Eye, RefreshCw } from "lucide-react";
@@ -46,9 +46,14 @@ export function CommitmentDetailScreen() {
     api.commitments.getById,
     commitmentId ? { id: commitmentId, viewAsGuest } : "skip",
   );
-  const entries = useQuery(
+  const {
+    results: entries,
+    status: paginationStatus,
+    loadMore,
+  } = usePaginatedQuery(
     api.devlog.listByCommitment,
     commitmentId ? { commitmentId, viewAsGuest } : "skip",
+    { initialNumItems: 20 },
   );
   const triggerSync = useAction(api.github.triggerSync);
 
@@ -60,7 +65,7 @@ export function CommitmentDetailScreen() {
     );
   }
 
-  if (data === undefined || entries === undefined) {
+  if (data === undefined || paginationStatus === "LoadingFirstPage") {
     return (
       <DetailLayout>
         <DetailMessage text="loading..." />
@@ -83,7 +88,7 @@ export function CommitmentDetailScreen() {
   const canSync =
     isAuthor && commitment.repo && !commitment.webhookId && commitment.status === "building";
   const canPost = isAuthor && commitment.status === "building";
-  const day = daysSince(commitment._creationTime);
+  const day = daysSince(commitment.firstEntryAt ?? commitment._creationTime);
 
   async function handleSync() {
     if (!commitmentId || syncing) return;
@@ -227,7 +232,11 @@ export function CommitmentDetailScreen() {
             authorLinks={effectiveAuthor}
             status={commitment.status}
             isDetailPage
-            limit={20}
+            onLoadMore={
+              paginationStatus === "CanLoadMore" || paginationStatus === "LoadingMore"
+                ? () => loadMore(50)
+                : undefined
+            }
           />
         </div>
       ) : (

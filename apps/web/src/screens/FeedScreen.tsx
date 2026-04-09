@@ -44,6 +44,7 @@ interface RawFeedItem {
   commentCount: number;
   respectCount: number;
   _creationTime: number;
+  firstEntryAt?: number;
   showMessages: boolean;
   showHashes: boolean;
   showBranches: boolean;
@@ -82,7 +83,7 @@ function toCommitment(item: RawFeedItem): Commitment {
     showMessages: item.showMessages,
     showHashes: item.showHashes,
     showBranches: item.showBranches,
-    day: daysSince(item._creationTime),
+    day: daysSince(item.firstEntryAt ?? item._creationTime),
     comments: item.commentCount,
     devlog: (item.recentEntries ?? []).map(toDevlogEntry),
     respects: item.respectCount,

@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { paginationOptsValidator } from "convex/server";
 import { currentWeekActivity } from "./dates";
@@ -33,6 +33,7 @@ export const create = mutation({
       repo,
       isPrivate: false,
       status: "building",
+      initialSyncStatus: repo ? "syncing" : undefined,
       commentCount: 0,
       respectCount: 0,
       lastActivityAt: now,
@@ -81,9 +82,16 @@ export const getById = query({
       isAuthor: effectiveAuthor,
     });
 
+    const firstEntry = await ctx.db
+      .query("devlogEntries")
+      .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", id))
+      .order("asc")
+      .first();
+
     return {
       ...commitment,
       activity: currentWeekActivity(commitment.activity, commitment.lastActivityAt),
+      firstEntryAt: firstEntry?.committedAt,
       user,
       showMessages,
       showHashes,
@@ -137,9 +145,16 @@ export const listFeed = query({
           }),
         );
 
+        const firstEntry = await ctx.db
+          .query("devlogEntries")
+          .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", commitment._id))
+          .order("asc")
+          .first();
+
         return {
           ...commitment,
           activity: currentWeekActivity(commitment.activity, commitment.lastActivityAt),
+          firstEntryAt: firstEntry?.committedAt,
           user,
           recentEntries: redacted,
           hasMore,
@@ -178,9 +193,15 @@ export const search = query({
           ownerPrefs: user ?? undefined,
           isAuthor,
         });
+        const firstEntry = await ctx.db
+          .query("devlogEntries")
+          .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", commitment._id))
+          .order("asc")
+          .first();
         return {
           ...commitment,
           activity: currentWeekActivity(commitment.activity, commitment.lastActivityAt),
+          firstEntryAt: firstEntry?.committedAt,
           user,
           ...flags,
         };
@@ -282,5 +303,62 @@ export const ship = mutation({
         webhookId: commitment.webhookId,
       });
     }
+  },
+});
+
+/** Dev-only: nuke a commitment and ALL related data. Use from CLI:
+ *  npx convex run commitments:devDelete '{"commitmentId": "..."}' */
+export const devDelete = internalMutation({
+  args: { commitmentId: v.id("commitments") },
+  handler: async (ctx, { commitmentId }) => {
+    const commitment = await ctx.db.get(commitmentId);
+    if (!commitment) throw new Error("Commitment not found");
+
+    // 1. Delete comments
+    const comments = await ctx.db
+      .query("comments")
+      .withIndex("by_commitmentId", (q) => q.eq("commitmentId", commitmentId))
+      .collect();
+    for (const c of comments) {
+      await ctx.db.delete(c._id);
+    }
+
+    // 2. Delete respects
+    const respects = await ctx.db
+      .query("respects")
+      .withIndex("by_commitmentId", (q) => q.eq("commitmentId", commitmentId))
+      .collect();
+    for (const r of respects) {
+      await ctx.db.delete(r._id);
+    }
+
+    // 3. Delete devlog entries
+    const entries = await ctx.db
+      .query("devlogEntries")
+      .withIndex("by_commitmentId", (q) => q.eq("commitmentId", commitmentId))
+      .collect();
+    for (const e of entries) {
+      await ctx.db.delete(e._id);
+    }
+
+    // 4. Schedule webhook cleanup if needed
+    if (commitment.repo && commitment.webhookId) {
+      await ctx.scheduler.runAfter(0, internal.github.removeWebhook, {
+        commitmentId,
+        repo: commitment.repo,
+        webhookId: commitment.webhookId,
+      });
+    }
+
+    // 5. Delete commitment
+    await ctx.db.delete(commitmentId);
+
+    return {
+      deleted: {
+        comments: comments.length,
+        respects: respects.length,
+        entries: entries.length,
+      },
+    };
   },
 });

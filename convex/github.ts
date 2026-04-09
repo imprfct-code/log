@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { action, internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { updateActivity } from "./devlog";
+import { utcWeekday, utcMondayOf } from "./dates";
 import { updateStreak } from "./users";
 import {
   fetchGitHubToken,
@@ -31,6 +31,19 @@ export const getCommitmentWithUser = internalQuery({
     if (!commitment) return null;
     const user = await ctx.db.get(commitment.userId);
     return { commitment, user };
+  },
+});
+
+/** Return the timestamp of the most recent devlog entry for a commitment. */
+export const getLatestCommitTime = internalQuery({
+  args: { commitmentId: v.id("commitments") },
+  handler: async (ctx, { commitmentId }) => {
+    const latest = await ctx.db
+      .query("devlogEntries")
+      .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", commitmentId))
+      .order("desc")
+      .first();
+    return latest?.committedAt ?? null;
   },
 });
 
@@ -73,6 +86,8 @@ export const insertGitCommits = internalMutation({
     if (!user) return;
 
     let inserted = 0;
+    const insertedTimestamps: number[] = [];
+
     for (const commit of commits) {
       const existing = await ctx.db
         .query("devlogEntries")
@@ -96,29 +111,45 @@ export const insertGitCommits = internalMutation({
         commentCount: 0,
       });
       inserted++;
+      insertedTimestamps.push(commit.timestamp);
     }
 
     if (inserted === 0) return;
 
+    // Build activity from actual commit timestamps, not import time
     const now = Date.now();
+    const currentMonday = utcMondayOf(now);
+    const activity =
+      utcMondayOf(commitment.lastActivityAt) === currentMonday
+        ? [...commitment.activity]
+        : [0, 0, 0, 0, 0, 0, 0];
+
+    for (const ts of insertedTimestamps) {
+      if (utcMondayOf(ts) === currentMonday) {
+        const slot = utcWeekday(ts);
+        activity[slot] = (activity[slot] ?? 0) + 1;
+      }
+    }
+
     await ctx.db.patch(commitmentId, {
       lastActivityAt: now,
-      activity: updateActivity(commitment.activity, commitment.lastActivityAt),
+      activity,
     });
 
     await updateStreak(ctx, user);
   },
 });
 
-/** Paginated backfill: fetches one page at a time, self-schedules for the next page. */
+/** Paginated backfill: fetches one page at a time, self-schedules for the next page/branch. */
 export const backfillAllCommits = internalAction({
   args: {
     commitmentId: v.id("commitments"),
     repo: v.string(),
     page: v.optional(v.number()),
     branch: v.optional(v.string()),
+    remainingBranches: v.optional(v.array(v.string())),
   },
-  handler: async (ctx, { commitmentId, repo, page, branch }) => {
+  handler: async (ctx, { commitmentId, repo, page, branch, remainingBranches }) => {
     const currentPage = page ?? 1;
 
     const data = await ctx.runQuery(internal.github.getCommitmentWithUser, { commitmentId });
@@ -131,7 +162,22 @@ export const backfillAllCommits = internalAction({
     if (!token) return;
 
     const rawCommits = await fetchCommitPage(repo, token, currentPage, { sha: branch });
-    if (!rawCommits || rawCommits.length === 0) return;
+
+    // Rate limited — stop entirely
+    if (!rawCommits) return;
+
+    // No commits on this branch — try next branch
+    if (rawCommits.length === 0) {
+      if (remainingBranches && remainingBranches.length > 0) {
+        await ctx.scheduler.runAfter(200, internal.github.backfillAllCommits, {
+          commitmentId,
+          repo,
+          branch: remainingBranches[0],
+          remainingBranches: remainingBranches.slice(1),
+        });
+      }
+      return;
+    }
 
     const commits = mapGitHubCommits(rawCommits, branch);
 
@@ -142,11 +188,21 @@ export const backfillAllCommits = internalAction({
     });
 
     if (rawCommits.length === 100) {
-      await ctx.scheduler.runAfter(0, internal.github.backfillAllCommits, {
+      // More pages on this branch
+      await ctx.scheduler.runAfter(200, internal.github.backfillAllCommits, {
         commitmentId,
         repo,
         page: currentPage + 1,
         branch,
+        remainingBranches,
+      });
+    } else if (remainingBranches && remainingBranches.length > 0) {
+      // Branch done, move to next
+      await ctx.scheduler.runAfter(200, internal.github.backfillAllCommits, {
+        commitmentId,
+        repo,
+        branch: remainingBranches[0],
+        remainingBranches: remainingBranches.slice(1),
       });
     }
   },
@@ -180,13 +236,13 @@ export const registerWebhook = internalAction({
 
     if (!skipBackfill) {
       const branches = await fetchBranches(repo, token);
-      for (const branch of branches.length > 0 ? branches : [undefined]) {
-        await ctx.scheduler.runAfter(0, internal.github.backfillAllCommits, {
-          commitmentId,
-          repo,
-          branch,
-        });
-      }
+      // Schedule a single serialized backfill chain instead of parallel per-branch
+      await ctx.scheduler.runAfter(0, internal.github.backfillAllCommits, {
+        commitmentId,
+        repo,
+        branch: branches[0],
+        remainingBranches: branches.slice(1),
+      });
     }
 
     const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
@@ -367,9 +423,12 @@ export const triggerSync = action({
     const token = await fetchGitHubToken(user.clerkUserId);
     if (!token) throw new Error("Could not get GitHub token — try re-logging in");
 
-    const since = commitment.lastPolledAt
-      ? new Date(commitment.lastPolledAt).toISOString()
-      : undefined;
+    // Use the latest commit timestamp from DB, not lastPolledAt.
+    // lastPolledAt can be ahead if a backfill was scheduled but failed partway.
+    const latestCommitTime = await ctx.runQuery(internal.github.getLatestCommitTime, {
+      commitmentId,
+    });
+    const since = latestCommitTime ? new Date(latestCommitTime).toISOString() : undefined;
 
     const rawCommits = await fetchNewCommitsAllBranches(commitment.repo, token, since);
     if (rawCommits.length > 0) {
