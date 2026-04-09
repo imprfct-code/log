@@ -37,7 +37,7 @@ export function MarkdownBody({
   }, [attachments]);
 
   return (
-    <div className={cn("markdown-body min-w-0", className)}>
+    <div className={cn("markdown-body min-w-0 break-words", className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         urlTransform={(url) => {
@@ -61,7 +61,9 @@ export function MarkdownBody({
             const code =
               typeof children === "string"
                 ? children
-                : (children as unknown[]).filter((child) => typeof child === "string").join("");
+                : Array.isArray(children)
+                  ? children.filter((child) => typeof child === "string").join("")
+                  : "";
             const langMatch = /language-(\w+)/.exec(codeClassName ?? "");
             const isBlock = langMatch || (codeClassName === undefined && code.includes("\n"));
             if (isBlock) {
@@ -118,6 +120,27 @@ export function MarkdownBody({
             <h3 className="mt-2 mb-0.5 text-[13px] font-bold text-foreground-bright" {...props}>
               {children}
             </h3>
+          ),
+          h4: ({ children, ...props }) => (
+            <h4
+              className="mt-1.5 mb-0.5 text-[13px] font-semibold text-foreground-bright"
+              {...props}
+            >
+              {children}
+            </h4>
+          ),
+          h5: ({ children, ...props }) => (
+            <h5
+              className="mt-1.5 mb-0.5 text-[12px] font-semibold text-foreground-bright"
+              {...props}
+            >
+              {children}
+            </h5>
+          ),
+          h6: ({ children, ...props }) => (
+            <h6 className="mt-1.5 mb-0.5 text-[12px] font-medium text-muted-foreground" {...props}>
+              {children}
+            </h6>
           ),
           p: ({ children, ...props }) => (
             <div className="my-1.5 leading-relaxed" {...props}>
