@@ -21,10 +21,11 @@ export function parseMediaWidth(body: string, key: string): number | null {
   return Math.min(100, Math.max(10, Number(altMatch[1])));
 }
 
-/** Strip body for detail view, removing cover attachment reference. */
+/** Strip body for detail view: remove first line (title) and cover attachment reference, keep other media refs. */
 export function computeDetailBody(body: string | undefined, coverKey?: string): string | undefined {
   if (!body) return undefined;
-  let clean = stripBodyForPreview(body);
+  // Strip first line (title) but keep inline media refs so MarkdownBody can render them
+  let clean = body.replace(/^.*\n?/, "").trim();
   if (coverKey) {
     const escaped = escapeRegexKey(coverKey);
     clean = clean.replace(new RegExp(`!\\[[^\\]]*?\\]\\(upload:${escaped}\\)\\n?`, "g"), "").trim();

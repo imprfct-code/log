@@ -74,4 +74,14 @@ describe("computeDetailBody", () => {
   test("works without coverKey", () => {
     expect(computeDetailBody("Title\nContent")).toBe("Content");
   });
+
+  test("keeps non-cover inline images in body", () => {
+    const body = "Title\n![img1](upload:key1)\n![img2](upload:key2)";
+    expect(computeDetailBody(body, "key1")).toBe("![img2](upload:key2)");
+  });
+
+  test("keeps multiple non-cover images in body", () => {
+    const body = "Title\n![a](upload:cover)\ntext\n![b](upload:second)\n![c](upload:third)";
+    expect(computeDetailBody(body, "cover")).toBe("text\n![b](upload:second)\n![c](upload:third)");
+  });
 });
