@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
-import { DAY_MS } from "./dates";
+import { DAY_MS, utcWeekday, utcMondayOf } from "./dates";
 import { getUserByToken, updateStreak } from "./users";
 import { computeVisibility, redactEntry } from "./privacy";
 import { attachmentValidator } from "./schema";
@@ -9,21 +9,14 @@ import { r2 } from "./r2";
 
 const MAX_CONTENT_LENGTH = 20_000;
 
-/** Shift activity array to account for days passed, then increment today. */
+/** Update weekly activity array (Mon=0, Sun=6). Resets on new week. */
 export function updateActivity(current: number[], lastActivityAt: number): number[] {
   const now = Date.now();
-  const daysSinceLast = Math.floor((now - lastActivityAt) / 86_400_000);
-  const shifted = daysSinceLast >= 7 ? [0, 0, 0, 0, 0, 0, 0] : [...current];
-
-  // Shift left by days elapsed
-  for (let i = 0; i < daysSinceLast && i < 7; i++) {
-    shifted.shift();
-    shifted.push(0);
-  }
-
-  // Increment today
-  shifted[6] = (shifted[6] ?? 0) + 1;
-  return shifted;
+  const sameWeek = utcMondayOf(now) === utcMondayOf(lastActivityAt);
+  const activity = sameWeek ? [...current] : [0, 0, 0, 0, 0, 0, 0];
+  const slot = utcWeekday(now);
+  activity[slot] = (activity[slot] ?? 0) + 1;
+  return activity;
 }
 
 /** Extract first line (max 100 chars) from content for feed preview. Strips markdown heading prefix and inline media refs. */
@@ -223,13 +216,25 @@ export const remove = mutation({
       await ctx.db.delete(comment._id);
     }
 
-    // Update commitment comment count
-    if (comments.length > 0) {
-      const commitment = await ctx.db.get(entry.commitmentId);
-      if (commitment) {
-        await ctx.db.patch(entry.commitmentId, {
-          commentCount: Math.max(0, commitment.commentCount - comments.length),
-        });
+    // Update commitment: decrement activity + comment count in one fetch
+    const commitment = await ctx.db.get(entry.commitmentId);
+    if (commitment) {
+      const patch: { activity?: number[]; commentCount?: number } = {};
+
+      const entryTs = entry.committedAt ?? entry._creationTime;
+      if (utcMondayOf(entryTs) === utcMondayOf(Date.now())) {
+        const activity = [...commitment.activity];
+        const slot = utcWeekday(entryTs);
+        activity[slot] = Math.max(0, (activity[slot] ?? 0) - 1);
+        patch.activity = activity;
+      }
+
+      if (comments.length > 0) {
+        patch.commentCount = Math.max(0, commitment.commentCount - comments.length);
+      }
+
+      if (patch.activity !== undefined || patch.commentCount !== undefined) {
+        await ctx.db.patch(entry.commitmentId, patch);
       }
     }
 
@@ -349,5 +354,37 @@ export const getActivityForHeatmap = query({
     }
 
     return days;
+  },
+});
+
+export const getById = query({
+  args: { id: v.id("devlogEntries") },
+  handler: async (ctx, { id }) => {
+    const entry = await ctx.db.get(id);
+    if (!entry) return null;
+    if (entry.type !== "post") return null;
+
+    const user = await ctx.db.get(entry.userId);
+    const commitment = await ctx.db.get(entry.commitmentId);
+    const viewer = await getUserByToken(ctx);
+    const isOwn = viewer !== null && viewer._id === entry.userId;
+
+    // Privacy: posts are never redacted (see redactEntry), but apply for consistency
+    const flags = computeVisibility({
+      isPrivate: commitment?.isPrivate,
+      ownerPrefs: user ?? undefined,
+      isAuthor: isOwn,
+    });
+    const redacted = redactEntry(entry, flags, commitment?.isPrivate, isOwn);
+
+    return {
+      ...redacted,
+      resolvedAttachments: await resolveAttachments(entry.attachments),
+      author: user ? { username: user.username, avatarUrl: user.avatarUrl } : null,
+      commitment: commitment
+        ? { _id: commitment._id, text: commitment.text, status: commitment.status }
+        : null,
+      isOwn,
+    };
   },
 });

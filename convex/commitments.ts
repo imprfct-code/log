@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { paginationOptsValidator } from "convex/server";
+import { currentWeekActivity } from "./dates";
 import { getUserByToken } from "./users";
 import { computeVisibility, redactEntry } from "./privacy";
 import { resolveAttachments } from "./devlog";
@@ -80,7 +81,14 @@ export const getById = query({
       isAuthor: effectiveAuthor,
     });
 
-    return { ...commitment, user, showMessages, showHashes, showBranches };
+    return {
+      ...commitment,
+      activity: currentWeekActivity(commitment.activity, commitment.lastActivityAt),
+      user,
+      showMessages,
+      showHashes,
+      showBranches,
+    };
   },
 });
 
@@ -131,6 +139,7 @@ export const listFeed = query({
 
         return {
           ...commitment,
+          activity: currentWeekActivity(commitment.activity, commitment.lastActivityAt),
           user,
           recentEntries: redacted,
           hasMore,
@@ -169,7 +178,12 @@ export const search = query({
           ownerPrefs: user ?? undefined,
           isAuthor,
         });
-        return { ...commitment, user, ...flags };
+        return {
+          ...commitment,
+          activity: currentWeekActivity(commitment.activity, commitment.lastActivityAt),
+          user,
+          ...flags,
+        };
       }),
     );
   },

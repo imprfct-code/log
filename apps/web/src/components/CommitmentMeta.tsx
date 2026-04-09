@@ -20,8 +20,8 @@ export function CommitmentMeta({
   repoHref?: string;
   isPrivate?: boolean;
   authorLinks?: boolean;
-  activity: number[];
-  statusLabel: ReactNode;
+  activity?: number[];
+  statusLabel?: ReactNode;
   connectSlot?: ReactNode;
 }) {
   return (
@@ -63,9 +63,12 @@ export function CommitmentMeta({
         )
       )}
 
-      <ActivitySparkline activity={activity} className="ml-1" />
-
-      <span className="ml-auto shrink-0 text-[11px]">{statusLabel}</span>
+      {statusLabel && (
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          {activity && <ActivitySparkline activity={activity} compact />}
+          <span className="text-[11px]">{statusLabel}</span>
+        </div>
+      )}
     </div>
   );
 }

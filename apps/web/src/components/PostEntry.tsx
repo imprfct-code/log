@@ -5,6 +5,7 @@ import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { Pencil, Trash2 } from "lucide-react";
 import type { DevlogEntry as DevlogEntryType } from "@/types";
+import { stripBodyForPreview, parseMediaWidth, computeDetailBody } from "@/lib/postContent";
 import { CommentBadge } from "./CommentBadge";
 import { MarkdownBody } from "./MarkdownBody";
 import { CreatePostForm } from "./CreatePostForm";
@@ -12,24 +13,6 @@ import { AttachmentGrid } from "./AttachmentGrid";
 import { CoverMedia } from "./CoverMedia";
 import { VideoPlayer } from "./VideoPlayer";
 import { cn } from "@/lib/utils";
-
-/** Strip the first line (title) and inline media refs from body for feed/detail preview. */
-function stripBodyForPreview(body: string): string {
-  return body
-    .replace(/^.*\n?/, "")
-    .replace(/!\[[^\]]*?\]\([^)]+\)\n?/g, "")
-    .trim();
-}
-
-/** Extract width percent from `![...|50%](upload:KEY)` in body for a given attachment key. */
-function parseMediaWidth(body: string, key: string): number | null {
-  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = body.match(new RegExp(`!\\[([^\\]]*)\\]\\(upload:${escaped}\\)`));
-  if (!match) return null;
-  const altMatch = match[1].match(/\|(\d{1,3})%$/);
-  if (!altMatch) return null;
-  return Math.min(100, Math.max(10, Number(altMatch[1])));
-}
 
 export function PostEntry({
   entry,
@@ -72,24 +55,15 @@ export function PostEntry({
   const allAtts = entry.attachments ?? [];
   const cover = isDetailPage ? allAtts[0] : undefined;
   const remainingAtts = isDetailPage ? allAtts.slice(1).filter((a) => !a.inline) : [];
-  const detailBody = (() => {
-    if (!isDetailPage || !entry.body) return entry.body;
-    let body = stripBodyForPreview(entry.body);
-    if (cover) {
-      const escaped = cover.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      body = body.replace(new RegExp(`!\\[[^\\]]*?\\]\\(upload:${escaped}\\)\\n?`, "g"), "").trim();
-    }
-    return body || undefined;
-  })();
+  const detailBody = isDetailPage ? computeDetailBody(entry.body, cover?.key) : undefined;
   const feedThumb = !isDetailPage ? allAtts[0] : undefined;
   const isCover = feedThumb?.cover ?? feedThumb?.type === "video";
   const thumbWidth = feedThumb && entry.body ? parseMediaWidth(entry.body, feedThumb.key) : null;
-  const feedBodyPreview = (() => {
-    if (isDetailPage || !entry.body) return null;
-    const clean = stripBodyForPreview(entry.body);
-    if (!clean) return null;
-    return clean.length > 200 ? `${clean.slice(0, 200)}\u2026` : clean;
-  })();
+  const feedBodyStripped = !isDetailPage && entry.body ? stripBodyForPreview(entry.body) : null;
+  const feedBodyPreview =
+    feedBodyStripped && feedBodyStripped.length > 200
+      ? feedBodyStripped.slice(0, 200) + "\u2026"
+      : feedBodyStripped;
 
   return (
     <div className="relative py-2.5 pl-6">
@@ -160,7 +134,12 @@ export function PostEntry({
       {isDetailPage && (entry.body || cover) ? (
         <>
           {entry.text && (
-            <p className="mt-1 text-[13px] font-semibold text-foreground-bright">{entry.text}</p>
+            <Link
+              to={`/post/${entry.id}`}
+              className="mt-1 block text-[13px] font-semibold text-foreground-bright no-underline transition-colors hover:text-accent"
+            >
+              {entry.text}
+            </Link>
           )}
           {cover && (
             <CoverMedia
@@ -182,19 +161,28 @@ export function PostEntry({
           <div className="flex gap-3">
             <div className="min-w-0 flex-1">
               <Link
-                to={`/commitment/${commitmentId}`}
+                to={`/post/${entry.id}`}
                 className="block text-[13px] font-semibold text-foreground-bright no-underline transition-colors hover:text-accent"
               >
                 {entry.text}
               </Link>
               {feedBodyPreview && (
-                <div className="mt-0.5 line-clamp-3 text-[12px] leading-relaxed text-muted-foreground">
-                  <MarkdownBody content={feedBodyPreview} />
-                </div>
+                <p className="mt-0.5 line-clamp-3 text-[12px] leading-relaxed text-muted-foreground">
+                  {feedBodyPreview}
+                  {feedBodyStripped && feedBodyStripped.length > 200 ? (
+                    <Link
+                      to={`/post/${entry.id}`}
+                      className="text-[11px] text-muted-foreground no-underline transition-colors hover:text-accent"
+                    >
+                      {" "}
+                      read more
+                    </Link>
+                  ) : null}
+                </p>
               )}
             </div>
             {feedThumb && !isCover && (
-              <Link to={`/commitment/${commitmentId}`} className="shrink-0">
+              <Link to={`/post/${entry.id}`} className="shrink-0">
                 <img
                   src={feedThumb.url}
                   alt=""
@@ -211,7 +199,7 @@ export function PostEntry({
               {feedThumb.type === "video" ? (
                 <VideoPlayer url={feedThumb.url} mode="inline" duration={feedThumb.duration} />
               ) : (
-                <Link to={`/commitment/${commitmentId}`}>
+                <Link to={`/post/${entry.id}`}>
                   <img
                     src={feedThumb.url}
                     alt=""

@@ -161,8 +161,8 @@ describe("insertGitCommits", () => {
     });
 
     expect(commitment?.lastActivityAt).toBe(BASE_TIME);
-    // Activity shifted 1 day + incremented today
-    expect(commitment?.activity[6]).toBe(1);
+    // Saturday = weekday slot 5
+    expect(commitment?.activity[5]).toBe(1);
   });
 
   test("does not update activity when all commits are duplicates", async () => {

@@ -5,6 +5,7 @@ import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { Eye, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ActivitySparkline } from "@/components/ActivitySparkline";
 import { CommitmentMeta } from "@/components/CommitmentMeta";
 import { ConnectRepoForm } from "@/components/ConnectRepoForm";
 import { CreatePostForm } from "@/components/CreatePostForm";
@@ -15,7 +16,7 @@ import type { DevlogEntry as DevlogEntryType } from "@/types";
 function DetailLayout({ children }: { children: ReactNode }) {
   return (
     <div className="mx-auto max-w-[720px] px-4 py-8 sm:px-12">
-      <div className="feed-in mb-8 text-[13px] opacity-0">
+      <div className="feed-in mb-5 text-[13px] opacity-0">
         <Link to="/feed" className="text-muted-foreground no-underline hover:text-foreground">
           &larr; feed
         </Link>
@@ -125,7 +126,6 @@ export function CommitmentDetailScreen() {
           repoHref={commitment.repo ? `https://github.com/${commitment.repo}` : undefined}
           isPrivate={commitment.isPrivate}
           authorLinks={effectiveAuthor}
-          activity={commitment.activity}
           statusLabel={
             commitment.status === "shipped" ? (
               <span className="text-shipped">shipped</span>
@@ -154,9 +154,14 @@ export function CommitmentDetailScreen() {
           </div>
         )}
 
-        <h1 className="mt-1 mb-4 text-lg font-bold text-foreground-bright">{commitment.text}</h1>
+        <div className="mt-1 mb-2 flex items-start gap-4">
+          <h1 className="min-w-0 flex-1 text-lg font-bold text-foreground-bright">
+            {commitment.text}
+          </h1>
+          <ActivitySparkline activity={commitment.activity} className="shrink-0 pt-1" />
+        </div>
 
-        <div className="mb-4 flex items-center gap-4 text-[11px] text-muted-foreground">
+        <div className="mb-3 flex items-center gap-4 text-[11px] text-muted-foreground">
           <span>{commitment.commentCount} comments</span>
           <span>{commitment.respectCount} respects</span>
           {canSync && (
