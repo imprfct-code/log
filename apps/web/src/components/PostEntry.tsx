@@ -5,7 +5,12 @@ import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { Pencil, Trash2 } from "lucide-react";
 import type { DevlogEntry as DevlogEntryType } from "@/types";
-import { stripBodyForPreview, parseMediaWidth, computeDetailBody } from "@/lib/postContent";
+import {
+  stripBodyForPreview,
+  parseMediaWidth,
+  computeDetailBody,
+  needsUnifiedDisplay,
+} from "@/lib/postContent";
 import { CommentBadge } from "./CommentBadge";
 import { MarkdownBody } from "./MarkdownBody";
 import { CreatePostForm } from "./CreatePostForm";
@@ -53,13 +58,13 @@ export function PostEntry({
   }
 
   const allAtts = entry.attachments ?? [];
-  const cover = isDetailPage ? allAtts.find((a) => a.cover) : undefined;
+  const cover = isDetailPage ? allAtts[0] : undefined;
   const remainingAtts = isDetailPage
     ? allAtts.filter((a) => a.key !== cover?.key && !a.inline)
     : [];
   const detailBody = isDetailPage ? computeDetailBody(entry.body, cover?.key) : undefined;
+  const isUnified = needsUnifiedDisplay(entry.body);
   const feedThumb = !isDetailPage ? allAtts[0] : undefined;
-  const isCover = feedThumb ? feedThumb.type === "video" || feedThumb.cover : false;
   const thumbWidth = feedThumb && entry.body ? parseMediaWidth(entry.body, feedThumb.key) : null;
   const feedBodyStripped = !isDetailPage && entry.body ? stripBodyForPreview(entry.body) : null;
   const feedBodyPreview =
@@ -135,7 +140,7 @@ export function PostEntry({
       {/* Post content */}
       {isDetailPage && (entry.body || cover) ? (
         <>
-          {entry.text && (
+          {entry.text && !isUnified && (
             <Link
               to={`/post/${entry.id}`}
               className="mt-1 block text-[13px] font-semibold text-foreground-bright no-underline transition-colors hover:text-accent"
@@ -162,16 +167,15 @@ export function PostEntry({
         <div className="mt-1">
           <div className="flex gap-3">
             <div className="min-w-0 flex-1">
-              <Link
-                to={`/post/${entry.id}`}
-                className="block text-[13px] font-semibold text-foreground-bright no-underline transition-colors hover:text-accent"
-              >
-                {entry.text}
-              </Link>
-              {feedBodyPreview && (
-                <p className="mt-0.5 line-clamp-3 text-[12px] leading-relaxed text-muted-foreground">
-                  {feedBodyPreview}
-                  {feedBodyStripped && feedBodyStripped.length > 200 ? (
+              {isUnified && entry.body ? (
+                <p className="line-clamp-3 text-[13px] leading-relaxed text-muted-foreground">
+                  <Link
+                    to={`/post/${entry.id}`}
+                    className="text-muted-foreground no-underline transition-colors hover:text-accent"
+                  >
+                    {entry.body.length > 200 ? entry.body.slice(0, 200) + "\u2026" : entry.body}
+                  </Link>
+                  {entry.body.length > 200 && (
                     <Link
                       to={`/post/${entry.id}`}
                       className="text-[11px] text-muted-foreground no-underline transition-colors hover:text-accent"
@@ -179,21 +183,35 @@ export function PostEntry({
                       {" "}
                       read more
                     </Link>
-                  ) : null}
+                  )}
                 </p>
+              ) : (
+                <>
+                  <Link
+                    to={`/post/${entry.id}`}
+                    className="block text-[13px] font-semibold text-foreground-bright no-underline transition-colors hover:text-accent"
+                  >
+                    {entry.text}
+                  </Link>
+                  {feedBodyPreview && (
+                    <p className="mt-0.5 line-clamp-3 text-[12px] leading-relaxed text-muted-foreground">
+                      {feedBodyPreview}
+                      {feedBodyStripped && feedBodyStripped.length > 200 ? (
+                        <Link
+                          to={`/post/${entry.id}`}
+                          className="text-[11px] text-muted-foreground no-underline transition-colors hover:text-accent"
+                        >
+                          {" "}
+                          read more
+                        </Link>
+                      ) : null}
+                    </p>
+                  )}
+                </>
               )}
             </div>
-            {feedThumb && !isCover && (
-              <Link to={`/post/${entry.id}`} className="shrink-0">
-                <img
-                  src={feedThumb.url}
-                  alt=""
-                  className="h-16 w-24 border border-border object-cover transition-opacity hover:opacity-80"
-                />
-              </Link>
-            )}
           </div>
-          {feedThumb && isCover && (
+          {feedThumb && (
             <div
               className="mt-2 overflow-hidden"
               style={thumbWidth ? { width: `${thumbWidth}%` } : undefined}

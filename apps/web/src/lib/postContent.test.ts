@@ -1,5 +1,10 @@
 import { describe, expect, test } from "vite-plus/test";
-import { stripBodyForPreview, parseMediaWidth, computeDetailBody } from "./postContent";
+import {
+  stripBodyForPreview,
+  parseMediaWidth,
+  computeDetailBody,
+  needsUnifiedDisplay,
+} from "./postContent";
 
 describe("stripBodyForPreview", () => {
   test("removes the first line", () => {
@@ -21,6 +26,19 @@ describe("stripBodyForPreview", () => {
   test("removes multiple media refs", () => {
     const body = "Title\n![a](upload:x)\ntext\n![b](http://img.png)";
     expect(stripBodyForPreview(body)).toBe("text");
+  });
+
+  test("B2: strips first sentence from single-line long content", () => {
+    const body =
+      "Built the new auth flow with GitHub OAuth. It handles token refresh and session persistence across tabs.";
+    expect(stripBodyForPreview(body)).toBe(
+      "It handles token refresh and session persistence across tabs.",
+    );
+  });
+
+  test("returns empty for single-line long content without sentence boundary", () => {
+    const body = "a".repeat(200);
+    expect(stripBodyForPreview(body)).toBe("");
   });
 });
 
@@ -83,5 +101,47 @@ describe("computeDetailBody", () => {
   test("keeps multiple non-cover images in body", () => {
     const body = "Title\n![a](upload:cover)\ntext\n![b](upload:second)\n![c](upload:third)";
     expect(computeDetailBody(body, "cover")).toBe("text\n![b](upload:second)\n![c](upload:third)");
+  });
+
+  test("B2: strips first sentence from single-line long content", () => {
+    const body =
+      "Shipped the new landing page today. The hero section now has animated gradients and a live demo embed plus social proof testimonials from beta users.";
+    expect(computeDetailBody(body)).toBe(
+      "The hero section now has animated gradients and a live demo embed plus social proof testimonials from beta users.",
+    );
+  });
+
+  test("B1: returns full content for single-line long content without sentence", () => {
+    const body = "a".repeat(200);
+    expect(computeDetailBody(body)).toBe(body);
+  });
+
+  test("returns undefined for short single-line", () => {
+    expect(computeDetailBody("Short post")).toBeUndefined();
+  });
+});
+
+describe("needsUnifiedDisplay", () => {
+  test("returns false for undefined/empty body", () => {
+    expect(needsUnifiedDisplay(undefined)).toBe(false);
+    expect(needsUnifiedDisplay("")).toBe(false);
+  });
+
+  test("returns false for short single-line", () => {
+    expect(needsUnifiedDisplay("Short post")).toBe(false);
+  });
+
+  test("returns false for multi-line content", () => {
+    expect(needsUnifiedDisplay("Title\n" + "a".repeat(200))).toBe(false);
+  });
+
+  test("returns true for long single-line without sentence boundary", () => {
+    expect(needsUnifiedDisplay("a".repeat(200))).toBe(true);
+  });
+
+  test("returns false for long single-line with sentence boundary", () => {
+    const body =
+      "Built the new auth flow with OAuth. It handles refresh tokens and session persistence across tabs forever.";
+    expect(needsUnifiedDisplay(body)).toBe(false);
   });
 });

@@ -20,7 +20,8 @@ export function updateActivity(current: number[], lastActivityAt: number): numbe
   return activity;
 }
 
-/** Extract first line (max 100 chars) from content for feed preview. Strips markdown heading prefix and inline media refs. */
+/** Extract title from content for feed preview. Uses first line for multi-line,
+ *  or first sentence (B2) for single-line. Falls back to word-boundary truncation. */
 export function extractTitle(content: string): string {
   const firstLine = content
     .split("\n")[0]
@@ -29,7 +30,17 @@ export function extractTitle(content: string): string {
     .replace(/!\[[^\]]*?\]\([^)]+\)/g, "")
     .replace(/\s{2,}/g, " ")
     .trim();
-  return firstLine.length > 100 ? firstLine.slice(0, 100) + "\u2026" : firstLine;
+
+  if (firstLine.length <= 100) return firstLine;
+
+  // B2: try first sentence boundary within 100 chars (min 20 to skip abbreviations)
+  const sentenceEnd = firstLine.search(/[.!?](\s|$)/);
+  if (sentenceEnd >= 20 && sentenceEnd < 100) return firstLine.slice(0, sentenceEnd + 1);
+
+  // Fallback: word boundary, then hard cut at 100
+  const spaceIdx = firstLine.lastIndexOf(" ", 100);
+  if (spaceIdx > 20) return firstLine.slice(0, spaceIdx) + "\u2026";
+  return firstLine.slice(0, 100) + "\u2026";
 }
 
 /** Resolve R2 attachment keys to signed URLs. */

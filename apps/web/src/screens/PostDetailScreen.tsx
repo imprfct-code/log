@@ -10,7 +10,7 @@ import { AttachmentGrid } from "@/components/AttachmentGrid";
 import { CreatePostForm } from "@/components/CreatePostForm";
 import { CommentThread } from "@/components/CommentThread";
 import { CommentInput } from "@/components/CommentInput";
-import { computeDetailBody, parseMediaWidth } from "@/lib/postContent";
+import { computeDetailBody, parseMediaWidth, needsUnifiedDisplay } from "@/lib/postContent";
 import { formatTimeAgo } from "@/lib/formatTime";
 
 function DetailLayout({ children }: { children: ReactNode }) {
@@ -67,6 +67,7 @@ export function PostDetailScreen() {
   const remainingAtts = allAtts.filter((a) => a.key !== cover?.key && !a.inline);
 
   const detailBody = computeDetailBody(data.body, cover?.key);
+  const isUnified = needsUnifiedDisplay(data.body);
 
   const timestamp = formatTimeAgo(data.committedAt ?? data._creationTime);
 
@@ -134,7 +135,9 @@ export function PostDetailScreen() {
           <span className="text-[#333]">{timestamp}</span>
         </div>
 
-        <h1 className="mt-1 mb-4 text-lg font-bold text-foreground-bright">{data.text}</h1>
+        {!isUnified && (
+          <h1 className="mt-1 mb-4 text-lg font-bold text-foreground-bright">{data.text}</h1>
+        )}
 
         {cover && (
           <CoverMedia

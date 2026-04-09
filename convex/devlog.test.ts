@@ -100,6 +100,36 @@ describe("extractTitle", () => {
   test("keeps text around media references", () => {
     expect(extractTitle("Check this ![cat.gif](upload:abc) out")).toBe("Check this out");
   });
+
+  test("B2: extracts first sentence as title when line > 100 chars", () => {
+    const content =
+      "Built the new auth flow with GitHub OAuth. It handles token refresh and session persistence across multiple browser tabs for all users.";
+    expect(extractTitle(content)).toBe("Built the new auth flow with GitHub OAuth.");
+  });
+
+  test("B2: uses sentence ending with ! or ?", () => {
+    const content =
+      "Finally shipped the landing page! The conversion rate improved by 40% compared to the old design with static hero section.";
+    expect(extractTitle(content)).toBe("Finally shipped the landing page!");
+  });
+
+  test("B2: skips short sentence-like fragments (abbreviations)", () => {
+    // "v2.0" has a period at position 3, which is < 20 minimum
+    const content = "v2.0 " + "a".repeat(120);
+    const result = extractTitle(content);
+    expect(result.endsWith("\u2026")).toBe(true);
+  });
+
+  test("fallback: truncates at word boundary when no sentence found", () => {
+    const content =
+      "This is a very long sentence without any punctuation that just keeps going and going and going forever without stopping at all ever";
+    const result = extractTitle(content);
+    expect(result.endsWith("\u2026")).toBe(true);
+    expect(result.length).toBeLessThanOrEqual(101);
+    // Should not cut mid-word: char after truncation point (in original) should be a space
+    const textBeforeEllipsis = result.slice(0, -1);
+    expect(content[textBeforeEllipsis.length]).toBe(" ");
+  });
 });
 
 describe("devlog mutations", () => {
