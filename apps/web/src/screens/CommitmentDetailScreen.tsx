@@ -81,7 +81,7 @@ export function CommitmentDetailScreen() {
         comments: e.commentCount,
         isOwn: effectiveAuthor,
       })),
-    [entries, effectiveAuthor, data?.shipNote],
+    [entries, effectiveAuthor],
   );
 
   if (!commitmentId) {

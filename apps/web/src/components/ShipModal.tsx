@@ -119,11 +119,15 @@ export function ShipModal({
     }
   }
 
-  function handleCopyLink() {
+  async function handleCopyLink() {
     const link = `${window.location.origin}/s/${commitmentId}`;
-    void navigator.clipboard.writeText(link);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
   }
 
   function handleOverlayClick(e: React.MouseEvent) {

@@ -45,6 +45,7 @@ export interface CommitmentData {
   user: { username: string; avatarUrl?: string } | null;
 }
 
+/** Intentional subset of getShipStatsForShare — only the fields the OG/share routes need. */
 export interface ShipStatsData {
   daysBuilding: number;
   totalCommits: number;

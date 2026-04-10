@@ -6,6 +6,8 @@ import type { CommitmentData, ShipStatsData } from "./_lib/convex.js";
 
 // ── Font (IBM Plex Mono — Geist Mono has ligature tables Satori can't parse) ──
 
+// Warm-instance-only cache: survives across requests on the same Fluid Compute instance
+// but is lost on cold starts (acceptable — fonts are small and Google Fonts is fast).
 const fontCache: Record<number, ArrayBuffer> = {};
 
 async function loadFont(weight: 400 | 700): Promise<ArrayBuffer> {

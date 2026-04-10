@@ -1,5 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
+import type { QueryCtx } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { paginationOptsValidator } from "convex/server";
 import { currentWeekActivity } from "./dates";
@@ -362,53 +364,59 @@ export const ship = mutation({
   },
 });
 
+async function computeShipStats(
+  ctx: QueryCtx,
+  id: Id<"commitments">,
+  commitment: Doc<"commitments">,
+) {
+  const entries = await ctx.db
+    .query("devlogEntries")
+    .withIndex("by_commitmentId", (q) => q.eq("commitmentId", id))
+    .collect();
+
+  const totalCommits = entries.filter((e) => e.type === "commit" || e.type === "git_commit").length;
+  const totalPosts = entries.filter((e) => e.type === "post").length;
+  const totalUpdates = totalCommits + totalPosts;
+
+  const firstEntry = await ctx.db
+    .query("devlogEntries")
+    .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", id))
+    .order("asc")
+    .first();
+
+  const startedAt = firstEntry?.committedAt ?? commitment._creationTime;
+  const endTime = commitment.shippedAt ?? Date.now();
+  const daysBuilding = Math.max(1, Math.ceil((endTime - startedAt) / 86_400_000));
+
+  const commits = entries
+    .filter((e) => e.type === "commit" || e.type === "git_commit")
+    .sort((a, b) => (a.committedAt ?? 0) - (b.committedAt ?? 0));
+
+  const firstCommit = commits[0];
+  const lastCommit = commits.length > 1 ? commits[commits.length - 1] : null;
+
+  return {
+    daysBuilding,
+    totalCommits,
+    totalPosts,
+    totalUpdates,
+    startedAt,
+    firstCommit: firstCommit
+      ? { message: firstCommit.text, date: firstCommit.committedAt ?? firstCommit._creationTime }
+      : null,
+    lastCommit: lastCommit
+      ? { message: lastCommit.text, date: lastCommit.committedAt ?? lastCommit._creationTime }
+      : null,
+  };
+}
+
 export const getShipStats = query({
   args: { id: v.id("commitments") },
   handler: async (ctx, { id }) => {
     const commitment = await ctx.db.get(id);
     if (!commitment) return null;
 
-    const entries = await ctx.db
-      .query("devlogEntries")
-      .withIndex("by_commitmentId", (q) => q.eq("commitmentId", id))
-      .collect();
-
-    const totalCommits = entries.filter(
-      (e) => e.type === "commit" || e.type === "git_commit",
-    ).length;
-    const totalPosts = entries.filter((e) => e.type === "post").length;
-    const totalUpdates = totalCommits + totalPosts;
-
-    const firstEntry = await ctx.db
-      .query("devlogEntries")
-      .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", id))
-      .order("asc")
-      .first();
-
-    const startedAt = firstEntry?.committedAt ?? commitment._creationTime;
-    const endTime = commitment.shippedAt ?? Date.now();
-    const daysBuilding = Math.max(1, Math.ceil((endTime - startedAt) / 86_400_000));
-
-    const commits = entries
-      .filter((e) => e.type === "commit" || e.type === "git_commit")
-      .sort((a, b) => (a.committedAt ?? 0) - (b.committedAt ?? 0));
-
-    const firstCommit = commits[0];
-    const lastCommit = commits.length > 1 ? commits[commits.length - 1] : null;
-
-    return {
-      daysBuilding,
-      totalCommits,
-      totalPosts,
-      totalUpdates,
-      startedAt,
-      firstCommit: firstCommit
-        ? { message: firstCommit.text, date: firstCommit.committedAt ?? firstCommit._creationTime }
-        : null,
-      lastCommit: lastCommit
-        ? { message: lastCommit.text, date: lastCommit.committedAt ?? lastCommit._creationTime }
-        : null,
-    };
+    return computeShipStats(ctx, id, commitment);
   },
 });
 
@@ -441,47 +449,7 @@ export const getShipStatsForShare = query({
     const commitment = await ctx.db.get(id);
     if (!commitment || commitment.isPrivate) return null;
 
-    const entries = await ctx.db
-      .query("devlogEntries")
-      .withIndex("by_commitmentId", (q) => q.eq("commitmentId", id))
-      .collect();
-
-    const totalCommits = entries.filter(
-      (e) => e.type === "commit" || e.type === "git_commit",
-    ).length;
-    const totalPosts = entries.filter((e) => e.type === "post").length;
-    const totalUpdates = totalCommits + totalPosts;
-
-    const firstEntry = await ctx.db
-      .query("devlogEntries")
-      .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", id))
-      .order("asc")
-      .first();
-
-    const startedAt = firstEntry?.committedAt ?? commitment._creationTime;
-    const endTime = commitment.shippedAt ?? Date.now();
-    const daysBuilding = Math.max(1, Math.ceil((endTime - startedAt) / 86_400_000));
-
-    const commits = entries
-      .filter((e) => e.type === "commit" || e.type === "git_commit")
-      .sort((a, b) => (a.committedAt ?? 0) - (b.committedAt ?? 0));
-
-    const firstCommit = commits[0];
-    const lastCommit = commits.length > 1 ? commits[commits.length - 1] : null;
-
-    return {
-      daysBuilding,
-      totalCommits,
-      totalPosts,
-      totalUpdates,
-      startedAt,
-      firstCommit: firstCommit
-        ? { message: firstCommit.text, date: firstCommit.committedAt ?? firstCommit._creationTime }
-        : null,
-      lastCommit: lastCommit
-        ? { message: lastCommit.text, date: lastCommit.committedAt ?? lastCommit._creationTime }
-        : null,
-    };
+    return computeShipStats(ctx, id, commitment);
   },
 });
 
