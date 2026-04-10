@@ -7,7 +7,8 @@ export function daysSince(timestamp: number): number {
 }
 
 export function formatShippedIn(shippedAt: number, createdAt: number): string {
-  const days = Math.floor((shippedAt - createdAt) / DAY);
+  const elapsed = Math.max(0, shippedAt - createdAt);
+  const days = Math.floor(elapsed / DAY);
   if (days === 0) return "< 1 day";
   if (days === 1) return "1 day";
   return `${days} days`;

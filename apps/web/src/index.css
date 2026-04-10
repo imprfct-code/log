@@ -649,8 +649,12 @@
   .respect-pulse,
   .pulse-dot,
   .pulse-dot-shipped,
-  .commit-pulse {
-    animation: none;
+  .commit-pulse,
+  .ship-step-in,
+  .ship-stat-in,
+  .ship-celebrate {
+    animation: none !important;
+    opacity: 1 !important;
   }
 
   .skeleton {

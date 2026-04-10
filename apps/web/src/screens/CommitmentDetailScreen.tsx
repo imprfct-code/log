@@ -147,11 +147,11 @@ export function CommitmentDetailScreen() {
           statusLabel={
             isSyncing ? (
               <span className="text-muted-foreground">syncing</span>
-            ) : commitment.status === "shipped" ? (
+            ) : commitment.status === "shipped" && commitment.shippedAt ? (
               <span className="text-shipped">
                 shipped in{" "}
                 {formatShippedIn(
-                  commitment.shippedAt!,
+                  commitment.shippedAt,
                   commitment.firstEntryAt ?? commitment._creationTime,
                 )}
               </span>

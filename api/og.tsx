@@ -362,16 +362,29 @@ function renderCommitment(commitment: CommitmentData, stats: ShipStatsData | nul
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const id = Array.isArray(req.query.id) ? req.query.id[0] : req.query.id;
-  const opts = await imageOptions();
 
   if (!id) {
-    return sendImage(res, renderDefault(opts), 604800);
+    try {
+      const opts = await imageOptions();
+      return sendImage(res, renderDefault(opts), 604800);
+    } catch (err) {
+      console.error("Font loading failed:", err);
+      return res.status(500).send("Font loading failed");
+    }
+  }
+
+  let opts: ImgOpts;
+  try {
+    opts = await imageOptions();
+  } catch (err) {
+    console.error("Font loading failed:", err);
+    return res.status(500).send("Font loading failed");
   }
 
   try {
     const [commitment, stats] = await Promise.all([
-      convexQuery<CommitmentData | null>("commitments:getById", { id }),
-      convexQuery<ShipStatsData | null>("commitments:getShipStats", { id }),
+      convexQuery<CommitmentData | null>("commitments:getByIdForShare", { id }),
+      convexQuery<ShipStatsData | null>("commitments:getShipStatsForShare", { id }),
     ]);
 
     if (!commitment) {

@@ -13,19 +13,27 @@ export async function convexQuery<T = unknown>(
   args: Record<string, unknown>,
 ): Promise<T> {
   const url = CONVEX_URL.replace(/\/$/, "");
-  const res = await fetch(`${url}/api/query`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path, args, format: "json" }),
-  });
-  if (!res.ok) {
-    throw new Error(`Convex query "${path}" failed: ${res.status}`);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
+  try {
+    const res = await fetch(`${url}/api/query`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path, args, format: "json" }),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      throw new Error(`Convex query "${path}" failed: ${res.status}`);
+    }
+    const json = (await res.json()) as { status: string; value?: unknown; errorMessage?: string };
+    if (json.status === "error") {
+      throw new Error(json.errorMessage ?? "Convex query error");
+    }
+    return json.value as T;
+  } finally {
+    clearTimeout(timeout);
   }
-  const json = (await res.json()) as { status: string; value?: unknown; errorMessage?: string };
-  if (json.status === "error") {
-    throw new Error(json.errorMessage ?? "Convex query error");
-  }
-  return json.value as T;
 }
 
 export interface CommitmentData {

@@ -19,8 +19,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const [commitment, stats] = await Promise.all([
-      convexQuery<CommitmentData | null>("commitments:getById", { id }),
-      convexQuery<ShipStatsData | null>("commitments:getShipStats", { id }),
+      convexQuery<CommitmentData | null>("commitments:getByIdForShare", { id }),
+      convexQuery<ShipStatsData | null>("commitments:getShipStatsForShare", { id }),
     ]);
 
     if (commitment) {

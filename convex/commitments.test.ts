@@ -182,6 +182,7 @@ describe("commitments.ship", () => {
     const shipEntry = entries.find((e) => e.type === "ship");
     expect(shipEntry).toBeDefined();
     expect(shipEntry!.body).toBe("log.dev");
+    expect(shipEntry!.isMilestone).toBe(true);
   });
 });
 

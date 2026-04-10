@@ -87,7 +87,8 @@ export function ShipModal({
 
   function validateUrl(raw: string): string | null {
     try {
-      new URL(raw.startsWith("http") ? raw : "https://" + raw);
+      const toValidate = raw.startsWith("http") ? raw : "https://" + raw;
+      new URL(toValidate);
       return null;
     } catch {
       return "invalid url";
@@ -107,10 +108,9 @@ export function ShipModal({
     setSubmitting(true);
     setError(null);
     try {
-      const shipUrl = trimmed.replace(/^https?:\/\//, "");
       const note = shipNote.trim() || undefined;
-      await ship({ id: commitmentId, shipUrl, shipNote: note, keepBuilding });
-      submittedRef.current = { url: shipUrl, shipNote: shipNote.trim() };
+      await ship({ id: commitmentId, shipUrl: trimmed, shipNote: note, keepBuilding });
+      submittedRef.current = { url: trimmed, shipNote: shipNote.trim() };
       fireConfetti();
       setStep("celebrate");
     } catch (e) {
@@ -394,9 +394,14 @@ function DetailsStep({
         </div>
 
         <div className="pt-4 text-center">
-          <div className="inline-flex gap-1 border border-border-strong bg-muted/50 p-1">
+          <div
+            className="inline-flex gap-1 border border-border-strong bg-muted/50 p-1"
+            role="group"
+            aria-label="Shipping status"
+          >
             <button
               type="button"
+              aria-pressed={!keepBuilding}
               onClick={() => onKeepBuildingChange(false)}
               className={cn(
                 "border px-4 py-2 text-xs font-medium transition-all",
@@ -409,6 +414,7 @@ function DetailsStep({
             </button>
             <button
               type="button"
+              aria-pressed={keepBuilding}
               onClick={() => onKeepBuildingChange(true)}
               className={cn(
                 "border px-4 py-2 text-xs font-medium transition-all",

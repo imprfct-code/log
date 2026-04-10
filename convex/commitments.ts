@@ -309,6 +309,19 @@ export const ship = mutation({
     const user = await getUserByToken(ctx);
     if (!user) throw new Error("Not authenticated");
 
+    const trimmedUrl = shipUrl.trim();
+    if (!trimmedUrl) throw new Error("shipUrl must not be empty");
+    const parseable = trimmedUrl.startsWith("http") ? trimmedUrl : "https://" + trimmedUrl;
+    let parsed: URL;
+    try {
+      parsed = new URL(parseable);
+    } catch {
+      throw new Error("Invalid shipUrl");
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      throw new Error("Invalid shipUrl");
+    }
+
     const commitment = await ctx.db.get(id);
     if (!commitment) throw new Error("Commitment not found");
     if (commitment.userId !== user._id) throw new Error("Not the owner");
@@ -319,7 +332,7 @@ export const ship = mutation({
 
     await ctx.db.patch(id, {
       ...(done ? { status: "shipped" as const } : {}),
-      shipUrl,
+      shipUrl: trimmedUrl,
       shipNote,
       shippedAt: now,
       lastActivityAt: now,
@@ -331,7 +344,7 @@ export const ship = mutation({
       userId: user._id,
       type: "ship",
       text: "shipped",
-      body: shipUrl,
+      body: trimmedUrl,
       shipNote,
       isMilestone: keepBuilding || undefined,
       committedAt: now,
@@ -373,7 +386,81 @@ export const getShipStats = query({
       .first();
 
     const startedAt = firstEntry?.committedAt ?? commitment._creationTime;
-    const daysBuilding = Math.max(1, Math.ceil((Date.now() - startedAt) / 86_400_000));
+    const endTime = commitment.shippedAt ?? Date.now();
+    const daysBuilding = Math.max(1, Math.ceil((endTime - startedAt) / 86_400_000));
+
+    const commits = entries
+      .filter((e) => e.type === "commit" || e.type === "git_commit")
+      .sort((a, b) => (a.committedAt ?? 0) - (b.committedAt ?? 0));
+
+    const firstCommit = commits[0];
+    const lastCommit = commits.length > 1 ? commits[commits.length - 1] : null;
+
+    return {
+      daysBuilding,
+      totalCommits,
+      totalPosts,
+      totalUpdates,
+      startedAt,
+      firstCommit: firstCommit
+        ? { message: firstCommit.text, date: firstCommit.committedAt ?? firstCommit._creationTime }
+        : null,
+      lastCommit: lastCommit
+        ? { message: lastCommit.text, date: lastCommit.committedAt ?? lastCommit._creationTime }
+        : null,
+    };
+  },
+});
+
+/** Share-safe version: returns commitment only if public (isPrivate === false). */
+export const getByIdForShare = query({
+  args: { id: v.id("commitments") },
+  handler: async (ctx, { id }) => {
+    const commitment = await ctx.db.get(id);
+    if (!commitment || commitment.isPrivate) return null;
+
+    const user = await ctx.db.get(commitment.userId);
+    const firstEntry = await ctx.db
+      .query("devlogEntries")
+      .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", id))
+      .order("asc")
+      .first();
+
+    return {
+      ...commitment,
+      firstEntryAt: firstEntry?.committedAt,
+      user,
+    };
+  },
+});
+
+/** Share-safe version: returns stats only if commitment is public. */
+export const getShipStatsForShare = query({
+  args: { id: v.id("commitments") },
+  handler: async (ctx, { id }) => {
+    const commitment = await ctx.db.get(id);
+    if (!commitment || commitment.isPrivate) return null;
+
+    const entries = await ctx.db
+      .query("devlogEntries")
+      .withIndex("by_commitmentId", (q) => q.eq("commitmentId", id))
+      .collect();
+
+    const totalCommits = entries.filter(
+      (e) => e.type === "commit" || e.type === "git_commit",
+    ).length;
+    const totalPosts = entries.filter((e) => e.type === "post").length;
+    const totalUpdates = totalCommits + totalPosts;
+
+    const firstEntry = await ctx.db
+      .query("devlogEntries")
+      .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", id))
+      .order("asc")
+      .first();
+
+    const startedAt = firstEntry?.committedAt ?? commitment._creationTime;
+    const endTime = commitment.shippedAt ?? Date.now();
+    const daysBuilding = Math.max(1, Math.ceil((endTime - startedAt) / 86_400_000));
 
     const commits = entries
       .filter((e) => e.type === "commit" || e.type === "git_commit")

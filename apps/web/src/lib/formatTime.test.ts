@@ -104,4 +104,9 @@ describe("formatShippedIn", () => {
     expect(formatShippedIn(NOW + 5 * DAY, NOW)).toBe("5 days");
     expect(formatShippedIn(NOW + 10 * DAY, NOW)).toBe("10 days");
   });
+
+  test("clamps to < 1 day when shippedAt < createdAt (out-of-order timestamps)", () => {
+    expect(formatShippedIn(NOW - 1000, NOW)).toBe("< 1 day");
+    expect(formatShippedIn(NOW - DAY, NOW)).toBe("< 1 day");
+  });
 });
