@@ -8,6 +8,7 @@ export const attachmentValidator = v.object({
   hasMarkdownRef: v.optional(v.boolean()),
   cover: v.optional(v.boolean()),
   duration: v.optional(v.number()),
+  inline: v.optional(v.boolean()),
 });
 
 export default defineSchema({

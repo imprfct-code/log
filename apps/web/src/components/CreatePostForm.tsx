@@ -35,7 +35,7 @@ const CHAR_DANGER_THRESHOLD = 19_000;
 interface EditData {
   id: Id<"devlogEntries">;
   body?: string;
-  attachments?: Array<{
+  attachments?: {
     url: string;
     key: string;
     type: "image" | "video";
@@ -43,7 +43,7 @@ interface EditData {
     hasMarkdownRef?: boolean;
     cover?: boolean;
     duration?: number;
-  }>;
+  }[];
 }
 
 function toInitialAttachments(edit?: EditData): UploadedAttachment[] {
@@ -158,7 +158,7 @@ export function CreatePostForm({
     try {
       // Detect orphaned attachments: keys not referenced in body
       const referencedKeys = new Set<string>();
-      const refPattern = /!\[.*?\]\(upload:([^)]+)\)/g;
+      const refPattern = /!\[.*?]\(upload:([^)]+)\)/g;
       let match;
       while ((match = refPattern.exec(trimmed)) !== null) {
         referencedKeys.add(match[1]);
@@ -172,7 +172,7 @@ export function CreatePostForm({
           filename,
           hasMarkdownRef,
           cover: i === 0,
-          duration,
+          ...(duration !== undefined && { duration }),
         }));
 
       if (isEditing && editEntry) {
@@ -215,7 +215,7 @@ export function CreatePostForm({
   /** Update the width in `![alt|XX%](src)` when slider is dragged in preview. */
   function handleImageResize(src: string, width: number) {
     setContent((prev) => {
-      const escaped = src.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const escaped = src.replace(/[.*+?^${}()|\\[\]]/g, "\\$&");
       const pattern = new RegExp(`!\\[([^|\\]]*?)(?:\\|\\d{1,3}%)?\\]\\(${escaped}\\)`);
       const m = prev.match(pattern);
       if (!m) return prev;
