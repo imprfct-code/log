@@ -214,14 +214,6 @@ export function CommitmentDetailScreen() {
           </div>
         )}
 
-        {canShip && (
-          <div className="mb-3">
-            <Button variant="ship" size="sm" onClick={() => setShipModalOpen(true)}>
-              ship it
-            </Button>
-          </div>
-        )}
-
         {shipModalOpen && (
           <ShipModal
             commitmentId={commitment._id}
@@ -255,20 +247,37 @@ export function CommitmentDetailScreen() {
       ) : (
         <>
           {canPost && (
-            <div className="feed-in mb-4 opacity-0" style={{ animationDelay: "30ms" }}>
+            <div
+              className="feed-in mb-4 flex items-center opacity-0"
+              style={{ animationDelay: "30ms" }}
+            >
               {showPostForm ? (
-                <CreatePostForm
-                  commitmentId={commitment._id}
-                  onClose={() => setShowPostForm(false)}
-                />
+                <div className="flex-1">
+                  <CreatePostForm
+                    commitmentId={commitment._id}
+                    onClose={() => setShowPostForm(false)}
+                  />
+                </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowPostForm(true)}
-                  className="cursor-pointer border-none bg-transparent p-0 font-mono text-[13px] text-accent transition-colors hover:text-foreground-bright"
-                >
-                  + add update
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowPostForm(true)}
+                    className="cursor-pointer border-none bg-transparent p-0 font-mono text-[13px] text-accent transition-colors hover:text-foreground-bright"
+                  >
+                    + add update
+                  </button>
+                  {canShip && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="ml-auto"
+                      onClick={() => setShipModalOpen(true)}
+                    >
+                      ship it
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           )}

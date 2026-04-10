@@ -1,5 +1,4 @@
 import type { DevlogEntry as DevlogEntryType } from "@/types";
-import { cn } from "@/lib/utils";
 import { ExtIcon } from "./Icons";
 
 export function ShipEntry({ entry }: { entry: DevlogEntryType }) {
@@ -9,14 +8,7 @@ export function ShipEntry({ entry }: { entry: DevlogEntryType }) {
 
   return (
     <div className="relative py-2.5 pl-6">
-      <span
-        className={cn(
-          "absolute left-0 top-4 -translate-x-1/2 rounded-full",
-          isMilestone
-            ? "h-[5px] w-[5px] border border-shipped/40 bg-shipped/60"
-            : "h-[7px] w-[7px] border border-shipped/50 bg-shipped",
-        )}
-      />
+      <span className="absolute left-0 top-4 h-[7px] w-[7px] -translate-x-[4px] rounded-full border border-shipped bg-shipped" />
 
       <div className="flex items-baseline gap-2 text-[11px]">
         <span className={isMilestone ? "text-shipped/70" : "text-shipped"}>

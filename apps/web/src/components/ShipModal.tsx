@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
-import { Check, Copy, ExternalLink } from "lucide-react";
+import { Check, Copy, ExternalLink, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fireConfetti } from "@/lib/confetti";
 import { cn } from "@/lib/utils";
@@ -70,7 +70,7 @@ export function ShipModal({
   // Keyboard handling
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (e.key === "Escape" && step !== "celebrate") {
+      if (e.key === "Escape") {
         onClose();
       }
       if (e.key === "Enter" && step === "reflect" && stats) {
@@ -127,7 +127,7 @@ export function ShipModal({
   }
 
   function handleOverlayClick(e: React.MouseEvent) {
-    if (e.target === overlayRef.current && step !== "celebrate") {
+    if (e.target === overlayRef.current) {
       onClose();
     }
   }
@@ -141,6 +141,14 @@ export function ShipModal({
       onClick={handleOverlayClick}
       className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm"
     >
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close"
+        className="absolute right-4 top-4 cursor-pointer border-none bg-transparent p-2 text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <X size={20} />
+      </button>
       <div className="w-full max-w-[460px] px-6">
         {step === "reflect" && (
           <ReflectStep
