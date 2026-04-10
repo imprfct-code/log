@@ -9,6 +9,7 @@ export function CommitCard({ item, preview }: { item: Commitment; preview?: bool
       <CommitmentMeta
         username={item.user}
         repo={item.repo || undefined}
+        repoHref={item.repo ? `https://github.com/${item.repo}` : undefined}
         isPrivate={item.isPrivate}
         activity={item.activity}
         statusLabel={

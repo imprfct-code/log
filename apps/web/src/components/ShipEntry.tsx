@@ -1,16 +1,27 @@
 import type { DevlogEntry as DevlogEntryType } from "@/types";
+import { cn } from "@/lib/utils";
 import { ExtIcon } from "./Icons";
 
 export function ShipEntry({ entry }: { entry: DevlogEntryType }) {
   const url = entry.body;
   const href = url ? (url.startsWith("http") ? url : `https://${url}`) : undefined;
+  const isMilestone = entry.isMilestone;
 
   return (
     <div className="relative py-2.5 pl-6">
-      <span className="absolute left-0 top-4 h-[7px] w-[7px] -translate-x-[3.5px] rounded-full border border-shipped/50 bg-shipped" />
+      <span
+        className={cn(
+          "absolute left-0 top-4 -translate-x-1/2 rounded-full",
+          isMilestone
+            ? "h-[5px] w-[5px] border border-shipped/40 bg-shipped/60"
+            : "h-[7px] w-[7px] border border-shipped/50 bg-shipped",
+        )}
+      />
 
       <div className="flex items-baseline gap-2 text-[11px]">
-        <span className="text-shipped">shipped</span>
+        <span className={isMilestone ? "text-shipped/70" : "text-shipped"}>
+          {isMilestone ? "milestone" : "shipped"}
+        </span>
         <span className="text-[#333]">{entry.time}</span>
         {href && (
           <a

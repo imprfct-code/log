@@ -21,6 +21,8 @@ interface RawDevlogEntry {
   gitUrl?: string;
   gitBranch?: string;
   committedAt?: number;
+  shipNote?: string;
+  isMilestone?: boolean;
   commentCount: number;
   _creationTime: number;
   resolvedAttachments?: Array<{
@@ -60,7 +62,7 @@ interface RawFeedItem {
   hasMore?: boolean;
 }
 
-function toDevlogEntry(entry: RawDevlogEntry, shipNote?: string): DevlogEntry {
+function toDevlogEntry(entry: RawDevlogEntry): DevlogEntry {
   return {
     id: entry._id,
     type: entry.type,
@@ -72,7 +74,8 @@ function toDevlogEntry(entry: RawDevlogEntry, shipNote?: string): DevlogEntry {
     gitAuthor: entry.gitAuthor,
     gitUrl: entry.gitUrl,
     gitBranch: entry.gitBranch,
-    shipNote: entry.type === "ship" ? shipNote : undefined,
+    shipNote: entry.shipNote,
+    isMilestone: entry.isMilestone,
     comments: entry.commentCount,
   };
 }
@@ -90,13 +93,15 @@ function toCommitment(item: RawFeedItem): Commitment {
     showBranches: item.showBranches,
     day: daysSince(item.firstEntryAt ?? item._creationTime),
     comments: item.commentCount,
-    devlog: (item.recentEntries ?? []).map((e) => toDevlogEntry(e, item.shipNote)),
+    devlog: (item.recentEntries ?? []).map((e) => toDevlogEntry(e)),
     respects: item.respectCount,
     status: item.status,
     shipUrl: item.shipUrl,
     shipNote: item.shipNote,
     shippedAt: item.shippedAt,
-    shippedIn: item.shippedAt ? formatShippedIn(item.shippedAt, item._creationTime) : undefined,
+    shippedIn: item.shippedAt
+      ? formatShippedIn(item.shippedAt, item.firstEntryAt ?? item._creationTime)
+      : undefined,
     activity: item.activity,
     hasMore: item.hasMore,
   };

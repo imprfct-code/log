@@ -65,13 +65,6 @@ export function ShipModal({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
-  // Fire confetti on celebrate step
-  useEffect(() => {
-    if (step === "celebrate") {
-      fireConfetti();
-    }
-  }, [step]);
-
   function validateUrl(raw: string): string | null {
     try {
       new URL(raw.startsWith("http") ? raw : "https://" + raw);
@@ -98,6 +91,7 @@ export function ShipModal({
       const note = shipNote.trim() || undefined;
       await ship({ id: commitmentId, shipUrl, shipNote: note, keepBuilding });
       submittedRef.current = { url: shipUrl, shipNote: shipNote.trim() };
+      fireConfetti();
       setStep("celebrate");
     } catch (e) {
       setError(e instanceof Error ? e.message : "failed to ship");

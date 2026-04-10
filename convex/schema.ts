@@ -79,6 +79,8 @@ export default defineSchema({
     gitUrl: v.optional(v.string()),
     gitBranch: v.optional(v.string()),
     committedAt: v.optional(v.number()),
+    shipNote: v.optional(v.string()),
+    isMilestone: v.optional(v.boolean()),
     commentCount: v.number(),
   })
     .index("by_commitmentId", ["commitmentId"])

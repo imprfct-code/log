@@ -41,9 +41,9 @@ export function CommitmentMeta({
               href={repoHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 text-muted-foreground no-underline hover:text-foreground"
+              className="flex items-center gap-1 text-muted-foreground no-underline transition-colors hover:text-foreground"
             >
-              <GhIcon size={11} color="#666" />
+              <GhIcon size={11} />
               {repo}
             </a>
           ) : (

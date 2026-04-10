@@ -332,6 +332,8 @@ export const ship = mutation({
       type: "ship",
       text: "shipped",
       body: shipUrl,
+      shipNote,
+      isMilestone: keepBuilding || undefined,
       committedAt: now,
       commentCount: 0,
     });

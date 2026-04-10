@@ -76,7 +76,8 @@ export function CommitmentDetailScreen() {
         gitAuthor: e.gitAuthor,
         gitUrl: e.gitUrl,
         gitBranch: e.gitBranch,
-        shipNote: e.type === "ship" ? data?.shipNote : undefined,
+        shipNote: e.shipNote,
+        isMilestone: e.isMilestone,
         comments: e.commentCount,
         isOwn: effectiveAuthor,
       })),
@@ -113,7 +114,8 @@ export function CommitmentDetailScreen() {
   const canSync =
     effectiveAuthor && commitment.repo && !commitment.webhookId && commitment.status === "building";
   const canPost = effectiveAuthor && commitment.status === "building";
-  const canShip = effectiveAuthor && commitment.status === "building";
+  const canShip =
+    effectiveAuthor && commitment.status === "building" && !isSyncing && entries.length > 0;
   const day = daysSince(commitment.firstEntryAt ?? commitment._creationTime);
 
   async function handleSync() {
@@ -147,7 +149,11 @@ export function CommitmentDetailScreen() {
               <span className="text-muted-foreground">syncing</span>
             ) : commitment.status === "shipped" ? (
               <span className="text-shipped">
-                shipped in {formatShippedIn(commitment.shippedAt!, commitment._creationTime)}
+                shipped in{" "}
+                {formatShippedIn(
+                  commitment.shippedAt!,
+                  commitment.firstEntryAt ?? commitment._creationTime,
+                )}
               </span>
             ) : commitment.shippedAt ? (
               <span>
@@ -213,16 +219,17 @@ export function CommitmentDetailScreen() {
             <Button variant="ship" size="sm" onClick={() => setShipModalOpen(true)}>
               ship it
             </Button>
-            {shipModalOpen && (
-              <ShipModal
-                commitmentId={commitment._id}
-                commitmentText={commitment.text}
-                repo={commitment.repo}
-                previousShipUrl={commitment.shipUrl}
-                onClose={() => setShipModalOpen(false)}
-              />
-            )}
           </div>
+        )}
+
+        {shipModalOpen && (
+          <ShipModal
+            commitmentId={commitment._id}
+            commitmentText={commitment.text}
+            repo={commitment.repo}
+            previousShipUrl={commitment.shipUrl}
+            onClose={() => setShipModalOpen(false)}
+          />
         )}
       </div>
 

@@ -29,6 +29,7 @@ export interface DevlogEntry {
   gitUrl?: string;
   gitBranch?: string;
   shipNote?: string;
+  isMilestone?: boolean;
   comments: number;
   commentData?: Comment[];
   isOwn?: boolean;
