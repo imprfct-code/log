@@ -3,11 +3,13 @@ import { useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export function ShipForm({ commitmentId }: { commitmentId: Id<"commitments"> }) {
   const ship = useMutation(api.commitments.ship);
 
   const [url, setUrl] = useState("");
+  const [keepBuilding, setKeepBuilding] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -34,7 +36,7 @@ export function ShipForm({ commitmentId }: { commitmentId: Id<"commitments"> }) 
     setError(null);
     try {
       const shipUrl = trimmed.replace(/^https?:\/\//, "");
-      await ship({ id: commitmentId, shipUrl });
+      await ship({ id: commitmentId, shipUrl, keepBuilding });
     } catch (e) {
       setError(e instanceof Error ? e.message : "failed to ship");
       setSubmitting(false);
@@ -72,6 +74,34 @@ export function ShipForm({ commitmentId }: { commitmentId: Id<"commitments"> }) 
           {submitting ? "..." : "ship it"}
         </Button>
       </div>
+
+      <div className="mt-2 flex items-center gap-3 text-[11px]">
+        <button
+          type="button"
+          onClick={() => setKeepBuilding(true)}
+          className={cn(
+            "cursor-pointer border-b bg-transparent pb-0.5 font-mono transition-colors",
+            keepBuilding
+              ? "border-accent text-foreground-bright"
+              : "border-transparent text-muted-foreground hover:text-foreground",
+          )}
+        >
+          keep building
+        </button>
+        <button
+          type="button"
+          onClick={() => setKeepBuilding(false)}
+          className={cn(
+            "cursor-pointer border-b bg-transparent pb-0.5 font-mono transition-colors",
+            !keepBuilding
+              ? "border-shipped text-shipped"
+              : "border-transparent text-muted-foreground hover:text-foreground",
+          )}
+        >
+          done
+        </button>
+      </div>
+
       {error && (
         <p role="alert" className="mt-1.5 text-[12px] text-destructive">
           {error}

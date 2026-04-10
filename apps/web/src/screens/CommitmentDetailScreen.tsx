@@ -148,6 +148,13 @@ export function CommitmentDetailScreen() {
               <span className="text-shipped">
                 shipped in {formatShippedIn(commitment.shippedAt!, commitment._creationTime)}
               </span>
+            ) : commitment.shippedAt ? (
+              <span>
+                <span className="text-shipped">shipped</span>
+                <span className="text-muted-foreground">
+                  {" · "}day <span className="text-accent">{day}</span>
+                </span>
+              </span>
             ) : (
               <span className="text-muted-foreground">
                 day <span className="text-accent">{day}</span>
@@ -284,7 +291,6 @@ export function CommitmentDetailScreen() {
                 showBranches={showBranches}
                 authorLinks={effectiveAuthor}
                 status={commitment.status}
-                shipUrl={commitment.shipUrl}
                 isDetailPage
                 onLoadMore={
                   paginationStatus === "CanLoadMore" || paginationStatus === "LoadingMore"

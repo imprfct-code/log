@@ -303,8 +303,9 @@ export const ship = mutation({
     id: v.id("commitments"),
     shipUrl: v.string(),
     shipNote: v.optional(v.string()),
+    keepBuilding: v.optional(v.boolean()),
   },
-  handler: async (ctx, { id, shipUrl, shipNote }) => {
+  handler: async (ctx, { id, shipUrl, shipNote, keepBuilding }) => {
     const user = await getUserByToken(ctx);
     if (!user) throw new Error("Not authenticated");
 
@@ -314,9 +315,10 @@ export const ship = mutation({
     if (commitment.status !== "building") throw new Error("Already shipped");
 
     const now = Date.now();
+    const done = !keepBuilding;
 
     await ctx.db.patch(id, {
-      status: "shipped",
+      ...(done ? { status: "shipped" as const } : {}),
       shipUrl,
       shipNote,
       shippedAt: now,
@@ -329,12 +331,13 @@ export const ship = mutation({
       userId: user._id,
       type: "ship",
       text: "shipped",
+      body: shipUrl,
       committedAt: now,
       commentCount: 0,
     });
 
-    // Remove GitHub webhook if one was registered
-    if (commitment.repo && commitment.webhookId) {
+    // Remove GitHub webhook only when done (not keep building)
+    if (done && commitment.repo && commitment.webhookId) {
       await ctx.scheduler.runAfter(0, internal.github.removeWebhook, {
         commitmentId: id,
         repo: commitment.repo,

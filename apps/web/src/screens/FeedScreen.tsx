@@ -13,7 +13,7 @@ type Tab = (typeof TABS)[number];
 
 interface RawDevlogEntry {
   _id: Id<"devlogEntries">;
-  type: "commit" | "post" | "git_commit";
+  type: "commit" | "post" | "git_commit" | "ship";
   text: string;
   body?: string;
   hash?: string;
@@ -92,6 +92,7 @@ function toCommitment(item: RawFeedItem): Commitment {
     respects: item.respectCount,
     status: item.status,
     shipUrl: item.shipUrl,
+    shippedAt: item.shippedAt,
     shippedIn: item.shippedAt ? formatShippedIn(item.shippedAt, item._creationTime) : undefined,
     activity: item.activity,
     hasMore: item.hasMore,

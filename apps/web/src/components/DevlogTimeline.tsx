@@ -16,7 +16,6 @@ export function DevlogTimeline({
   showBranches = true,
   authorLinks = false,
   status,
-  shipUrl,
   isDetailPage = false,
   limit = 4,
   onLoadMore,
@@ -30,7 +29,6 @@ export function DevlogTimeline({
   showBranches?: boolean;
   authorLinks?: boolean;
   status: "building" | "shipped";
-  shipUrl?: string;
   isDetailPage?: boolean;
   limit?: number;
   onLoadMore?: () => void;
@@ -65,7 +63,6 @@ export function DevlogTimeline({
           authorLinks={authorLinks}
           isLatest={index === 0}
           status={status}
-          shipUrl={shipUrl}
           isDetailPage={isDetailPage}
           onCommentClick={() => toggleComment(entry.id)}
         />

@@ -14,6 +14,13 @@ export function CommitCard({ item, preview }: { item: Commitment; preview?: bool
         statusLabel={
           item.status === "shipped" ? (
             <span className="text-shipped">shipped in {item.shippedIn}</span>
+          ) : item.shippedAt ? (
+            <span>
+              <span className="text-shipped">shipped</span>
+              <span className="text-muted-foreground">
+                {" · "}day <span className="text-accent">{item.day}</span>
+              </span>
+            </span>
           ) : (
             <span className="text-muted-foreground">
               day <span className="text-accent">{item.day}</span>
@@ -44,7 +51,6 @@ export function CommitCard({ item, preview }: { item: Commitment; preview?: bool
             showHashes={item.showHashes}
             showBranches={item.showBranches}
             status={item.status}
-            shipUrl={item.shipUrl}
           />
           {!preview && item.hasMore && (
             <Link

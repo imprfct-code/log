@@ -49,6 +49,7 @@ export interface Commitment {
   respects: number;
   status: "building" | "shipped";
   shipUrl?: string;
+  shippedAt?: number;
   shippedIn?: string;
   activity: number[];
   hasMore?: boolean;

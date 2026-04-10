@@ -1,8 +1,9 @@
 import type { DevlogEntry as DevlogEntryType } from "@/types";
 import { ExtIcon } from "./Icons";
 
-export function ShipEntry({ entry, shipUrl }: { entry: DevlogEntryType; shipUrl?: string }) {
-  const href = shipUrl ? (shipUrl.startsWith("http") ? shipUrl : `https://${shipUrl}`) : undefined;
+export function ShipEntry({ entry }: { entry: DevlogEntryType }) {
+  const url = entry.body;
+  const href = url ? (url.startsWith("http") ? url : `https://${url}`) : undefined;
 
   return (
     <div className="relative py-2.5 pl-6">
@@ -18,7 +19,7 @@ export function ShipEntry({ entry, shipUrl }: { entry: DevlogEntryType; shipUrl?
             rel="noopener noreferrer"
             className="flex items-center gap-1 truncate text-shipped transition-colors hover:text-shipped/80"
           >
-            {shipUrl} <ExtIcon size={10} color="currentColor" />
+            {url} <ExtIcon size={10} color="currentColor" />
           </a>
         )}
       </div>

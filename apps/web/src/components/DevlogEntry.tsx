@@ -16,7 +16,6 @@ export function DevlogEntry({
   isLatest,
   status,
   isDetailPage,
-  shipUrl,
   onCommentClick,
 }: {
   entry: DevlogEntryType;
@@ -30,11 +29,10 @@ export function DevlogEntry({
   isLatest?: boolean;
   status?: "building" | "shipped";
   isDetailPage?: boolean;
-  shipUrl?: string;
   onCommentClick?: () => void;
 }) {
   if (entry.type === "ship") {
-    return <ShipEntry entry={entry} shipUrl={shipUrl} />;
+    return <ShipEntry entry={entry} />;
   }
   if (entry.type === "commit" || entry.type === "git_commit") {
     return (
