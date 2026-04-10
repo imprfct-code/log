@@ -56,6 +56,7 @@ export function ShipModal({
   const ship = useMutation(api.commitments.ship);
   const overlayRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   // Submitted data preserved for celebration step
   const submittedRef = useRef({ url: "", shipNote: "" });
@@ -68,6 +69,7 @@ export function ShipModal({
     contentRef.current?.focus();
     return () => {
       document.body.style.overflow = prev;
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
     };
   }, []);
 
@@ -145,7 +147,8 @@ export function ShipModal({
     try {
       await navigator.clipboard.writeText(link);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+      copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
     } catch {
       setCopied(false);
     }
