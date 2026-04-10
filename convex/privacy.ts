@@ -40,8 +40,8 @@ export function redactEntry<
     gitAuthor?: string;
   },
 >(entry: T, flags: VisibilityFlags, isPrivate?: boolean, isAuthor?: boolean): T {
-  // Posts are never redacted — only commits
-  if (entry.type === "post") return entry;
+  // Posts and ship entries are never redacted — only commits
+  if (entry.type === "post" || entry.type === "ship") return entry;
 
   return {
     ...entry,

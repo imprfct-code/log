@@ -18,7 +18,7 @@ export interface Attachment {
 
 export interface DevlogEntry {
   id: Id<"devlogEntries">;
-  type: "commit" | "post" | "git_commit";
+  type: "commit" | "post" | "git_commit" | "ship";
   text: string;
   body?: string;
   image?: string;

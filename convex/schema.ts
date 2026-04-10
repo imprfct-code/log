@@ -64,7 +64,12 @@ export default defineSchema({
   devlogEntries: defineTable({
     commitmentId: v.id("commitments"),
     userId: v.id("users"),
-    type: v.union(v.literal("commit"), v.literal("post"), v.literal("git_commit")),
+    type: v.union(
+      v.literal("commit"),
+      v.literal("post"),
+      v.literal("git_commit"),
+      v.literal("ship"),
+    ),
     text: v.string(),
     body: v.optional(v.string()),
     imageStorageId: v.optional(v.id("_storage")), // legacy, unused

@@ -44,6 +44,7 @@ export function CommitCard({ item, preview }: { item: Commitment; preview?: bool
             showHashes={item.showHashes}
             showBranches={item.showBranches}
             status={item.status}
+            shipUrl={item.shipUrl}
           />
           {!preview && item.hasMore && (
             <Link

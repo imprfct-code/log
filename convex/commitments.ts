@@ -5,7 +5,7 @@ import { paginationOptsValidator } from "convex/server";
 import { currentWeekActivity } from "./dates";
 import { getUserByToken } from "./users";
 import { computeVisibility, redactEntry } from "./privacy";
-import { resolveAttachments } from "./devlog";
+import { resolveAttachments, updateActivity } from "./devlog";
 import { r2 } from "./r2";
 
 const REPO_RE = /^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/;
@@ -313,11 +313,24 @@ export const ship = mutation({
     if (commitment.userId !== user._id) throw new Error("Not the owner");
     if (commitment.status !== "building") throw new Error("Already shipped");
 
+    const now = Date.now();
+
     await ctx.db.patch(id, {
       status: "shipped",
       shipUrl,
       shipNote,
-      shippedAt: Date.now(),
+      shippedAt: now,
+      lastActivityAt: now,
+      activity: updateActivity(commitment.activity, commitment.lastActivityAt),
+    });
+
+    await ctx.db.insert("devlogEntries", {
+      commitmentId: id,
+      userId: user._id,
+      type: "ship",
+      text: "shipped",
+      committedAt: now,
+      commentCount: 0,
     });
 
     // Remove GitHub webhook if one was registered

@@ -10,7 +10,6 @@ import { CommitmentMeta } from "@/components/CommitmentMeta";
 import { ConnectRepoForm } from "@/components/ConnectRepoForm";
 import { CreatePostForm } from "@/components/CreatePostForm";
 import { DevlogTimeline } from "@/components/DevlogTimeline";
-import { ExtIcon } from "@/components/Icons";
 import { ShipForm } from "@/components/ShipForm";
 import { Button } from "@/components/ui/button";
 import { daysSince, formatShippedIn, formatTimeAgo } from "@/lib/formatTime";
@@ -198,20 +197,6 @@ export function CommitmentDetailScreen() {
                 {syncing ? "syncing..." : (syncResult ?? "sync")}
               </button>
             )}
-            {commitment.status === "shipped" && commitment.shipUrl && (
-              <a
-                href={
-                  commitment.shipUrl.startsWith("http")
-                    ? commitment.shipUrl
-                    : `https://${commitment.shipUrl}`
-                }
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ml-auto flex shrink-0 items-center gap-1 truncate text-[11px] text-shipped transition-colors hover:text-shipped/80"
-              >
-                {commitment.shipUrl} <ExtIcon size={10} color="currentColor" />
-              </a>
-            )}
           </div>
         )}
 
@@ -299,6 +284,7 @@ export function CommitmentDetailScreen() {
                 showBranches={showBranches}
                 authorLinks={effectiveAuthor}
                 status={commitment.status}
+                shipUrl={commitment.shipUrl}
                 isDetailPage
                 onLoadMore={
                   paginationStatus === "CanLoadMore" || paginationStatus === "LoadingMore"
