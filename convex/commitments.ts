@@ -300,6 +300,7 @@ export const connectRepo = mutation({
   },
 });
 
+/** Mark a commitment as shipped with a URL and optional note. If keepBuilding is false, mark as fully completed. */
 export const ship = mutation({
   args: {
     id: v.id("commitments"),
@@ -310,6 +311,11 @@ export const ship = mutation({
   handler: async (ctx, { id, shipUrl, shipNote, keepBuilding }) => {
     const user = await getUserByToken(ctx);
     if (!user) throw new Error("Not authenticated");
+
+    const normalizedNote = shipNote?.trim() || undefined;
+    if (normalizedNote && normalizedNote.length > 500) {
+      throw new Error("shipNote must be 500 characters or less");
+    }
 
     const trimmedUrl = shipUrl.trim();
     if (!trimmedUrl) throw new Error("shipUrl must not be empty");
@@ -335,7 +341,7 @@ export const ship = mutation({
     await ctx.db.patch(id, {
       ...(done ? { status: "shipped" as const } : {}),
       shipUrl: trimmedUrl,
-      shipNote,
+      shipNote: normalizedNote,
       shippedAt: now,
       lastActivityAt: now,
       activity: updateActivity(commitment.activity, commitment.lastActivityAt),
@@ -347,7 +353,7 @@ export const ship = mutation({
       type: "ship",
       text: "shipped",
       body: trimmedUrl,
-      shipNote,
+      shipNote: normalizedNote,
       isMilestone: keepBuilding || undefined,
       committedAt: now,
       commentCount: 0,
@@ -364,6 +370,7 @@ export const ship = mutation({
   },
 });
 
+/** Compute ship stats: days building, commit/post counts, and first/last commit info. */
 async function computeShipStats(
   ctx: QueryCtx,
   id: Id<"commitments">,
@@ -410,6 +417,7 @@ async function computeShipStats(
   };
 }
 
+/** Get build stats for a commitment. */
 export const getShipStats = query({
   args: { id: v.id("commitments") },
   handler: async (ctx, { id }) => {
@@ -427,7 +435,7 @@ export const getByIdForShare = query({
     const commitment = await ctx.db.get(id);
     if (!commitment || commitment.isPrivate) return null;
 
-    const user = await ctx.db.get(commitment.userId);
+    const userDoc = await ctx.db.get(commitment.userId);
     const firstEntry = await ctx.db
       .query("devlogEntries")
       .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", id))
@@ -437,7 +445,7 @@ export const getByIdForShare = query({
     return {
       ...commitment,
       firstEntryAt: firstEntry?.committedAt,
-      user,
+      user: userDoc ? { username: userDoc.username, avatarUrl: userDoc.avatarUrl } : null,
     };
   },
 });

@@ -14,6 +14,7 @@ interface Particle {
   opacity: number;
 }
 
+/** Trigger a confetti animation with particles and gravity. Respects prefers-reduced-motion. */
 export function fireConfetti() {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 

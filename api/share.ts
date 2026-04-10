@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { convexQuery } from "./_lib/convex.js";
 import type { CommitmentData, ShipStatsData } from "./_lib/convex.js";
 
+/** Serve a share page with OG meta tags and HTML redirect to the commitment detail page. */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const id = Array.isArray(req.query.id) ? req.query.id[0] : req.query.id;
   if (!id) {

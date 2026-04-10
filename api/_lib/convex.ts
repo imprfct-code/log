@@ -8,6 +8,7 @@ function getConvexUrl(): string {
 
 const CONVEX_URL = getConvexUrl();
 
+/** Call a public Convex query from a Vercel API route with a 5-second timeout. */
 export async function convexQuery<T = unknown>(
   path: string,
   args: Record<string, unknown>,

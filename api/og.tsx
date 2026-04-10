@@ -10,6 +10,7 @@ import type { CommitmentData, ShipStatsData } from "./_lib/convex.js";
 // but is lost on cold starts (acceptable — fonts are small and Google Fonts is fast).
 const fontCache: Record<number, ArrayBuffer> = {};
 
+/** Fetch and cache IBM Plex Mono font from Google Fonts. */
 async function loadFont(weight: 400 | 700): Promise<ArrayBuffer> {
   if (fontCache[weight]) return fontCache[weight];
   const css = await fetch(
@@ -40,6 +41,7 @@ const T = {
 
 const FONT_NAME = "IBM Plex Mono";
 
+/** Load and configure fonts for Satori OG image rendering. */
 async function imageOptions() {
   const [regular, bold] = await Promise.all([loadFont(400), loadFont(700)]);
   return {
@@ -54,6 +56,7 @@ async function imageOptions() {
 
 // ── Helpers ──
 
+/** Send an OG image with cache headers. */
 function sendImage(
   res: import("@vercel/node").VercelResponse,
   image: ImageResponse,
@@ -122,6 +125,7 @@ function LogoMark({ scale = 1 }: { scale?: number }) {
 
 type ImgOpts = Awaited<ReturnType<typeof imageOptions>>;
 
+/** Render the default branding OG image. */
 function renderDefault(opts: ImgOpts) {
   return new ImageResponse(
     <div
@@ -222,6 +226,7 @@ function renderDefault(opts: ImgOpts) {
 
 // ── Commitment-specific ──
 
+/** Render a commitment-specific OG image with status, title, and stats. */
 function renderCommitment(commitment: CommitmentData, stats: ShipStatsData | null, opts: ImgOpts) {
   const isShipped = commitment.status === "shipped" || !!commitment.shipUrl;
   const username = commitment.user?.username ?? "builder";
@@ -362,6 +367,7 @@ function renderCommitment(commitment: CommitmentData, stats: ShipStatsData | nul
 
 // ── Handler ──
 
+/** Generate an OG image for a commitment by ID, or return default branding. */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const id = Array.isArray(req.query.id) ? req.query.id[0] : req.query.id;
 

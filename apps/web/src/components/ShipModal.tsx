@@ -30,6 +30,7 @@ const ICON = {
 
 type Step = "reflect" | "details" | "celebrate";
 
+/** Modal to guide shipping a commitment: reflection, URL/note input, and celebration with stats. */
 export function ShipModal({
   commitmentId,
   commitmentText,

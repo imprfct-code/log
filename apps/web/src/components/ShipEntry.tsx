@@ -1,6 +1,7 @@
 import type { DevlogEntry as DevlogEntryType } from "@/types";
 import { ExtIcon } from "./Icons";
 
+/** Display a ship or milestone entry in the devlog timeline. */
 export function ShipEntry({ entry }: { entry: DevlogEntryType }) {
   const url = entry.body;
   const href = url ? (url.startsWith("http") ? url : `https://${url}`) : undefined;
