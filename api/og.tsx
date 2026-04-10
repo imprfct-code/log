@@ -230,7 +230,9 @@ function renderDefault(opts: ImgOpts) {
 function renderCommitment(commitment: CommitmentData, stats: ShipStatsData | null, opts: ImgOpts) {
   const isShipped = commitment.status === "shipped" || !!commitment.shipUrl;
   const username = commitment.user?.username ?? "builder";
-  const text = commitment.text.length > 60 ? commitment.text.slice(0, 57) + "..." : commitment.text;
+  const segmenter = new Intl.Segmenter("en", { granularity: "grapheme" });
+  const graphemes = Array.from(segmenter.segment(commitment.text), (s) => s.segment);
+  const text = graphemes.length > 60 ? graphemes.slice(0, 57).join("") + "..." : commitment.text;
   const statusColor = isShipped ? T.shipped : T.accent;
   const shipUrl = commitment.shipUrl?.replace(/^https?:\/\//, "");
   const daysLabel = stats

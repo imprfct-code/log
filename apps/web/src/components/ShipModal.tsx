@@ -55,20 +55,23 @@ export function ShipModal({
   const stats = useQuery(api.commitments.getShipStats, { id: commitmentId });
   const ship = useMutation(api.commitments.ship);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   // Submitted data preserved for celebration step
   const submittedRef = useRef({ url: "", shipNote: "" });
 
-  // Body scroll lock
+  // Body scroll lock + focus on open
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    // Move focus into the modal on mount
+    contentRef.current?.focus();
     return () => {
       document.body.style.overflow = prev;
     };
   }, []);
 
-  // Keyboard handling
+  // Keyboard handling + focus trap
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -76,6 +79,22 @@ export function ShipModal({
       }
       if (e.key === "Enter" && step === "reflect" && stats) {
         setStep("details");
+      }
+      // Focus trap: keep Tab within the modal
+      if (e.key === "Tab" && overlayRef.current) {
+        const focusable = overlayRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     },
     [step, stats, onClose],
@@ -88,7 +107,7 @@ export function ShipModal({
 
   function validateUrl(raw: string): string | null {
     try {
-      const toValidate = raw.startsWith("http") ? raw : "https://" + raw;
+      const toValidate = /^https?:\/\//i.test(raw) ? raw : "https://" + raw;
       new URL(toValidate);
       return null;
     } catch {
@@ -97,6 +116,7 @@ export function ShipModal({
   }
 
   async function handleSubmit() {
+    if (submitting) return;
     const trimmed = url.trim();
     if (!trimmed) return;
 
@@ -154,7 +174,7 @@ export function ShipModal({
       >
         <X size={20} />
       </button>
-      <div className="w-full max-w-[460px] px-6">
+      <div ref={contentRef} tabIndex={-1} className="w-full max-w-[460px] px-6 outline-none">
         {step === "reflect" && (
           <ReflectStep
             stats={stats}
@@ -480,7 +500,7 @@ function CelebrateStep({
   onCopyLink: () => void;
   onClose: () => void;
 }) {
-  const href = shipUrl.startsWith("http") ? shipUrl : `https://${shipUrl}`;
+  const href = /^https?:\/\//i.test(shipUrl) ? shipUrl : `https://${shipUrl}`;
 
   return (
     <div className="ship-step-in opacity-0 text-center">
