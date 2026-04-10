@@ -23,6 +23,12 @@ export function ShipEntry({ entry }: { entry: DevlogEntryType }) {
           </a>
         )}
       </div>
+
+      {entry.shipNote && (
+        <p className="mt-1 text-[11px] italic text-muted-foreground">
+          &ldquo;{entry.shipNote}&rdquo;
+        </p>
+      )}
     </div>
   );
 }

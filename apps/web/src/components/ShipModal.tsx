@@ -1,0 +1,494 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "@convex/_generated/api";
+import type { Id } from "@convex/_generated/dataModel";
+import { Check, Copy, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { fireConfetti } from "@/lib/confetti";
+import { cn } from "@/lib/utils";
+
+type Step = "reflect" | "details" | "celebrate";
+
+export function ShipModal({
+  commitmentId,
+  commitmentText,
+  repo,
+  previousShipUrl,
+  onClose,
+}: {
+  commitmentId: Id<"commitments">;
+  commitmentText: string;
+  repo?: string;
+  previousShipUrl?: string;
+  onClose: () => void;
+}) {
+  const [step, setStep] = useState<Step>("reflect");
+  const [url, setUrl] = useState(previousShipUrl ?? "");
+  const [shipNote, setShipNote] = useState("");
+  const [keepBuilding, setKeepBuilding] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const stats = useQuery(api.commitments.getShipStats, { id: commitmentId });
+  const ship = useMutation(api.commitments.ship);
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  // Submitted data preserved for celebration step
+  const submittedRef = useRef({ url: "", shipNote: "" });
+
+  // Body scroll lock
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  // Keyboard handling
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "Escape" && step !== "celebrate") {
+        onClose();
+      }
+      if (e.key === "Enter" && step === "reflect" && stats) {
+        setStep("details");
+      }
+    },
+    [step, stats, onClose],
+  );
+
+  useEffect(() => {
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyDown]);
+
+  // Fire confetti on celebrate step
+  useEffect(() => {
+    if (step === "celebrate") {
+      fireConfetti();
+    }
+  }, [step]);
+
+  function validateUrl(raw: string): string | null {
+    try {
+      new URL(raw.startsWith("http") ? raw : "https://" + raw);
+      return null;
+    } catch {
+      return "invalid url";
+    }
+  }
+
+  async function handleSubmit() {
+    const trimmed = url.trim();
+    if (!trimmed) return;
+
+    const validationError = validateUrl(trimmed);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      const shipUrl = trimmed.replace(/^https?:\/\//, "");
+      const note = shipNote.trim() || undefined;
+      await ship({ id: commitmentId, shipUrl, shipNote: note, keepBuilding });
+      submittedRef.current = { url: shipUrl, shipNote: shipNote.trim() };
+      setStep("celebrate");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "failed to ship");
+      setSubmitting(false);
+    }
+  }
+
+  function handleCopyLink() {
+    const link = `${window.location.origin}/commitment/${commitmentId}`;
+    void navigator.clipboard.writeText(link);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  function handleOverlayClick(e: React.MouseEvent) {
+    if (e.target === overlayRef.current && step !== "celebrate") {
+      onClose();
+    }
+  }
+
+  return createPortal(
+    <div
+      ref={overlayRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Ship your project"
+      onClick={handleOverlayClick}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm"
+    >
+      <div className="w-full max-w-[460px] px-6">
+        {step === "reflect" && (
+          <ReflectStep
+            stats={stats}
+            commitmentText={commitmentText}
+            repo={repo}
+            onContinue={() => setStep("details")}
+          />
+        )}
+
+        {step === "details" && (
+          <DetailsStep
+            url={url}
+            onUrlChange={(v) => {
+              setError(null);
+              setUrl(v);
+            }}
+            shipNote={shipNote}
+            onShipNoteChange={setShipNote}
+            keepBuilding={keepBuilding}
+            onKeepBuildingChange={setKeepBuilding}
+            error={error}
+            submitting={submitting}
+            onBack={() => setStep("reflect")}
+            onSubmit={() => void handleSubmit()}
+          />
+        )}
+
+        {step === "celebrate" && (
+          <CelebrateStep
+            commitmentText={commitmentText}
+            shipUrl={submittedRef.current.url}
+            shipNote={submittedRef.current.shipNote}
+            stats={stats}
+            copied={copied}
+            onCopyLink={handleCopyLink}
+            onClose={onClose}
+          />
+        )}
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+// ── Step 1: Reflection ──
+
+type ShipStats = {
+  daysBuilding: number;
+  totalCommits: number;
+  totalPosts: number;
+  totalUpdates: number;
+  startedAt: number;
+  firstCommit: { message: string; date: number } | null;
+  lastCommit: { message: string; date: number } | null;
+};
+
+function shortDate(ts: number): string {
+  const d = new Date(ts);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function ReflectStep({
+  stats,
+  commitmentText,
+  repo,
+  onContinue,
+}: {
+  stats: ShipStats | null | undefined;
+  commitmentText: string;
+  repo?: string;
+  onContinue: () => void;
+}) {
+  return (
+    <div className="ship-step-in opacity-0">
+      <p className="mb-6 text-[13px] text-shipped">your journey</p>
+
+      <p className="ship-stat-in mb-1 text-lg font-medium leading-relaxed text-foreground-bright opacity-0">
+        {commitmentText}
+      </p>
+
+      {repo && (
+        <a
+          href={`https://github.com/${repo}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="ship-stat-in block text-[12px] text-muted-foreground opacity-0 transition-colors hover:text-foreground"
+          style={{ animationDelay: "60ms" }}
+        >
+          {repo}
+        </a>
+      )}
+
+      {stats === undefined ? (
+        <div className="mt-6 space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="h-4 w-48 animate-pulse bg-muted"
+              style={{ animationDelay: `${i * 100}ms` }}
+            />
+          ))}
+        </div>
+      ) : stats === null ? (
+        <p className="mt-6 text-sm text-muted-foreground">could not load stats.</p>
+      ) : (
+        <div className="ship-stat-in mt-6 opacity-0" style={{ animationDelay: "120ms" }}>
+          {/* Timeline */}
+          <div className="border-l border-border-strong pl-5">
+            {stats.firstCommit && (
+              <div className="relative pb-4">
+                <span className="absolute -left-5 top-[2px] h-[7px] w-[7px] -translate-x-[3.5px] rounded-full border border-border-strong bg-muted" />
+                <p className="text-[11px] leading-none text-muted-foreground">
+                  {shortDate(stats.firstCommit.date)}
+                </p>
+                <p className="mt-1 truncate text-[13px] text-foreground">
+                  {stats.firstCommit.message}
+                </p>
+              </div>
+            )}
+
+            {stats.totalCommits > 2 && (
+              <div className="relative pb-4">
+                <span className="absolute -left-5 top-[2px] h-[7px] w-[7px] -translate-x-[3.5px] rounded-full border border-border-strong bg-muted/60" />
+                <p className="text-[11px] leading-none text-muted-foreground/50">
+                  {stats.totalCommits - 2} more{" "}
+                  {stats.totalCommits - 2 === 1 ? "commit" : "commits"}
+                </p>
+              </div>
+            )}
+
+            {stats.lastCommit && (
+              <div className="relative">
+                <span className="absolute -left-5 top-[2px] h-[7px] w-[7px] -translate-x-[3.5px] rounded-full border border-shipped/50 bg-shipped pulse-dot-shipped" />
+                <p className="text-[11px] leading-none text-muted-foreground">
+                  {shortDate(stats.lastCommit.date)}
+                </p>
+                <p className="mt-1 truncate text-[13px] text-foreground">
+                  {stats.lastCommit.message}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Summary */}
+          <div className="mt-4 flex gap-4 border-t border-border-strong pt-3 pl-5 text-[12px] text-muted-foreground">
+            <span>
+              <span className="text-foreground-bright">{stats.daysBuilding}</span>{" "}
+              {stats.daysBuilding === 1 ? "day" : "days"}
+            </span>
+            <span>
+              <span className="text-foreground-bright">{stats.totalCommits}</span>{" "}
+              {stats.totalCommits === 1 ? "commit" : "commits"}
+            </span>
+            {stats.totalPosts > 0 && (
+              <span>
+                <span className="text-foreground-bright">{stats.totalPosts}</span>{" "}
+                {stats.totalPosts === 1 ? "post" : "posts"}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-8">
+        <Button variant="ship" size="lg" disabled={!stats} onClick={onContinue}>
+          continue
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ── Step 2: Details ──
+
+function DetailsStep({
+  url,
+  onUrlChange,
+  shipNote,
+  onShipNoteChange,
+  keepBuilding,
+  onKeepBuildingChange,
+  error,
+  submitting,
+  onBack,
+  onSubmit,
+}: {
+  url: string;
+  onUrlChange: (v: string) => void;
+  shipNote: string;
+  onShipNoteChange: (v: string) => void;
+  keepBuilding: boolean;
+  onKeepBuildingChange: (v: boolean) => void;
+  error: string | null;
+  submitting: boolean;
+  onBack: () => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <div className="ship-step-in opacity-0">
+      <p className="mb-6 text-center text-[13px] text-shipped">ship it</p>
+
+      <div className="space-y-4">
+        <div>
+          <label htmlFor="ship-url" className="mb-1.5 block text-[11px] text-muted-foreground">
+            url <span className="text-accent">*</span>
+          </label>
+          <div className="border-b border-border-strong transition-colors focus-within:border-shipped">
+            <input
+              id="ship-url"
+              value={url}
+              onChange={(e) => onUrlChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  onSubmit();
+                }
+              }}
+              placeholder="https://..."
+              autoFocus
+              autoComplete="off"
+              className="w-full bg-transparent px-1 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="ship-note" className="mb-1.5 block text-[11px] text-muted-foreground">
+            ship note <span className="text-muted-foreground/50">(optional)</span>
+          </label>
+          <div className="border-b border-border-strong transition-colors focus-within:border-shipped">
+            <textarea
+              id="ship-note"
+              value={shipNote}
+              onChange={(e) => onShipNoteChange(e.target.value)}
+              placeholder="what would you tell someone just starting?"
+              maxLength={500}
+              rows={2}
+              className="w-full resize-none bg-transparent px-1 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground [field-sizing:content]"
+            />
+          </div>
+        </div>
+
+        <div className="pt-4 text-center">
+          <div className="inline-flex gap-1 border border-border-strong bg-muted/50 p-1">
+            <button
+              type="button"
+              onClick={() => onKeepBuildingChange(false)}
+              className={cn(
+                "border px-4 py-2 text-xs font-medium transition-all",
+                !keepBuilding
+                  ? "border-foreground-bright/30 bg-foreground-bright/5 text-foreground-bright"
+                  : "border-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+              )}
+            >
+              done
+            </button>
+            <button
+              type="button"
+              onClick={() => onKeepBuildingChange(true)}
+              className={cn(
+                "border px-4 py-2 text-xs font-medium transition-all",
+                keepBuilding
+                  ? "border-shipped/30 bg-shipped/10 text-shipped"
+                  : "border-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+              )}
+            >
+              keep building
+            </button>
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            {keepBuilding ? "ship a version — keep the devlog going" : "mark as complete"}
+          </p>
+        </div>
+
+        {error && (
+          <p role="alert" className="text-[12px] text-destructive">
+            {error}
+          </p>
+        )}
+      </div>
+
+      <div className="mt-8 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={onBack}
+          className="cursor-pointer border-none bg-transparent font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
+        >
+          &larr; back
+        </button>
+        <Button variant="ship" disabled={!url.trim() || submitting} onClick={onSubmit}>
+          {submitting ? "..." : "ship it"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ── Step 3: Celebration ──
+
+function CelebrateStep({
+  commitmentText,
+  shipUrl,
+  shipNote,
+  stats,
+  copied,
+  onCopyLink,
+  onClose,
+}: {
+  commitmentText: string;
+  shipUrl: string;
+  shipNote: string;
+  stats: ShipStats | null | undefined;
+  copied: boolean;
+  onCopyLink: () => void;
+  onClose: () => void;
+}) {
+  const href = shipUrl.startsWith("http") ? shipUrl : `https://${shipUrl}`;
+
+  return (
+    <div className="ship-step-in opacity-0 text-center">
+      <p
+        className="ship-celebrate mb-8 text-3xl font-bold text-shipped opacity-0"
+        style={{ textShadow: "0 0 40px var(--color-shipped-soft)" }}
+      >
+        shipped!
+      </p>
+
+      <div className="mx-auto max-w-[340px] border border-shipped/30 bg-shipped/5 p-5 text-left">
+        <p className="mb-2 text-sm font-medium leading-relaxed text-foreground-bright">
+          {commitmentText}
+        </p>
+
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mb-2 flex items-center gap-1 text-[12px] text-shipped transition-colors hover:text-shipped/80"
+        >
+          {shipUrl} <ExternalLink size={10} />
+        </a>
+
+        {shipNote && (
+          <p className="mb-2 text-[12px] italic text-muted-foreground">&ldquo;{shipNote}&rdquo;</p>
+        )}
+
+        {stats && (
+          <p className="text-[11px] text-muted-foreground">
+            {stats.daysBuilding} days &middot; {stats.totalCommits} commits
+          </p>
+        )}
+      </div>
+
+      <div className="mt-8 flex items-center justify-center gap-3">
+        <Button variant="secondary" size="sm" onClick={onCopyLink}>
+          {copied ? <Check size={12} /> : <Copy size={12} />}
+          {copied ? "copied" : "copy link"}
+        </Button>
+        <Button variant="ship" size="sm" onClick={onClose}>
+          view commitment
+        </Button>
+      </div>
+    </div>
+  );
+}

@@ -40,6 +40,7 @@ interface RawFeedItem {
   repo?: string;
   isPrivate?: boolean;
   status: "building" | "shipped";
+  shipNote?: string;
   initialSyncStatus?: "syncing" | "ready";
   activity: number[];
   commentCount: number;
@@ -59,7 +60,7 @@ interface RawFeedItem {
   hasMore?: boolean;
 }
 
-function toDevlogEntry(entry: RawDevlogEntry): DevlogEntry {
+function toDevlogEntry(entry: RawDevlogEntry, shipNote?: string): DevlogEntry {
   return {
     id: entry._id,
     type: entry.type,
@@ -71,6 +72,7 @@ function toDevlogEntry(entry: RawDevlogEntry): DevlogEntry {
     gitAuthor: entry.gitAuthor,
     gitUrl: entry.gitUrl,
     gitBranch: entry.gitBranch,
+    shipNote: entry.type === "ship" ? shipNote : undefined,
     comments: entry.commentCount,
   };
 }
@@ -88,10 +90,11 @@ function toCommitment(item: RawFeedItem): Commitment {
     showBranches: item.showBranches,
     day: daysSince(item.firstEntryAt ?? item._creationTime),
     comments: item.commentCount,
-    devlog: (item.recentEntries ?? []).map(toDevlogEntry),
+    devlog: (item.recentEntries ?? []).map((e) => toDevlogEntry(e, item.shipNote)),
     respects: item.respectCount,
     status: item.status,
     shipUrl: item.shipUrl,
+    shipNote: item.shipNote,
     shippedAt: item.shippedAt,
     shippedIn: item.shippedAt ? formatShippedIn(item.shippedAt, item._creationTime) : undefined,
     activity: item.activity,

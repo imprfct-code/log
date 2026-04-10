@@ -40,6 +40,12 @@ export function CommitCard({ item, preview }: { item: Commitment; preview?: bool
         </Link>
       )}
 
+      {item.status === "shipped" && item.shipNote && (
+        <p className="mb-1 truncate text-[11px] italic text-muted-foreground">
+          &ldquo;{item.shipNote}&rdquo;
+        </p>
+      )}
+
       {item.devlog.length > 0 && (
         <>
           <DevlogTimeline

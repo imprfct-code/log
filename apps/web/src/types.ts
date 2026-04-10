@@ -28,6 +28,7 @@ export interface DevlogEntry {
   gitAuthor?: string;
   gitUrl?: string;
   gitBranch?: string;
+  shipNote?: string;
   comments: number;
   commentData?: Comment[];
   isOwn?: boolean;
@@ -49,6 +50,7 @@ export interface Commitment {
   respects: number;
   status: "building" | "shipped";
   shipUrl?: string;
+  shipNote?: string;
   shippedAt?: number;
   shippedIn?: string;
   activity: number[];

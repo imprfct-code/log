@@ -347,6 +347,55 @@ export const ship = mutation({
   },
 });
 
+export const getShipStats = query({
+  args: { id: v.id("commitments") },
+  handler: async (ctx, { id }) => {
+    const commitment = await ctx.db.get(id);
+    if (!commitment) return null;
+
+    const entries = await ctx.db
+      .query("devlogEntries")
+      .withIndex("by_commitmentId", (q) => q.eq("commitmentId", id))
+      .collect();
+
+    const totalCommits = entries.filter(
+      (e) => e.type === "commit" || e.type === "git_commit",
+    ).length;
+    const totalPosts = entries.filter((e) => e.type === "post").length;
+    const totalUpdates = totalCommits + totalPosts;
+
+    const firstEntry = await ctx.db
+      .query("devlogEntries")
+      .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", id))
+      .order("asc")
+      .first();
+
+    const startedAt = firstEntry?.committedAt ?? commitment._creationTime;
+    const daysBuilding = Math.max(1, Math.ceil((Date.now() - startedAt) / 86_400_000));
+
+    const commits = entries
+      .filter((e) => e.type === "commit" || e.type === "git_commit")
+      .sort((a, b) => (a.committedAt ?? 0) - (b.committedAt ?? 0));
+
+    const firstCommit = commits[0];
+    const lastCommit = commits.length > 1 ? commits[commits.length - 1] : null;
+
+    return {
+      daysBuilding,
+      totalCommits,
+      totalPosts,
+      totalUpdates,
+      startedAt,
+      firstCommit: firstCommit
+        ? { message: firstCommit.text, date: firstCommit.committedAt ?? firstCommit._creationTime }
+        : null,
+      lastCommit: lastCommit
+        ? { message: lastCommit.text, date: lastCommit.committedAt ?? lastCommit._creationTime }
+        : null,
+    };
+  },
+});
+
 /** Dev-only: nuke a commitment and ALL related data. Use from CLI:
  *  npx convex run commitments:devDelete '{"commitmentId": "..."}' */
 export const devDelete = internalMutation({

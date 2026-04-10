@@ -10,7 +10,7 @@ import { CommitmentMeta } from "@/components/CommitmentMeta";
 import { ConnectRepoForm } from "@/components/ConnectRepoForm";
 import { CreatePostForm } from "@/components/CreatePostForm";
 import { DevlogTimeline } from "@/components/DevlogTimeline";
-import { ShipForm } from "@/components/ShipForm";
+import { ShipModal } from "@/components/ShipModal";
 import { Button } from "@/components/ui/button";
 import { daysSince, formatShippedIn, formatTimeAgo } from "@/lib/formatTime";
 import type { DevlogEntry as DevlogEntryType } from "@/types";
@@ -40,7 +40,7 @@ export function CommitmentDetailScreen() {
 
   const me = useQuery(api.users.getMe);
   const [connectingRepo, setConnectingRepo] = useState(false);
-  const [shipping, setShipping] = useState(false);
+  const [shipModalOpen, setShipModalOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [viewAsGuest, setViewAsGuest] = useState(false);
@@ -76,10 +76,11 @@ export function CommitmentDetailScreen() {
         gitAuthor: e.gitAuthor,
         gitUrl: e.gitUrl,
         gitBranch: e.gitBranch,
+        shipNote: e.type === "ship" ? data?.shipNote : undefined,
         comments: e.commentCount,
         isOwn: effectiveAuthor,
       })),
-    [entries, effectiveAuthor],
+    [entries, effectiveAuthor, data?.shipNote],
   );
 
   if (!commitmentId) {
@@ -209,12 +210,17 @@ export function CommitmentDetailScreen() {
 
         {canShip && (
           <div className="mb-3">
-            {shipping ? (
-              <ShipForm commitmentId={commitment._id} />
-            ) : (
-              <Button variant="ship" size="sm" onClick={() => setShipping(true)}>
-                ship it
-              </Button>
+            <Button variant="ship" size="sm" onClick={() => setShipModalOpen(true)}>
+              ship it
+            </Button>
+            {shipModalOpen && (
+              <ShipModal
+                commitmentId={commitment._id}
+                commitmentText={commitment.text}
+                repo={commitment.repo}
+                previousShipUrl={commitment.shipUrl}
+                onClose={() => setShipModalOpen(false)}
+              />
             )}
           </div>
         )}
