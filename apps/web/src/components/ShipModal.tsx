@@ -8,6 +8,26 @@ import { Button } from "@/components/ui/button";
 import { fireConfetti } from "@/lib/confetti";
 import { cn } from "@/lib/utils";
 
+function ShareIcon({ d, size = 14 }: { d: string; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d={d} />
+    </svg>
+  );
+}
+
+const ICON = {
+  x: "M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z",
+  telegram:
+    "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.25-5.54 3.66-.52.36-1 .53-1.42.52-.47-.01-1.37-.26-2.03-.48-.82-.27-1.47-.42-1.42-.88.03-.24.37-.49 1.02-.74 3.99-1.74 6.65-2.89 7.99-3.44 3.81-1.58 4.6-1.86 5.12-1.87.11 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .37z",
+  reddit:
+    "M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z",
+  email:
+    "M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z",
+  share:
+    "M16 5l-1.42 1.42-1.59-1.59V16h-1.98V4.83L9.42 6.42 8 5l4-4 4 4zm4 5v11c0 1.1-.9 2-2 2H6c-1.1 0-2-.9-2-2V10c0-1.11.9-2 2-2h3v2H6v11h12V10h-3V8h3c1.1 0 2 .89 2 2z",
+};
+
 type Step = "reflect" | "details" | "celebrate";
 
 export function ShipModal({
@@ -100,7 +120,7 @@ export function ShipModal({
   }
 
   function handleCopyLink() {
-    const link = `${window.location.origin}/commitment/${commitmentId}`;
+    const link = `${window.location.origin}/s/${commitmentId}`;
     void navigator.clipboard.writeText(link);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -151,6 +171,7 @@ export function ShipModal({
 
         {step === "celebrate" && (
           <CelebrateStep
+            commitmentId={commitmentId}
             commitmentText={commitmentText}
             shipUrl={submittedRef.current.url}
             shipNote={submittedRef.current.shipNote}
@@ -422,6 +443,7 @@ function DetailsStep({
 // ── Step 3: Celebration ──
 
 function CelebrateStep({
+  commitmentId,
   commitmentText,
   shipUrl,
   shipNote,
@@ -430,6 +452,7 @@ function CelebrateStep({
   onCopyLink,
   onClose,
 }: {
+  commitmentId: Id<"commitments">;
   commitmentText: string;
   shipUrl: string;
   shipNote: string;
@@ -474,15 +497,78 @@ function CelebrateStep({
         )}
       </div>
 
-      <div className="mt-8 flex items-center justify-center gap-3">
-        <Button variant="secondary" size="sm" onClick={onCopyLink}>
-          {copied ? <Check size={12} /> : <Copy size={12} />}
-          {copied ? "copied" : "copy link"}
+      <ShareButtons
+        commitmentId={commitmentId}
+        commitmentText={commitmentText}
+        stats={stats}
+        copied={copied}
+        onCopyLink={onCopyLink}
+        onClose={onClose}
+      />
+    </div>
+  );
+}
+
+// ── Share buttons ──
+
+function ShareButtons({
+  commitmentId,
+  commitmentText,
+  stats,
+  copied,
+  onCopyLink,
+  onClose,
+}: {
+  commitmentId: Id<"commitments">;
+  commitmentText: string;
+  stats: ShipStats | null | undefined;
+  copied: boolean;
+  onCopyLink: () => void;
+  onClose: () => void;
+}) {
+  const shareUrl = `${window.location.origin}/s/${commitmentId}`;
+  const daysText = stats ? `${stats.daysBuilding}d` : "";
+  const commitsText = stats ? `${stats.totalCommits} commits` : "";
+  const statsText = stats ? ` (${daysText}, ${commitsText})` : "";
+  const shareText = `shipped: ${commitmentText}${statsText}`;
+
+  function openPopup(url: string) {
+    window.open(url, "_blank", "noopener,noreferrer,width=600,height=500");
+  }
+
+  const canNativeShare = typeof navigator !== "undefined" && !!navigator.share;
+
+  return (
+    <div className="mt-8 flex items-center justify-center gap-3">
+      <Button variant="secondary" size="sm" onClick={onCopyLink}>
+        {copied ? <Check size={12} /> : <Copy size={12} />}
+        {copied ? "copied" : "link"}
+      </Button>
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={() =>
+          openPopup(
+            `https://x.com/intent/post?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`,
+          )
+        }
+      >
+        <ShareIcon d={ICON.x} />
+        share
+      </Button>
+      {canNativeShare && (
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => void navigator.share({ title: shareText, url: shareUrl }).catch(() => {})}
+        >
+          <ShareIcon d={ICON.share} />
+          more
         </Button>
-        <Button variant="ship" size="sm" onClick={onClose}>
-          view commitment
-        </Button>
-      </div>
+      )}
+      <Button variant="ship" size="sm" onClick={onClose}>
+        view commitment
+      </Button>
     </div>
   );
 }
