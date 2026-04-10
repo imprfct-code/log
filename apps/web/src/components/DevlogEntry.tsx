@@ -2,6 +2,7 @@ import type { Id } from "@convex/_generated/dataModel";
 import type { DevlogEntry as DevlogEntryType } from "@/types";
 import { CommitEntry } from "./CommitEntry";
 import { PostEntry } from "./PostEntry";
+import { ShipEntry } from "./ShipEntry";
 
 export function DevlogEntry({
   entry,
@@ -30,6 +31,9 @@ export function DevlogEntry({
   isDetailPage?: boolean;
   onCommentClick?: () => void;
 }) {
+  if (entry.type === "ship") {
+    return <ShipEntry entry={entry} />;
+  }
   if (entry.type === "commit" || entry.type === "git_commit") {
     return (
       <CommitEntry

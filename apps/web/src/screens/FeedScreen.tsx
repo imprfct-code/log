@@ -4,7 +4,7 @@ import { api } from "@convex/_generated/api";
 import { Search, Loader2 } from "lucide-react";
 import type { Id } from "@convex/_generated/dataModel";
 import { CommitCard } from "@/components/CommitCard";
-import { daysSince, formatTimeAgo } from "@/lib/formatTime";
+import { daysSince, formatShippedIn, formatTimeAgo } from "@/lib/formatTime";
 import { cn } from "@/lib/utils";
 import type { Commitment, DevlogEntry } from "@/types";
 
@@ -13,7 +13,7 @@ type Tab = (typeof TABS)[number];
 
 interface RawDevlogEntry {
   _id: Id<"devlogEntries">;
-  type: "commit" | "post" | "git_commit";
+  type: "commit" | "post" | "git_commit" | "ship";
   text: string;
   body?: string;
   hash?: string;
@@ -21,6 +21,8 @@ interface RawDevlogEntry {
   gitUrl?: string;
   gitBranch?: string;
   committedAt?: number;
+  shipNote?: string;
+  isMilestone?: boolean;
   commentCount: number;
   _creationTime: number;
   resolvedAttachments?: Array<{
@@ -40,6 +42,7 @@ interface RawFeedItem {
   repo?: string;
   isPrivate?: boolean;
   status: "building" | "shipped";
+  shipNote?: string;
   initialSyncStatus?: "syncing" | "ready";
   activity: number[];
   commentCount: number;
@@ -53,6 +56,8 @@ interface RawFeedItem {
     username: string;
     avatarUrl?: string;
   } | null;
+  shipUrl?: string;
+  shippedAt?: number;
   recentEntries?: RawDevlogEntry[];
   hasMore?: boolean;
 }
@@ -69,6 +74,8 @@ function toDevlogEntry(entry: RawDevlogEntry): DevlogEntry {
     gitAuthor: entry.gitAuthor,
     gitUrl: entry.gitUrl,
     gitBranch: entry.gitBranch,
+    shipNote: entry.shipNote,
+    isMilestone: entry.isMilestone,
     comments: entry.commentCount,
   };
 }
@@ -86,9 +93,15 @@ function toCommitment(item: RawFeedItem): Commitment {
     showBranches: item.showBranches,
     day: daysSince(item.firstEntryAt ?? item._creationTime),
     comments: item.commentCount,
-    devlog: (item.recentEntries ?? []).map(toDevlogEntry),
+    devlog: (item.recentEntries ?? []).map((e) => toDevlogEntry(e)),
     respects: item.respectCount,
     status: item.status,
+    shipUrl: item.shipUrl,
+    shipNote: item.shipNote,
+    shippedAt: item.shippedAt,
+    shippedIn: item.shippedAt
+      ? formatShippedIn(item.shippedAt, item.firstEntryAt ?? item._creationTime)
+      : undefined,
     activity: item.activity,
     hasMore: item.hasMore,
   };

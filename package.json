@@ -18,14 +18,18 @@
   },
   "dependencies": {
     "@convex-dev/r2": "catalog:",
+    "@vercel/og": "catalog:",
     "plyr": "catalog:",
     "react-syntax-highlighter": "catalog:"
   },
   "devDependencies": {
     "@edge-runtime/vm": "catalog:",
+    "@types/react": "catalog:",
     "@types/react-syntax-highlighter": "catalog:",
+    "@vercel/node": "catalog:",
     "convex": "catalog:",
     "convex-test": "catalog:",
+    "react": "catalog:",
     "vite-plus": "catalog:"
   },
   "engines": {

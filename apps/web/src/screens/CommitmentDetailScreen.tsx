@@ -10,7 +10,9 @@ import { CommitmentMeta } from "@/components/CommitmentMeta";
 import { ConnectRepoForm } from "@/components/ConnectRepoForm";
 import { CreatePostForm } from "@/components/CreatePostForm";
 import { DevlogTimeline } from "@/components/DevlogTimeline";
-import { daysSince, formatTimeAgo } from "@/lib/formatTime";
+import { ShipModal } from "@/components/ShipModal";
+import { Button } from "@/components/ui/button";
+import { daysSince, formatShippedIn, formatTimeAgo } from "@/lib/formatTime";
 import type { DevlogEntry as DevlogEntryType } from "@/types";
 
 function DetailLayout({ children }: { children: ReactNode }) {
@@ -38,6 +40,7 @@ export function CommitmentDetailScreen() {
 
   const me = useQuery(api.users.getMe);
   const [connectingRepo, setConnectingRepo] = useState(false);
+  const [shipModalOpen, setShipModalOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [viewAsGuest, setViewAsGuest] = useState(false);
@@ -73,6 +76,8 @@ export function CommitmentDetailScreen() {
         gitAuthor: e.gitAuthor,
         gitUrl: e.gitUrl,
         gitBranch: e.gitBranch,
+        shipNote: e.shipNote,
+        isMilestone: e.isMilestone,
         comments: e.commentCount,
         isOwn: effectiveAuthor,
       })),
@@ -109,6 +114,8 @@ export function CommitmentDetailScreen() {
   const canSync =
     effectiveAuthor && commitment.repo && !commitment.webhookId && commitment.status === "building";
   const canPost = effectiveAuthor && commitment.status === "building";
+  const canShip =
+    effectiveAuthor && commitment.status === "building" && !isSyncing && entries.length > 0;
   const day = daysSince(commitment.firstEntryAt ?? commitment._creationTime);
 
   async function handleSync() {
@@ -140,8 +147,21 @@ export function CommitmentDetailScreen() {
           statusLabel={
             isSyncing ? (
               <span className="text-muted-foreground">syncing</span>
-            ) : commitment.status === "shipped" ? (
-              <span className="text-shipped">shipped</span>
+            ) : commitment.status === "shipped" && commitment.shippedAt ? (
+              <span className="text-shipped">
+                shipped in{" "}
+                {formatShippedIn(
+                  commitment.shippedAt,
+                  commitment.firstEntryAt ?? commitment._creationTime,
+                )}
+              </span>
+            ) : commitment.shippedAt ? (
+              <span>
+                <span className="text-shipped">shipped</span>
+                <span className="text-muted-foreground">
+                  {" · "}day <span className="text-accent">{day}</span>
+                </span>
+              </span>
             ) : (
               <span className="text-muted-foreground">
                 day <span className="text-accent">{day}</span>
@@ -193,6 +213,16 @@ export function CommitmentDetailScreen() {
             )}
           </div>
         )}
+
+        {shipModalOpen && (
+          <ShipModal
+            commitmentId={commitment._id}
+            commitmentText={commitment.text}
+            repo={commitment.repo}
+            previousShipUrl={commitment.shipUrl}
+            onClose={() => setShipModalOpen(false)}
+          />
+        )}
       </div>
 
       {isSyncing ? (
@@ -217,20 +247,37 @@ export function CommitmentDetailScreen() {
       ) : (
         <>
           {canPost && (
-            <div className="feed-in mb-4 opacity-0" style={{ animationDelay: "30ms" }}>
+            <div
+              className="feed-in mb-4 flex items-center opacity-0"
+              style={{ animationDelay: "30ms" }}
+            >
               {showPostForm ? (
-                <CreatePostForm
-                  commitmentId={commitment._id}
-                  onClose={() => setShowPostForm(false)}
-                />
+                <div className="flex-1">
+                  <CreatePostForm
+                    commitmentId={commitment._id}
+                    onClose={() => setShowPostForm(false)}
+                  />
+                </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowPostForm(true)}
-                  className="cursor-pointer border-none bg-transparent p-0 font-mono text-[13px] text-accent transition-colors hover:text-foreground-bright"
-                >
-                  + add update
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowPostForm(true)}
+                    className="cursor-pointer border-none bg-transparent p-0 font-mono text-[13px] text-accent transition-colors hover:text-foreground-bright"
+                  >
+                    + add update
+                  </button>
+                  {canShip && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="ml-auto"
+                      onClick={() => setShipModalOpen(true)}
+                    >
+                      ship it
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           )}

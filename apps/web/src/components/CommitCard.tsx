@@ -9,11 +9,19 @@ export function CommitCard({ item, preview }: { item: Commitment; preview?: bool
       <CommitmentMeta
         username={item.user}
         repo={item.repo || undefined}
+        repoHref={item.repo ? `https://github.com/${item.repo}` : undefined}
         isPrivate={item.isPrivate}
         activity={item.activity}
         statusLabel={
           item.status === "shipped" ? (
             <span className="text-shipped">shipped in {item.shippedIn}</span>
+          ) : item.shippedAt ? (
+            <span>
+              <span className="text-shipped">shipped</span>
+              <span className="text-muted-foreground">
+                {" · "}day <span className="text-accent">{item.day}</span>
+              </span>
+            </span>
           ) : (
             <span className="text-muted-foreground">
               day <span className="text-accent">{item.day}</span>
@@ -31,6 +39,12 @@ export function CommitCard({ item, preview }: { item: Commitment; preview?: bool
         >
           {item.text}
         </Link>
+      )}
+
+      {item.status === "shipped" && item.shipNote && (
+        <p className="mb-1 truncate text-[11px] italic text-muted-foreground">
+          &ldquo;{item.shipNote}&rdquo;
+        </p>
       )}
 
       {item.devlog.length > 0 && (

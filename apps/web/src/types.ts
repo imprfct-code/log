@@ -18,7 +18,7 @@ export interface Attachment {
 
 export interface DevlogEntry {
   id: Id<"devlogEntries">;
-  type: "commit" | "post" | "git_commit";
+  type: "commit" | "post" | "git_commit" | "ship";
   text: string;
   body?: string;
   image?: string;
@@ -28,6 +28,8 @@ export interface DevlogEntry {
   gitAuthor?: string;
   gitUrl?: string;
   gitBranch?: string;
+  shipNote?: string;
+  isMilestone?: boolean;
   comments: number;
   commentData?: Comment[];
   isOwn?: boolean;
@@ -49,6 +51,8 @@ export interface Commitment {
   respects: number;
   status: "building" | "shipped";
   shipUrl?: string;
+  shipNote?: string;
+  shippedAt?: number;
   shippedIn?: string;
   activity: number[];
   hasMore?: boolean;

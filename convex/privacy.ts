@@ -38,9 +38,11 @@ export function redactEntry<
     gitBranch?: string;
     gitUrl?: string;
     gitAuthor?: string;
+    shipUrl?: string;
+    shipNote?: string;
   },
 >(entry: T, flags: VisibilityFlags, isPrivate?: boolean, isAuthor?: boolean): T {
-  // Posts are never redacted — only commits
+  // Posts are never redacted — only commits and ships
   if (entry.type === "post") return entry;
 
   return {
@@ -51,5 +53,7 @@ export function redactEntry<
     gitBranch: flags.showBranches ? entry.gitBranch : undefined,
     gitUrl: isAuthor || !isPrivate ? entry.gitUrl : undefined,
     gitAuthor: isAuthor || !isPrivate ? entry.gitAuthor : undefined,
+    shipUrl: entry.type === "ship" && !isAuthor && isPrivate ? undefined : entry.shipUrl,
+    shipNote: entry.type === "ship" && !isAuthor && isPrivate ? undefined : entry.shipNote,
   };
 }

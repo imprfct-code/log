@@ -57,7 +57,7 @@ export function ActionBar({
 
       {status === "shipped" && shipUrl && (
         <a
-          href={`https://${shipUrl}`}
+          href={shipUrl.startsWith("http") ? shipUrl : `https://${shipUrl}`}
           target="_blank"
           rel="noopener noreferrer"
           className="ml-auto flex shrink-0 items-center gap-1 truncate text-[11px] text-shipped transition-colors hover:text-shipped/80"

@@ -125,6 +125,65 @@ describe("commitments.ship", () => {
       otherUser.mutation(api.commitments.ship, { id: commitmentId, shipUrl: "https://log.dev" }),
     ).rejects.toThrow("Not the owner");
   });
+
+  test("keepBuilding keeps status building", async () => {
+    const t = testCtx();
+    const { as, commitmentId } = await setupUserWithCommitment(t);
+
+    await as.mutation(api.commitments.ship, {
+      id: commitmentId,
+      shipUrl: "log.dev",
+      keepBuilding: true,
+    });
+
+    const commitment = await t.query(api.commitments.getById, { id: commitmentId });
+    expect(commitment?.status).toBe("building");
+    expect(commitment?.shipUrl).toBe("log.dev");
+    expect(commitment?.shippedAt).toBeTypeOf("number");
+  });
+
+  test("can ship again after keepBuilding ship", async () => {
+    const t = testCtx();
+    const { as, commitmentId } = await setupUserWithCommitment(t);
+
+    await as.mutation(api.commitments.ship, {
+      id: commitmentId,
+      shipUrl: "log.dev",
+      keepBuilding: true,
+    });
+
+    await as.mutation(api.commitments.ship, {
+      id: commitmentId,
+      shipUrl: "log.dev/v2",
+    });
+
+    const commitment = await t.query(api.commitments.getById, { id: commitmentId });
+    expect(commitment?.status).toBe("shipped");
+    expect(commitment?.shipUrl).toBe("log.dev/v2");
+  });
+
+  test("keepBuilding ship creates devlog entry with body", async () => {
+    const t = testCtx();
+    const { as, commitmentId } = await setupUserWithCommitment(t);
+
+    await as.mutation(api.commitments.ship, {
+      id: commitmentId,
+      shipUrl: "log.dev",
+      keepBuilding: true,
+    });
+
+    const entries = await t.run(async (ctx) => {
+      return await ctx.db
+        .query("devlogEntries")
+        .withIndex("by_commitmentId", (q) => q.eq("commitmentId", commitmentId))
+        .collect();
+    });
+
+    const shipEntry = entries.find((e) => e.type === "ship");
+    expect(shipEntry).toBeDefined();
+    expect(shipEntry!.body).toBe("log.dev");
+    expect(shipEntry!.isMilestone).toBe(true);
+  });
 });
 
 // Helper: create a private commitment with a git_commit entry

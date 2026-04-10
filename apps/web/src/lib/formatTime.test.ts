@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/test";
-import { daysSince, formatTimeAgo } from "./formatTime";
+import { daysSince, formatTimeAgo, formatShippedIn } from "./formatTime";
 
 const MINUTE = 60_000;
 const HOUR = 3_600_000;
@@ -85,5 +85,28 @@ describe("formatTimeAgo", () => {
     expect(formatTimeAgo(NOW - 60 * DAY)).toBe("2mo ago");
     expect(formatTimeAgo(NOW - 90 * DAY)).toBe("3mo ago");
     expect(formatTimeAgo(NOW - 365 * DAY)).toBe("12mo ago");
+  });
+});
+
+describe("formatShippedIn", () => {
+  test('returns "< 1 day" for 0 days', () => {
+    expect(formatShippedIn(NOW, NOW)).toBe("< 1 day");
+    expect(formatShippedIn(NOW + 1000, NOW)).toBe("< 1 day");
+    expect(formatShippedIn(NOW + DAY - 1, NOW)).toBe("< 1 day");
+  });
+
+  test('returns "1 day" for exactly 1 day', () => {
+    expect(formatShippedIn(NOW + DAY, NOW)).toBe("1 day");
+  });
+
+  test("returns days for N days", () => {
+    expect(formatShippedIn(NOW + 2 * DAY, NOW)).toBe("2 days");
+    expect(formatShippedIn(NOW + 5 * DAY, NOW)).toBe("5 days");
+    expect(formatShippedIn(NOW + 10 * DAY, NOW)).toBe("10 days");
+  });
+
+  test("clamps to < 1 day when shippedAt < createdAt (out-of-order timestamps)", () => {
+    expect(formatShippedIn(NOW - 1000, NOW)).toBe("< 1 day");
+    expect(formatShippedIn(NOW - DAY, NOW)).toBe("< 1 day");
   });
 });

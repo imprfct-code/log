@@ -1,11 +1,13 @@
 import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
+import type { QueryCtx } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { paginationOptsValidator } from "convex/server";
 import { currentWeekActivity } from "./dates";
 import { getUserByToken } from "./users";
 import { computeVisibility, redactEntry } from "./privacy";
-import { resolveAttachments } from "./devlog";
+import { resolveAttachments, updateActivity } from "./devlog";
 import { r2 } from "./r2";
 
 const REPO_RE = /^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/;
@@ -298,36 +300,164 @@ export const connectRepo = mutation({
   },
 });
 
+/** Mark a commitment as shipped with a URL and optional note. If keepBuilding is false, mark as fully completed. */
 export const ship = mutation({
   args: {
     id: v.id("commitments"),
     shipUrl: v.string(),
     shipNote: v.optional(v.string()),
+    keepBuilding: v.optional(v.boolean()),
   },
-  handler: async (ctx, { id, shipUrl, shipNote }) => {
+  handler: async (ctx, { id, shipUrl, shipNote, keepBuilding }) => {
     const user = await getUserByToken(ctx);
     if (!user) throw new Error("Not authenticated");
+
+    const normalizedNote = shipNote?.trim() || undefined;
+    if (normalizedNote && normalizedNote.length > 500) {
+      throw new Error("shipNote must be 500 characters or less");
+    }
+
+    const trimmedUrl = shipUrl.trim();
+    if (!trimmedUrl) throw new Error("shipUrl must not be empty");
+    const parseable = trimmedUrl.startsWith("http") ? trimmedUrl : "https://" + trimmedUrl;
+    let parsed: URL;
+    try {
+      parsed = new URL(parseable);
+    } catch {
+      throw new Error("Invalid shipUrl");
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      throw new Error("Invalid shipUrl");
+    }
 
     const commitment = await ctx.db.get(id);
     if (!commitment) throw new Error("Commitment not found");
     if (commitment.userId !== user._id) throw new Error("Not the owner");
     if (commitment.status !== "building") throw new Error("Already shipped");
 
+    const now = Date.now();
+    const done = !keepBuilding;
+
     await ctx.db.patch(id, {
-      status: "shipped",
-      shipUrl,
-      shipNote,
-      shippedAt: Date.now(),
+      ...(done ? { status: "shipped" as const } : {}),
+      shipUrl: trimmedUrl,
+      shipNote: normalizedNote,
+      shippedAt: now,
+      lastActivityAt: now,
+      activity: updateActivity(commitment.activity, commitment.lastActivityAt),
     });
 
-    // Remove GitHub webhook if one was registered
-    if (commitment.repo && commitment.webhookId) {
+    await ctx.db.insert("devlogEntries", {
+      commitmentId: id,
+      userId: user._id,
+      type: "ship",
+      text: "shipped",
+      body: trimmedUrl,
+      shipNote: normalizedNote,
+      isMilestone: keepBuilding || undefined,
+      committedAt: now,
+      commentCount: 0,
+    });
+
+    // Remove GitHub webhook only when done (not keep building)
+    if (done && commitment.repo && commitment.webhookId) {
       await ctx.scheduler.runAfter(0, internal.github.removeWebhook, {
         commitmentId: id,
         repo: commitment.repo,
         webhookId: commitment.webhookId,
       });
     }
+  },
+});
+
+/** Compute ship stats: days building, commit/post counts, and first/last commit info. */
+async function computeShipStats(
+  ctx: QueryCtx,
+  id: Id<"commitments">,
+  commitment: Doc<"commitments">,
+) {
+  const entries = await ctx.db
+    .query("devlogEntries")
+    .withIndex("by_commitmentId", (q) => q.eq("commitmentId", id))
+    .collect();
+
+  const totalCommits = entries.filter((e) => e.type === "commit" || e.type === "git_commit").length;
+  const totalPosts = entries.filter((e) => e.type === "post").length;
+  const totalUpdates = totalCommits + totalPosts;
+
+  const firstEntry = await ctx.db
+    .query("devlogEntries")
+    .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", id))
+    .order("asc")
+    .first();
+
+  const startedAt = firstEntry?.committedAt ?? commitment._creationTime;
+  const endTime = commitment.shippedAt ?? Date.now();
+  const daysBuilding = Math.max(1, Math.ceil((endTime - startedAt) / 86_400_000));
+
+  const commits = entries
+    .filter((e) => e.type === "commit" || e.type === "git_commit")
+    .sort((a, b) => (a.committedAt ?? 0) - (b.committedAt ?? 0));
+
+  const firstCommit = commits[0];
+  const lastCommit = commits.length > 1 ? commits[commits.length - 1] : null;
+
+  return {
+    daysBuilding,
+    totalCommits,
+    totalPosts,
+    totalUpdates,
+    startedAt,
+    firstCommit: firstCommit
+      ? { message: firstCommit.text, date: firstCommit.committedAt ?? firstCommit._creationTime }
+      : null,
+    lastCommit: lastCommit
+      ? { message: lastCommit.text, date: lastCommit.committedAt ?? lastCommit._creationTime }
+      : null,
+  };
+}
+
+/** Get build stats for a commitment. */
+export const getShipStats = query({
+  args: { id: v.id("commitments") },
+  handler: async (ctx, { id }) => {
+    const commitment = await ctx.db.get(id);
+    if (!commitment) return null;
+
+    return computeShipStats(ctx, id, commitment);
+  },
+});
+
+/** Share-safe version: returns commitment only if public (isPrivate === false). */
+export const getByIdForShare = query({
+  args: { id: v.id("commitments") },
+  handler: async (ctx, { id }) => {
+    const commitment = await ctx.db.get(id);
+    if (!commitment || commitment.isPrivate) return null;
+
+    const userDoc = await ctx.db.get(commitment.userId);
+    const firstEntry = await ctx.db
+      .query("devlogEntries")
+      .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", id))
+      .order("asc")
+      .first();
+
+    return {
+      ...commitment,
+      firstEntryAt: firstEntry?.committedAt,
+      user: userDoc ? { username: userDoc.username, avatarUrl: userDoc.avatarUrl } : null,
+    };
+  },
+});
+
+/** Share-safe version: returns stats only if commitment is public. */
+export const getShipStatsForShare = query({
+  args: { id: v.id("commitments") },
+  handler: async (ctx, { id }) => {
+    const commitment = await ctx.db.get(id);
+    if (!commitment || commitment.isPrivate) return null;
+
+    return computeShipStats(ctx, id, commitment);
   },
 });
 

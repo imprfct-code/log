@@ -64,7 +64,12 @@ export default defineSchema({
   devlogEntries: defineTable({
     commitmentId: v.id("commitments"),
     userId: v.id("users"),
-    type: v.union(v.literal("commit"), v.literal("post"), v.literal("git_commit")),
+    type: v.union(
+      v.literal("commit"),
+      v.literal("post"),
+      v.literal("git_commit"),
+      v.literal("ship"),
+    ),
     text: v.string(),
     body: v.optional(v.string()),
     imageStorageId: v.optional(v.id("_storage")), // legacy, unused
@@ -74,6 +79,8 @@ export default defineSchema({
     gitUrl: v.optional(v.string()),
     gitBranch: v.optional(v.string()),
     committedAt: v.optional(v.number()),
+    shipNote: v.optional(v.string()),
+    isMilestone: v.optional(v.boolean()),
     commentCount: v.number(),
   })
     .index("by_commitmentId", ["commitmentId"])
