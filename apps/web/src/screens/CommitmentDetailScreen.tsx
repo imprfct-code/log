@@ -10,7 +10,10 @@ import { CommitmentMeta } from "@/components/CommitmentMeta";
 import { ConnectRepoForm } from "@/components/ConnectRepoForm";
 import { CreatePostForm } from "@/components/CreatePostForm";
 import { DevlogTimeline } from "@/components/DevlogTimeline";
-import { daysSince, formatTimeAgo } from "@/lib/formatTime";
+import { ExtIcon } from "@/components/Icons";
+import { ShipForm } from "@/components/ShipForm";
+import { Button } from "@/components/ui/button";
+import { daysSince, formatShippedIn, formatTimeAgo } from "@/lib/formatTime";
 import type { DevlogEntry as DevlogEntryType } from "@/types";
 
 function DetailLayout({ children }: { children: ReactNode }) {
@@ -38,6 +41,7 @@ export function CommitmentDetailScreen() {
 
   const me = useQuery(api.users.getMe);
   const [connectingRepo, setConnectingRepo] = useState(false);
+  const [shipping, setShipping] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [viewAsGuest, setViewAsGuest] = useState(false);
@@ -109,6 +113,7 @@ export function CommitmentDetailScreen() {
   const canSync =
     effectiveAuthor && commitment.repo && !commitment.webhookId && commitment.status === "building";
   const canPost = effectiveAuthor && commitment.status === "building";
+  const canShip = effectiveAuthor && commitment.status === "building";
   const day = daysSince(commitment.firstEntryAt ?? commitment._creationTime);
 
   async function handleSync() {
@@ -141,7 +146,9 @@ export function CommitmentDetailScreen() {
             isSyncing ? (
               <span className="text-muted-foreground">syncing</span>
             ) : commitment.status === "shipped" ? (
-              <span className="text-shipped">shipped</span>
+              <span className="text-shipped">
+                shipped in {formatShippedIn(commitment.shippedAt!, commitment._creationTime)}
+              </span>
             ) : (
               <span className="text-muted-foreground">
                 day <span className="text-accent">{day}</span>
@@ -190,6 +197,32 @@ export function CommitmentDetailScreen() {
                 <RefreshCw size={11} className={syncing ? "animate-spin" : ""} />
                 {syncing ? "syncing..." : (syncResult ?? "sync")}
               </button>
+            )}
+            {commitment.status === "shipped" && commitment.shipUrl && (
+              <a
+                href={
+                  commitment.shipUrl.startsWith("http")
+                    ? commitment.shipUrl
+                    : `https://${commitment.shipUrl}`
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-auto flex shrink-0 items-center gap-1 truncate text-[11px] text-shipped transition-colors hover:text-shipped/80"
+              >
+                {commitment.shipUrl} <ExtIcon size={10} color="currentColor" />
+              </a>
+            )}
+          </div>
+        )}
+
+        {canShip && (
+          <div className="mb-3">
+            {shipping ? (
+              <ShipForm commitmentId={commitment._id} />
+            ) : (
+              <Button variant="ship" size="sm" onClick={() => setShipping(true)}>
+                ship it
+              </Button>
             )}
           </div>
         )}

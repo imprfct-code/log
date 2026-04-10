@@ -4,7 +4,7 @@ import { api } from "@convex/_generated/api";
 import { Search, Loader2 } from "lucide-react";
 import type { Id } from "@convex/_generated/dataModel";
 import { CommitCard } from "@/components/CommitCard";
-import { daysSince, formatTimeAgo } from "@/lib/formatTime";
+import { daysSince, formatShippedIn, formatTimeAgo } from "@/lib/formatTime";
 import { cn } from "@/lib/utils";
 import type { Commitment, DevlogEntry } from "@/types";
 
@@ -53,6 +53,8 @@ interface RawFeedItem {
     username: string;
     avatarUrl?: string;
   } | null;
+  shipUrl?: string;
+  shippedAt?: number;
   recentEntries?: RawDevlogEntry[];
   hasMore?: boolean;
 }
@@ -89,6 +91,8 @@ function toCommitment(item: RawFeedItem): Commitment {
     devlog: (item.recentEntries ?? []).map(toDevlogEntry),
     respects: item.respectCount,
     status: item.status,
+    shipUrl: item.shipUrl,
+    shippedIn: item.shippedAt ? formatShippedIn(item.shippedAt, item._creationTime) : undefined,
     activity: item.activity,
     hasMore: item.hasMore,
   };

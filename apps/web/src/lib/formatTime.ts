@@ -6,6 +6,13 @@ export function daysSince(timestamp: number): number {
   return Math.max(1, Math.ceil((Date.now() - timestamp) / DAY));
 }
 
+export function formatShippedIn(shippedAt: number, createdAt: number): string {
+  const days = Math.floor((shippedAt - createdAt) / DAY);
+  if (days === 0) return "< 1 day";
+  if (days === 1) return "1 day";
+  return `${days} days`;
+}
+
 export function formatTimeAgo(timestamp: number): string {
   const diff = Date.now() - timestamp;
   if (diff < MINUTE) return "just now";
