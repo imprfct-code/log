@@ -54,7 +54,7 @@ function buildPreviewCommitment(
     day: 1,
     comments: 0,
     devlog: [],
-    respects: 0,
+    boosts: 0,
     status: "building",
     activity: [0, 0, 0, 0, 0, 0, 1],
   };

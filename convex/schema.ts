@@ -9,6 +9,7 @@ export const attachmentValidator = v.object({
   cover: v.optional(v.boolean()),
   duration: v.optional(v.number()),
   inline: v.optional(v.boolean()),
+  widthPercent: v.optional(v.number()),
 });
 
 export default defineSchema({
@@ -47,7 +48,7 @@ export default defineSchema({
     initialSyncStatus: v.optional(v.union(v.literal("syncing"), v.literal("ready"))),
     syncCurrentBranch: v.optional(v.string()),
     commentCount: v.number(),
-    respectCount: v.number(),
+    boostCount: v.number(),
     lastActivityAt: v.number(),
     activity: v.array(v.number()),
   })
@@ -93,11 +94,12 @@ export default defineSchema({
     commitmentId: v.id("commitments"),
     devlogEntryId: v.optional(v.id("devlogEntries")),
     text: v.string(),
+    attachments: v.optional(v.array(attachmentValidator)),
   })
     .index("by_commitmentId", ["commitmentId"])
     .index("by_devlogEntryId", ["devlogEntryId"]),
 
-  respects: defineTable({
+  boosts: defineTable({
     userId: v.id("users"),
     commitmentId: v.id("commitments"),
   })

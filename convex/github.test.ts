@@ -33,7 +33,7 @@ async function setupCommitment(t: ReturnType<typeof testCtx>) {
       repo: "owner/repo",
       status: "building",
       commentCount: 0,
-      respectCount: 0,
+      boostCount: 0,
       lastActivityAt: BASE_TIME - DAY,
       activity: [0, 0, 0, 0, 0, 0, 0],
     });
@@ -257,7 +257,7 @@ describe("getCommitmentsByRepo", () => {
         repo: "owner/repo",
         status: "building",
         commentCount: 0,
-        respectCount: 0,
+        boostCount: 0,
         lastActivityAt: BASE_TIME,
         activity: [0, 0, 0, 0, 0, 0, 0],
       });
@@ -268,7 +268,7 @@ describe("getCommitmentsByRepo", () => {
         repo: "owner/repo",
         status: "shipped",
         commentCount: 0,
-        respectCount: 0,
+        boostCount: 0,
         lastActivityAt: BASE_TIME,
         activity: [0, 0, 0, 0, 0, 0, 0],
       });

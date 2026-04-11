@@ -8,6 +8,7 @@ import { currentWeekActivity } from "./dates";
 import { getUserByToken } from "./users";
 import { computeVisibility, redactEntry } from "./privacy";
 import { resolveAttachments, updateActivity } from "./devlog";
+import { fetchCommentDataForEntry } from "./comments";
 import { r2 } from "./r2";
 
 const REPO_RE = /^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/;
@@ -38,7 +39,7 @@ export const create = mutation({
       status: "building",
       initialSyncStatus: repo ? "syncing" : undefined,
       commentCount: 0,
-      respectCount: 0,
+      boostCount: 0,
       lastActivityAt: now,
       activity: [0, 0, 0, 0, 0, 0, 0],
     });
@@ -158,10 +159,18 @@ export const listFeed = query({
         const redacted = await Promise.all(
           entries.slice(0, 4).map(async (e) => {
             const entry = redactEntry(e, flags, commitment.isPrivate, isAuthor);
+
+            // Don't leak comments for redacted entries (private commits/ships)
+            const isContentHidden = !flags.showMessages && e.type !== "post";
+            const commentData = isContentHidden
+              ? []
+              : await fetchCommentDataForEntry(ctx, e._id, e.commentCount);
+
             return {
               ...entry,
               // Feed preview only needs the first attachment (thumbnail/cover)
               resolvedAttachments: await resolveAttachments(e.attachments?.slice(0, 1)),
+              commentData,
             };
           }),
         );
@@ -329,6 +338,15 @@ export const ship = mutation({
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
       throw new Error("Invalid shipUrl");
     }
+    const host = parsed.hostname;
+    if (
+      host === "localhost" ||
+      /^\d{1,3}(\.\d{1,3}){3}$/.test(host) ||
+      host.includes(":") ||
+      !host.includes(".")
+    ) {
+      throw new Error("Invalid shipUrl");
+    }
 
     const commitment = await ctx.db.get(id);
     if (!commitment) throw new Error("Commitment not found");
@@ -478,13 +496,13 @@ export const devDelete = internalMutation({
       await ctx.db.delete(c._id);
     }
 
-    // 2. Delete respects
-    const respects = await ctx.db
-      .query("respects")
+    // 2. Delete boosts
+    const boosts = await ctx.db
+      .query("boosts")
       .withIndex("by_commitmentId", (q) => q.eq("commitmentId", commitmentId))
       .collect();
-    for (const r of respects) {
-      await ctx.db.delete(r._id);
+    for (const boost of boosts) {
+      await ctx.db.delete(boost._id);
     }
 
     // 3. Delete devlog entries (with R2 cleanup)
@@ -519,7 +537,7 @@ export const devDelete = internalMutation({
     return {
       deleted: {
         comments: comments.length,
-        respects: respects.length,
+        boosts: boosts.length,
         entries: entries.length,
       },
     };

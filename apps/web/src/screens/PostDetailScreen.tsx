@@ -106,9 +106,13 @@ export function PostDetailScreen() {
     comments === undefined
       ? undefined
       : comments.map((c) => ({
+          _id: c._id,
+          userId: c.userId,
           user: c.username,
+          avatar: c.avatarUrl,
           text: c.text,
           time: formatTimeAgo(c._creationTime),
+          attachments: c.attachments,
         }));
 
   return (
@@ -231,11 +235,15 @@ export function PostDetailScreen() {
           <div className="mt-3 text-[11px] text-muted-foreground">loading comments...</div>
         ) : commentData.length > 0 ? (
           <div className="mt-2">
-            <CommentThread comments={commentData} />
+            <CommentThread
+              comments={commentData}
+              commitmentId={data.commitmentId}
+              devlogEntryId={entryId}
+            />
           </div>
         ) : (
           <div className="mt-3 border-l-2 border-border-strong px-3.5 py-1.5">
-            <CommentInput />
+            <CommentInput commitmentId={data.commitmentId} devlogEntryId={entryId} />
           </div>
         )}
       </div>

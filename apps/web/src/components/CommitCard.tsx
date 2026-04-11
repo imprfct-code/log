@@ -2,6 +2,8 @@ import { Link } from "react-router";
 import type { Commitment } from "@/types";
 import { CommitmentMeta } from "./CommitmentMeta";
 import { DevlogTimeline } from "./DevlogTimeline";
+import { BoostButton } from "./BoostButton";
+import { CommentIcon } from "./Icons";
 
 export function CommitCard({ item, preview }: { item: Commitment; preview?: boolean }) {
   return (
@@ -45,6 +47,20 @@ export function CommitCard({ item, preview }: { item: Commitment; preview?: bool
         <p className="mb-1 truncate text-[11px] italic text-muted-foreground">
           &ldquo;{item.shipNote}&rdquo;
         </p>
+      )}
+
+      {(item.comments > 0 || item.status === "shipped") && (
+        <div className="mb-1 flex items-center gap-3 font-mono text-[11px]">
+          {item.comments > 0 && (
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <CommentIcon size={10} color="currentColor" />
+              {item.comments}
+            </span>
+          )}
+          {item.status === "shipped" && (
+            <BoostButton commitmentId={item.id} initialCount={item.boosts} />
+          )}
+        </div>
       )}
 
       {item.devlog.length > 0 && (

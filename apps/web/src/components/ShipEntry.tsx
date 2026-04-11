@@ -1,8 +1,15 @@
 import type { DevlogEntry as DevlogEntryType } from "@/types";
 import { ExtIcon } from "./Icons";
+import { CommentBadge } from "./CommentBadge";
 
 /** Display a ship or release entry in the devlog timeline. */
-export function ShipEntry({ entry }: { entry: DevlogEntryType }) {
+export function ShipEntry({
+  entry,
+  onCommentClick,
+}: {
+  entry: DevlogEntryType;
+  onCommentClick?: () => void;
+}) {
   const url = entry.body;
   const href = url ? (url.startsWith("http") ? url : `https://${url}`) : undefined;
   const label = entry.isMilestone ? "shipped" : "released";
@@ -13,17 +20,23 @@ export function ShipEntry({ entry }: { entry: DevlogEntryType }) {
 
       <div className="flex items-baseline gap-2 text-[11px]">
         <span className="text-release">{label}</span>
-        <span className="text-[#333]">{entry.time}</span>
         {href && (
-          <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 truncate text-release transition-colors hover:text-release/80"
-          >
-            {url} <ExtIcon size={10} color="currentColor" />
-          </a>
+          <>
+            <span className="text-[#333]">check it out:</span>
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 truncate text-release transition-colors hover:text-release/80"
+            >
+              {url} <ExtIcon size={10} color="currentColor" />
+            </a>
+          </>
         )}
+        <span className="ml-auto flex items-center gap-2">
+          <CommentBadge count={entry.comments} onClick={onCommentClick} />
+          <span className="text-[#333]">{entry.time}</span>
+        </span>
       </div>
 
       {entry.shipNote && (

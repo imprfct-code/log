@@ -52,7 +52,7 @@ export async function setupUserWithCommitment(
       text,
       status: "building",
       commentCount: 0,
-      respectCount: 0,
+      boostCount: 0,
       lastActivityAt: Date.now(),
       activity: [0, 0, 0, 0, 0, 0, 0],
     });

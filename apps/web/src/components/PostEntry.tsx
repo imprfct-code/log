@@ -93,8 +93,8 @@ export function PostEntry({
 
       <div className="flex items-baseline gap-2 text-[11px]">
         <span className="text-accent">post</span>
-        <span className="text-[#333]">{entry.time}</span>
         <CommentBadge count={entry.comments} onClick={onCommentClick} />
+        <span className="text-[#333]">{entry.time}</span>
 
         {entry.isOwn && (
           <div className="ml-auto flex items-center gap-2">

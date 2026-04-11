@@ -48,41 +48,6 @@ export function CommentIcon({
   );
 }
 
-export function RespectIcon({
-  size = 12,
-  color = "currentColor",
-}: {
-  size?: number;
-  color?: string;
-}) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke={color}
-      strokeWidth="1.5"
-    >
-      <path d="M8 2l2.5 4H14l-3.5 4L12 14l-4-2.5L4 14l1.5-4L2 6h3.5L8 2z" />
-    </svg>
-  );
-}
-
-export function RespectIconFilled({
-  size = 12,
-  color = "currentColor",
-}: {
-  size?: number;
-  color?: string;
-}) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill={color} stroke={color} strokeWidth="1">
-      <path d="M8 2l2.5 4H14l-3.5 4L12 14l-4-2.5L4 14l1.5-4L2 6h3.5L8 2z" />
-    </svg>
-  );
-}
-
 export function CheckIcon({
   size = 12,
   color = "currentColor",

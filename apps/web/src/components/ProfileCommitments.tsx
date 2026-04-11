@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import type { Id } from "@convex/_generated/dataModel";
-import { GhIcon, CommentIcon, RespectIcon } from "./Icons";
+import { GhIcon, CommentIcon } from "./Icons";
+import BoostIcon from "./BoostIcon";
 import { ActivitySparkline } from "./ActivitySparkline";
 import { cn } from "@/lib/utils";
 
@@ -14,7 +15,7 @@ interface ProfileCommitment {
   day?: number;
   shippedIn?: string;
   shipUrl?: string;
-  respectCount: number;
+  boostCount: number;
   commentCount: number;
   activity: number[];
   lastEntryPreview?: string;
@@ -114,9 +115,9 @@ export function ProfileCommitments({
                       <CommentIcon size={9} color="#666" /> {item.commentCount}
                     </span>
                   )}
-                  {item.status === "shipped" && item.respectCount > 0 && (
-                    <span className="flex items-center gap-0.5 text-release">
-                      <RespectIcon size={9} color="currentColor" /> {item.respectCount}
+                  {item.status === "shipped" && item.boostCount > 0 && (
+                    <span className="flex items-center gap-0.5 text-boost">
+                      <BoostIcon size={9} color="currentColor" /> {item.boostCount}
                     </span>
                   )}
                 </div>

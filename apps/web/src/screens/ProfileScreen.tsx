@@ -36,7 +36,7 @@ export function ProfileScreen() {
     const building = profile.active.map((c) => ({
       ...c,
       status: "building" as const,
-      respectCount: 0,
+      boostCount: 0,
     }));
     const all = [...building, ...released];
     return { all, building, released };
@@ -108,8 +108,8 @@ export function ProfileScreen() {
             {stats.totalShips === 1 ? "release" : "releases"}
           </span>
           <span>
-            <span className="text-foreground-bright">{stats.totalRespects}</span>{" "}
-            {stats.totalRespects === 1 ? "respect" : "respects"}
+            <span className="text-foreground-bright">{stats.totalBoosts}</span>{" "}
+            {stats.totalBoosts === 1 ? "boost" : "boosts"}
           </span>
           {user.streak > 0 && (
             <span>

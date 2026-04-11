@@ -10,10 +10,10 @@ export const toggle = mutation({
 
     const commitment = await ctx.db.get(commitmentId);
     if (!commitment) throw new Error("Commitment not found");
-    if (commitment.status !== "shipped") throw new Error("Can only respect released commitments");
+    if (commitment.status !== "shipped") throw new Error("Can only boost shipped commitments");
 
     const existing = await ctx.db
-      .query("respects")
+      .query("boosts")
       .withIndex("by_userId_and_commitmentId", (q) =>
         q.eq("userId", user._id).eq("commitmentId", commitmentId),
       )
@@ -22,25 +22,25 @@ export const toggle = mutation({
     if (existing) {
       await ctx.db.delete(existing._id);
       await ctx.db.patch(commitmentId, {
-        respectCount: Math.max(0, commitment.respectCount - 1),
+        boostCount: Math.max(0, commitment.boostCount - 1),
       });
-      return { respected: false };
+      return { boosted: false };
     }
 
-    await ctx.db.insert("respects", { userId: user._id, commitmentId });
-    await ctx.db.patch(commitmentId, { respectCount: commitment.respectCount + 1 });
-    return { respected: true };
+    await ctx.db.insert("boosts", { userId: user._id, commitmentId });
+    await ctx.db.patch(commitmentId, { boostCount: commitment.boostCount + 1 });
+    return { boosted: true };
   },
 });
 
-export const hasRespected = query({
+export const hasBoosted = query({
   args: { commitmentId: v.id("commitments") },
   handler: async (ctx, { commitmentId }) => {
     const user = await getUserByToken(ctx);
     if (!user) return false;
 
     const existing = await ctx.db
-      .query("respects")
+      .query("boosts")
       .withIndex("by_userId_and_commitmentId", (q) =>
         q.eq("userId", user._id).eq("commitmentId", commitmentId),
       )

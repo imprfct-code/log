@@ -6,6 +6,7 @@ import type { Id } from "@convex/_generated/dataModel";
 import { Eye, GitBranch, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ActivitySparkline } from "@/components/ActivitySparkline";
+import { BoostButton } from "@/components/BoostButton";
 import { CommitmentMeta } from "@/components/CommitmentMeta";
 import { ConnectRepoForm } from "@/components/ConnectRepoForm";
 import { CreatePostForm } from "@/components/CreatePostForm";
@@ -79,6 +80,15 @@ export function CommitmentDetailScreen() {
         shipNote: e.shipNote,
         isMilestone: e.isMilestone,
         comments: e.commentCount,
+        commentData: e.commentData.map((c) => ({
+          _id: c._id,
+          userId: c.userId,
+          user: c.username,
+          avatar: c.avatarUrl,
+          text: c.text,
+          time: formatTimeAgo(c.createdAt),
+          attachments: c.attachments,
+        })),
         isOwn: effectiveAuthor,
       })),
     [entries, effectiveAuthor],
@@ -199,7 +209,9 @@ export function CommitmentDetailScreen() {
         {!isSyncing && (
           <div className="mb-3 flex items-center gap-4 text-[11px] text-muted-foreground">
             <span>{commitment.commentCount} comments</span>
-            <span>{commitment.respectCount} respects</span>
+            {commitment.status === "shipped" && (
+              <BoostButton commitmentId={commitment._id} initialCount={commitment.boostCount} />
+            )}
             {canSync && (
               <button
                 type="button"

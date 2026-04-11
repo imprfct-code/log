@@ -6,6 +6,7 @@ import { DAY_MS, utcWeekday, utcMondayOf } from "./dates";
 import { getUserByToken, updateStreak } from "./users";
 import { computeVisibility, redactEntry } from "./privacy";
 import { attachmentValidator } from "./schema";
+import { fetchCommentDataForEntry } from "./comments";
 import { r2 } from "./r2";
 
 const MAX_CONTENT_LENGTH = 20_000;
@@ -52,6 +53,7 @@ export async function resolveAttachments(
     hasMarkdownRef?: boolean;
     cover?: boolean;
     duration?: number;
+    widthPercent?: number;
   }>,
 ): Promise<
   Array<{
@@ -62,6 +64,7 @@ export async function resolveAttachments(
     hasMarkdownRef: boolean;
     cover?: boolean;
     duration?: number;
+    widthPercent?: number;
   }>
 > {
   if (!attachments?.length) return [];
@@ -74,6 +77,7 @@ export async function resolveAttachments(
       hasMarkdownRef: att.hasMarkdownRef ?? false,
       cover: att.cover,
       duration: att.duration,
+      widthPercent: att.widthPercent,
     })),
   );
 }
@@ -233,6 +237,16 @@ export const remove = mutation({
       .collect();
 
     for (const comment of comments) {
+      for (const att of comment.attachments ?? []) {
+        try {
+          await r2.deleteObject(ctx, att.key);
+        } catch (err) {
+          console.error("Failed to delete comment R2 object during post remove", {
+            key: att.key,
+            err,
+          });
+        }
+      }
       await ctx.db.delete(comment._id);
     }
 
@@ -294,9 +308,17 @@ export const listByCommitment = query({
       page: await Promise.all(
         result.page.map(async (e) => {
           const redacted = redactEntry(e, flags, commitment.isPrivate, effectiveAuthor);
+
+          // Don't leak comments or attachments for redacted entries (private commits/ships)
+          const isContentHidden = !flags.showMessages && e.type !== "post";
+          const commentData = isContentHidden
+            ? []
+            : await fetchCommentDataForEntry(ctx, e._id, e.commentCount);
+
           return {
             ...redacted,
-            resolvedAttachments: await resolveAttachments(e.attachments),
+            resolvedAttachments: isContentHidden ? [] : await resolveAttachments(e.attachments),
+            commentData,
           };
         }),
       ),

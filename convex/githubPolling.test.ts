@@ -32,7 +32,7 @@ function commitmentDefaults(userId: Id<"users">) {
     text: "Build something",
     status: "building" as const,
     commentCount: 0,
-    respectCount: 0,
+    boostCount: 0,
     lastActivityAt: BASE_TIME,
     activity: [0, 0, 0, 0, 0, 0, 0],
   };

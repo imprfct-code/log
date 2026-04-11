@@ -169,7 +169,7 @@ describe("devlog mutations", () => {
         text: "Shipped thing",
         status: "shipped",
         commentCount: 0,
-        respectCount: 0,
+        boostCount: 0,
         lastActivityAt: Date.now(),
         activity: [0, 0, 0, 0, 0, 0, 0],
       }),
