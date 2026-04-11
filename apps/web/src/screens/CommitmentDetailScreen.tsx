@@ -80,10 +80,13 @@ export function CommitmentDetailScreen() {
         isMilestone: e.isMilestone,
         comments: e.commentCount,
         commentData: e.commentData.map((c) => ({
+          _id: c._id,
+          userId: c.userId,
           user: c.username,
           avatar: c.avatarUrl,
           text: c.text,
           time: formatTimeAgo(c.createdAt),
+          attachments: c.attachments,
         })),
         isOwn: effectiveAuthor,
       })),

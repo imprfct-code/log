@@ -52,6 +52,7 @@ export async function resolveAttachments(
     hasMarkdownRef?: boolean;
     cover?: boolean;
     duration?: number;
+    widthPercent?: number;
   }>,
 ): Promise<
   Array<{
@@ -62,6 +63,7 @@ export async function resolveAttachments(
     hasMarkdownRef: boolean;
     cover?: boolean;
     duration?: number;
+    widthPercent?: number;
   }>
 > {
   if (!attachments?.length) return [];
@@ -74,6 +76,7 @@ export async function resolveAttachments(
       hasMarkdownRef: att.hasMarkdownRef ?? false,
       cover: att.cover,
       duration: att.duration,
+      widthPercent: att.widthPercent,
     })),
   );
 }
@@ -233,6 +236,16 @@ export const remove = mutation({
       .collect();
 
     for (const comment of comments) {
+      for (const att of comment.attachments ?? []) {
+        try {
+          await r2.deleteObject(ctx, att.key);
+        } catch (err) {
+          console.error("Failed to delete comment R2 object during post remove", {
+            key: att.key,
+            err,
+          });
+        }
+      }
       await ctx.db.delete(comment._id);
     }
 
@@ -308,10 +321,13 @@ export const listByCommitment = query({
             commentDocs.map(async (c) => {
               const user = await ctx.db.get(c.userId);
               return {
+                _id: c._id,
+                userId: c.userId,
                 username: user?.username ?? "unknown",
                 avatarUrl: user?.avatarUrl,
                 text: c.text,
                 createdAt: c._creationTime,
+                attachments: await resolveAttachments(c.attachments),
               };
             }),
           );

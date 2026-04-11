@@ -134,3 +134,63 @@ describe("comments.remove", () => {
     );
   });
 });
+
+describe("comments.update", () => {
+  test("updates text successfully", async () => {
+    const t = testCtx();
+    const { as, commitmentId } = await setupUserWithCommitment(t);
+
+    const commentId = await as.mutation(api.comments.create, {
+      commitmentId,
+      text: "Original text",
+    });
+
+    await as.mutation(api.comments.update, { id: commentId, text: "Updated text" });
+
+    const comment = await t.run(async (ctx) => ctx.db.get(commentId));
+    expect(comment?.text).toBe("Updated text");
+  });
+
+  test("throws for unauthenticated user", async () => {
+    const t = testCtx();
+    const { as, commitmentId } = await setupUserWithCommitment(t);
+
+    const commentId = await as.mutation(api.comments.create, {
+      commitmentId,
+      text: "Original",
+    });
+
+    await expect(
+      t.mutation(api.comments.update, { id: commentId, text: "Hacked" }),
+    ).rejects.toThrow("Not authenticated");
+  });
+
+  test("throws for non-owner", async () => {
+    const t = testCtx();
+    const { as: user1, commitmentId } = await setupUserWithCommitment(t, "user1");
+    const { as: user2 } = await setupUser(t, "user2", "otheruser");
+
+    const commentId = await user1.mutation(api.comments.create, {
+      commitmentId,
+      text: "My comment",
+    });
+
+    await expect(
+      user2.mutation(api.comments.update, { id: commentId, text: "Not mine" }),
+    ).rejects.toThrow("Not the owner");
+  });
+
+  test("throws for empty text", async () => {
+    const t = testCtx();
+    const { as, commitmentId } = await setupUserWithCommitment(t);
+
+    const commentId = await as.mutation(api.comments.create, {
+      commitmentId,
+      text: "Original",
+    });
+
+    await expect(as.mutation(api.comments.update, { id: commentId, text: "   " })).rejects.toThrow(
+      "Text cannot be empty",
+    );
+  });
+});

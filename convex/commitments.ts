@@ -172,10 +172,13 @@ export const listFeed = query({
               commentDocs.map(async (c) => {
                 const commentUser = await ctx.db.get(c.userId);
                 return {
+                  _id: c._id,
+                  userId: c.userId,
                   username: commentUser?.username ?? "unknown",
                   avatarUrl: commentUser?.avatarUrl,
                   text: c.text,
                   createdAt: c._creationTime,
+                  attachments: await resolveAttachments(c.attachments),
                 };
               }),
             );

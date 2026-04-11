@@ -25,10 +25,21 @@ interface RawDevlogEntry {
   isMilestone?: boolean;
   commentCount: number;
   commentData: Array<{
+    _id: Id<"comments">;
+    userId: Id<"users">;
     username: string;
     avatarUrl?: string;
     text: string;
     createdAt: number;
+    attachments?: Array<{
+      url: string;
+      key: string;
+      type: "image" | "video";
+      filename: string;
+      inline: boolean;
+      cover?: boolean;
+      duration?: number;
+    }>;
   }>;
   _creationTime: number;
   resolvedAttachments?: Array<{
@@ -84,10 +95,13 @@ function toDevlogEntry(entry: RawDevlogEntry): DevlogEntry {
     isMilestone: entry.isMilestone,
     comments: entry.commentCount,
     commentData: entry.commentData.map((c) => ({
+      _id: c._id,
+      userId: c.userId,
       user: c.username,
       avatar: c.avatarUrl,
       text: c.text,
       time: formatTimeAgo(c.createdAt),
+      attachments: c.attachments,
     })),
   };
 }

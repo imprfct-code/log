@@ -9,6 +9,7 @@ export const attachmentValidator = v.object({
   cover: v.optional(v.boolean()),
   duration: v.optional(v.number()),
   inline: v.optional(v.boolean()),
+  widthPercent: v.optional(v.number()),
 });
 
 export default defineSchema({
@@ -93,6 +94,7 @@ export default defineSchema({
     commitmentId: v.id("commitments"),
     devlogEntryId: v.optional(v.id("devlogEntries")),
     text: v.string(),
+    attachments: v.optional(v.array(attachmentValidator)),
   })
     .index("by_commitmentId", ["commitmentId"])
     .index("by_devlogEntryId", ["devlogEntryId"]),

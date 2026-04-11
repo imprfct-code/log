@@ -106,10 +106,13 @@ export function PostDetailScreen() {
     comments === undefined
       ? undefined
       : comments.map((c) => ({
+          _id: c._id,
+          userId: c.userId,
           user: c.username,
           avatar: c.avatarUrl,
           text: c.text,
           time: formatTimeAgo(c._creationTime),
+          attachments: c.attachments,
         }));
 
   return (

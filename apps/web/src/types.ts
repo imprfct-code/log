@@ -1,10 +1,13 @@
 import type { Id } from "@convex/_generated/dataModel";
 
 export interface Comment {
+  _id: Id<"comments">;
+  userId: Id<"users">;
   user: string;
   avatar?: string;
   text: string;
   time: string;
+  attachments?: Attachment[];
 }
 
 export interface Attachment {
@@ -15,6 +18,7 @@ export interface Attachment {
   hasMarkdownRef?: boolean;
   cover?: boolean;
   duration?: number;
+  widthPercent?: number;
 }
 
 export interface DevlogEntry {
