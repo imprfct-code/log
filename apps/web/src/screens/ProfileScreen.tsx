@@ -18,6 +18,7 @@ function InlineBio({ initialValue }: { initialValue?: string }) {
   const updateProfile = useMutation(api.users.updateProfile);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState(initialValue ?? "");
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -34,9 +35,12 @@ function InlineBio({ initialValue }: { initialValue?: string }) {
       return;
     }
     setSaving(true);
+    setError(null);
     try {
       await updateProfile({ bio: trimmed });
       setEditing(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save bio");
     } finally {
       setSaving(false);
     }
@@ -89,6 +93,7 @@ function InlineBio({ initialValue }: { initialValue?: string }) {
             </button>
           </div>
         </div>
+        {error && <p className="mt-1 text-[11px] text-destructive">{error}</p>}
       </div>
     );
   }
