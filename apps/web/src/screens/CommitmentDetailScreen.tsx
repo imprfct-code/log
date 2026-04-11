@@ -14,6 +14,7 @@ import { DevlogTimeline } from "@/components/DevlogTimeline";
 import { ShipModal } from "@/components/ShipModal";
 import { AbandonModal } from "@/components/AbandonModal";
 import { Button } from "@/components/ui/button";
+import { COMMITMENT_TITLE_MAX_LENGTH } from "@convex/commitments";
 import { daysSince, formatShippedIn, formatTimeAgo } from "@/lib/formatTime";
 import type { DevlogEntry as DevlogEntryType } from "@/types";
 
@@ -148,6 +149,7 @@ export function CommitmentDetailScreen() {
   }
 
   async function saveTitle() {
+    if (titleSaving) return;
     const trimmed = titleDraft.trim();
     if (!trimmed || trimmed === commitment.text) {
       setEditingTitle(false);
@@ -242,7 +244,9 @@ export function CommitmentDetailScreen() {
               <input
                 ref={titleRef}
                 value={titleDraft}
-                onChange={(e) => setTitleDraft(e.target.value.slice(0, 80))}
+                onChange={(e) =>
+                  setTitleDraft(e.target.value.slice(0, COMMITMENT_TITLE_MAX_LENGTH))
+                }
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -250,12 +254,14 @@ export function CommitmentDetailScreen() {
                   }
                   if (e.key === "Escape") setEditingTitle(false);
                 }}
-                maxLength={80}
+                maxLength={COMMITMENT_TITLE_MAX_LENGTH}
                 autoComplete="off"
                 className="w-full border-b border-border-strong bg-transparent text-lg font-bold text-foreground-bright outline-none focus:border-accent"
               />
               <div className="mt-1 flex items-center justify-between">
-                <span className="text-[10px] text-muted-foreground/40">{titleDraft.length}/80</span>
+                <span className="text-[10px] text-muted-foreground/40">
+                  {titleDraft.length}/{COMMITMENT_TITLE_MAX_LENGTH}
+                </span>
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -279,21 +285,21 @@ export function CommitmentDetailScreen() {
               {titleError && <p className="mt-1 text-[11px] text-destructive">{titleError}</p>}
             </div>
           ) : (
-            <h1
-              className={cn(
-                "min-w-0 flex-1 text-lg font-bold text-foreground-bright",
-                canEditTitle && "group cursor-pointer",
-              )}
-              onClick={canEditTitle ? startEditingTitle : undefined}
-            >
-              {commitment.text}
+            <div className="group flex min-w-0 flex-1 items-center">
+              <h1 className="min-w-0 flex-1 text-lg font-bold text-foreground-bright">
+                {commitment.text}
+              </h1>
               {canEditTitle && (
-                <Pencil
-                  size={12}
-                  className="ml-2 inline opacity-0 transition-opacity group-hover:opacity-60"
-                />
+                <button
+                  type="button"
+                  onClick={startEditingTitle}
+                  aria-label="Edit commitment title"
+                  className="ml-2 cursor-pointer bg-transparent p-0 text-muted-foreground/0 transition-colors group-hover:text-muted-foreground/60 focus-visible:text-muted-foreground/60"
+                >
+                  <Pencil size={12} aria-hidden="true" />
+                </button>
               )}
-            </h1>
+            </div>
           )}
           {!isSyncing && (
             <ActivitySparkline activity={commitment.activity} className="shrink-0 pt-1" />

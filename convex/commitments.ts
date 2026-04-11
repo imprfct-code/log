@@ -315,6 +315,22 @@ export const connectRepo = mutation({
   },
 });
 
+export const COMMITMENT_TITLE_MAX_LENGTH = 80;
+
+function assertCanEditCommitment(commitment: Doc<"commitments">, userId: Id<"users">) {
+  if (commitment.userId !== userId) throw new Error("Not the owner");
+  if (commitment.status !== "building")
+    throw new Error("Cannot edit a shipped or abandoned commitment");
+}
+
+function normalizeCommitmentText(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed) throw new Error("Text must not be empty");
+  if (trimmed.length > COMMITMENT_TITLE_MAX_LENGTH)
+    throw new Error(`Text must be ${COMMITMENT_TITLE_MAX_LENGTH} characters or less`);
+  return trimmed;
+}
+
 export const updateText = mutation({
   args: {
     id: v.id("commitments"),
@@ -326,13 +342,8 @@ export const updateText = mutation({
 
     const commitment = await ctx.db.get(id);
     if (!commitment) throw new Error("Commitment not found");
-    if (commitment.userId !== user._id) throw new Error("Not the owner");
-    if (commitment.status !== "building")
-      throw new Error("Cannot edit a shipped or abandoned commitment");
-
-    const trimmed = text.trim();
-    if (!trimmed) throw new Error("Text must not be empty");
-    if (trimmed.length > 80) throw new Error("Text must be 80 characters or less");
+    assertCanEditCommitment(commitment, user._id);
+    const trimmed = normalizeCommitmentText(text);
 
     await ctx.db.patch(id, { text: trimmed });
   },
