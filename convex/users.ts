@@ -9,7 +9,8 @@ import {
   type QueryCtx,
 } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
-import { DAY_MS, utcDateString } from "./dates";
+import { currentWeekActivity, DAY_MS, utcDateString } from "./dates";
+import { computeVisibility } from "./privacy";
 
 export async function updateStreak(ctx: MutationCtx, user: Doc<"users">) {
   const today = utcDateString();
@@ -180,10 +181,149 @@ export const updateProfile = mutation({
     const user = await getUserByToken(ctx);
     if (!user) throw new Error("Not authenticated");
 
+    if (args.bio !== undefined && args.bio.length > 160) {
+      throw new Error("Bio must be 160 characters or less");
+    }
+
     await ctx.db.patch(user._id, {
       ...(args.username !== undefined && { username: args.username }),
       ...(args.bio !== undefined && { bio: args.bio }),
       ...(args.githubUsername !== undefined && { githubUsername: args.githubUsername }),
     });
+  },
+});
+
+export const getProfile = query({
+  args: { username: v.string() },
+  handler: async (ctx, { username }) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_username", (q) => q.eq("username", username))
+      .unique();
+    if (!user) return null;
+
+    const allCommitments = await ctx.db
+      .query("commitments")
+      .withIndex("by_userId_and_status", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .take(50);
+
+    const viewer = await getUserByToken(ctx);
+    const isOwner = viewer !== null && viewer._id === user._id;
+
+    let totalRespects = 0;
+    let milestoneCount = 0;
+    const shipped: Array<{
+      _id: (typeof allCommitments)[0]["_id"];
+      text: string;
+      repo?: string;
+      shipUrl?: string;
+      respectCount: number;
+      shippedIn: string;
+      activity: number[];
+      _creationTime: number;
+    }> = [];
+    const active: Array<{
+      _id: (typeof allCommitments)[0]["_id"];
+      text: string;
+      repo?: string;
+      day: number;
+      lastEntryPreview?: string;
+      commentCount: number;
+      activity: number[];
+      _creationTime: number;
+    }> = [];
+
+    for (const c of allCommitments) {
+      totalRespects += c.respectCount;
+      const activity = currentWeekActivity(c.activity, c.lastActivityAt);
+      const { showMessages } = computeVisibility({
+        isPrivate: c.isPrivate,
+        ownerPrefs: user,
+        isAuthor: isOwner,
+      });
+      // Hide repo name for private commitments when viewer is not the owner
+      const repo = c.isPrivate && !isOwner ? undefined : c.repo;
+
+      // Count milestones across all commitments
+      const milestones = await ctx.db
+        .query("devlogEntries")
+        .withIndex("by_commitmentId", (q) => q.eq("commitmentId", c._id))
+        .filter((q) => q.eq(q.field("isMilestone"), true))
+        .collect();
+      milestoneCount += milestones.length;
+
+      if (c.status === "shipped") {
+        const firstEntry = await ctx.db
+          .query("devlogEntries")
+          .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", c._id))
+          .order("asc")
+          .first();
+        const startTime = firstEntry?.committedAt ?? c._creationTime;
+        const elapsed = Math.max(0, (c.shippedAt ?? c._creationTime) - startTime);
+        const days = Math.floor(elapsed / DAY_MS);
+        const shippedIn = days === 0 ? "< 1 day" : days === 1 ? "1 day" : `${days} days`;
+
+        shipped.push({
+          _id: c._id,
+          text: c.text,
+          repo,
+          shipUrl: c.isPrivate && !isOwner ? undefined : c.shipUrl,
+          respectCount: c.respectCount,
+          shippedIn,
+          activity,
+          _creationTime: c._creationTime,
+        });
+      } else {
+        const firstEntry = await ctx.db
+          .query("devlogEntries")
+          .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", c._id))
+          .order("asc")
+          .first();
+        const latestEntry = await ctx.db
+          .query("devlogEntries")
+          .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", c._id))
+          .order("desc")
+          .first();
+
+        const startTime = firstEntry?.committedAt ?? c._creationTime;
+        const day = Math.max(1, Math.ceil((Date.now() - startTime) / DAY_MS));
+
+        active.push({
+          _id: c._id,
+          text: c.text,
+          repo,
+          day,
+          lastEntryPreview: showMessages ? latestEntry?.text : undefined,
+          commentCount: c.commentCount,
+          activity,
+          _creationTime: c._creationTime,
+        });
+      }
+    }
+
+    const today = utcDateString();
+    const yesterday = utcDateString(new Date(Date.now() - DAY_MS));
+    const effectiveStreak =
+      user.lastActiveDate === today || user.lastActiveDate === yesterday ? user.streak : 0;
+
+    return {
+      user: {
+        _id: user._id,
+        username: user.username,
+        avatarUrl: user.avatarUrl,
+        bio: user.bio,
+        streak: effectiveStreak,
+        _creationTime: user._creationTime,
+      },
+      stats: {
+        totalShips: shipped.length,
+        activeCount: active.length,
+        totalRespects,
+        milestoneCount,
+      },
+      shipped,
+      active,
+    };
   },
 });

@@ -91,10 +91,13 @@ function SettingsSection({
   );
 }
 
+const BIO_MAX = 160;
+
 export function SettingsScreen() {
   const me = useQuery(api.users.getMe);
   const { user } = useUser();
   const updateSyncMode = useMutation(api.users.updateSyncMode);
+  const updateProfile = useMutation(api.users.updateProfile);
   const updatePrivacySettings = useMutation(api.users.updatePrivacySettings);
   const checkWebhookScope = useAction(api.github.checkWebhookScope);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -104,6 +107,8 @@ export function SettingsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const handledCallback = useRef(false);
+  const [bio, setBio] = useState<string | null>(null);
+  const [bioSaving, setBioSaving] = useState(false);
 
   const currentMode: SyncMode = me?.syncMode ?? "polling";
 
@@ -217,6 +222,45 @@ export function SettingsScreen() {
       </div>
 
       <div className="space-y-10">
+        {/* Profile */}
+        <SettingsSection label="profile" delay={0}>
+          <div className="space-y-2">
+            <label
+              htmlFor="settings-bio"
+              className="block text-[13px] font-medium text-foreground-bright"
+            >
+              Bio
+            </label>
+            <textarea
+              id="settings-bio"
+              value={bio ?? me.bio ?? ""}
+              onChange={(e) => setBio(e.target.value.slice(0, BIO_MAX))}
+              onBlur={async () => {
+                const trimmed = (bio ?? "").trim();
+                if (trimmed === (me.bio ?? "")) {
+                  setBio(null);
+                  return;
+                }
+                setBioSaving(true);
+                await updateProfile({ bio: trimmed || undefined });
+                setBio(null);
+                setBioSaving(false);
+                flashSaved();
+              }}
+              rows={2}
+              maxLength={BIO_MAX}
+              placeholder="what are you building?"
+              className="w-full resize-none border border-border bg-transparent px-3 py-2 text-[13px] leading-relaxed text-muted-foreground outline-none focus:border-accent/50"
+            />
+            <div className="flex items-center justify-between text-[10px] text-muted-foreground/40">
+              <span>{bioSaving ? "saving..." : "auto-saves on blur"}</span>
+              <span>
+                {(bio ?? me.bio ?? "").length}/{BIO_MAX}
+              </span>
+            </div>
+          </div>
+        </SettingsSection>
+
         {/* GitHub Sync */}
         <SettingsSection
           label="github sync"

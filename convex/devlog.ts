@@ -343,38 +343,58 @@ export const getActivityForHeatmap = query({
     const oneYearAgo = Date.now() - 365 * DAY_MS;
 
     const dayMap: Record<string, { commits: number; posts: number }> = {};
+    const milestoneDates = new Set<string>();
     const entriesQuery = ctx.db
       .query("devlogEntries")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .order("desc");
 
     for await (const entry of entriesQuery) {
-      if (entry._creationTime < oneYearAgo) break;
-      const date = new Date(entry._creationTime).toISOString().slice(0, 10);
+      const timestamp = entry.committedAt ?? entry._creationTime;
+      if (entry._creationTime < oneYearAgo && timestamp < oneYearAgo) break;
+      if (timestamp < oneYearAgo) continue;
+      const date = new Date(timestamp).toISOString().slice(0, 10);
       if (!dayMap[date]) dayMap[date] = { commits: 0, posts: 0 };
-      if (entry.type === "commit" || entry.type === "git_commit") dayMap[date].commits++;
-      else dayMap[date].posts++;
+      if (entry.type === "ship") {
+        milestoneDates.add(date);
+      } else if (entry.type === "commit" || entry.type === "git_commit") {
+        dayMap[date].commits++;
+      } else {
+        dayMap[date].posts++;
+      }
     }
 
+    // Ship dates from fully shipped commitments (shippedAt)
+    const shippedDates = new Set<string>();
     const commitments = await ctx.db
       .query("commitments")
       .withIndex("by_userId_and_status", (q) => q.eq("userId", userId).eq("status", "shipped"))
       .take(50);
+    for (const c of commitments) {
+      if (c.shippedAt && c.shippedAt >= oneYearAgo) {
+        shippedDates.add(new Date(c.shippedAt).toISOString().slice(0, 10));
+      }
+    }
 
-    const shippedDates = new Set(
-      commitments
-        .filter((c) => c.shippedAt && c.shippedAt >= oneYearAgo)
-        .map((c) => new Date(c.shippedAt!).toISOString().slice(0, 10)),
-    );
-
-    const days: { date: string; commits: number; posts: number; shipped: boolean }[] = [];
+    const days: {
+      date: string;
+      commits: number;
+      posts: number;
+      shipped: boolean;
+      milestone: boolean;
+    }[] = [];
     const now = new Date();
     for (let i = 364; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
       const date = d.toISOString().slice(0, 10);
       const activity = dayMap[date] ?? { commits: 0, posts: 0 };
-      days.push({ date, ...activity, shipped: shippedDates.has(date) });
+      days.push({
+        date,
+        ...activity,
+        shipped: shippedDates.has(date),
+        milestone: milestoneDates.has(date),
+      });
     }
 
     return days;
