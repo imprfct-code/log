@@ -128,9 +128,11 @@ export function CommentThread({
           </div>
         );
       })}
-      <div className={comments.length > 0 ? "mt-2" : ""}>
-        <CommentInput commitmentId={commitmentId} devlogEntryId={devlogEntryId} />
-      </div>
+      {editingId === null && (
+        <div className={comments.length > 0 ? "mt-2" : ""}>
+          <CommentInput commitmentId={commitmentId} devlogEntryId={devlogEntryId} />
+        </div>
+      )}
     </div>
   );
 }

@@ -20,18 +20,23 @@ export function ShipEntry({
 
       <div className="flex items-baseline gap-2 text-[11px]">
         <span className="text-release">{label}</span>
-        <span className="text-[#333]">{entry.time}</span>
         {href && (
-          <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 truncate text-release transition-colors hover:text-release/80"
-          >
-            {url} <ExtIcon size={10} color="currentColor" />
-          </a>
+          <>
+            <span className="text-[#333]">check it out:</span>
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 truncate text-release transition-colors hover:text-release/80"
+            >
+              {url} <ExtIcon size={10} color="currentColor" />
+            </a>
+          </>
         )}
-        <CommentBadge count={entry.comments} onClick={onCommentClick} />
+        <span className="ml-auto flex items-center gap-2">
+          <span className="text-[#333]">{entry.time}</span>
+          <CommentBadge count={entry.comments} onClick={onCommentClick} />
+        </span>
       </div>
 
       {entry.shipNote && (
