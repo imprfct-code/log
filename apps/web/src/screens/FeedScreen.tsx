@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Search, Loader2 } from "lucide-react";
+import { FeedSkeleton } from "@/components/FeedSkeleton";
 import type { Id } from "@convex/_generated/dataModel";
 import { CommitCard } from "@/components/CommitCard";
 import { daysSince, formatShippedIn, formatTimeAgo } from "@/lib/formatTime";
@@ -214,9 +215,7 @@ export function FeedScreen() {
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 size={20} className="animate-spin text-muted-foreground" />
-          </div>
+          <FeedSkeleton />
         ) : commitments.length === 0 ? (
           <div className="py-16 text-center text-sm text-muted-foreground">
             {search ? "nothing matches your search." : "no commitments yet. be the first."}
