@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
-import BoostIcon from "./BoostIcon";
 import BoostIconFilled from "./BoostIconFilled";
 
 export function BoostButton({
@@ -72,11 +71,7 @@ export function BoostButton({
         isAuthenticated ? "cursor-pointer" : "cursor-default"
       } ${boosted ? "text-boost" : "text-muted-foreground hover:text-boost"} ${pulsing ? "boost-pulse" : ""}`}
     >
-      {boosted ? (
-        <BoostIconFilled size={11} color="currentColor" />
-      ) : (
-        <BoostIcon size={11} color="currentColor" />
-      )}
+      <BoostIconFilled size={11} color="currentColor" />
       {count} {count === 1 ? "boost" : "boosts"}
     </button>
   );

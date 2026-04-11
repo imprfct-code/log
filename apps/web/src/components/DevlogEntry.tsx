@@ -32,7 +32,7 @@ export function DevlogEntry({
   onCommentClick?: () => void;
 }) {
   if (entry.type === "ship") {
-    return <ShipEntry entry={entry} />;
+    return <ShipEntry entry={entry} onCommentClick={onCommentClick} />;
   }
   if (entry.type === "commit" || entry.type === "git_commit") {
     return (

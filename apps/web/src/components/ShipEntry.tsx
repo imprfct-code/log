@@ -1,8 +1,15 @@
 import type { DevlogEntry as DevlogEntryType } from "@/types";
 import { ExtIcon } from "./Icons";
+import { CommentBadge } from "./CommentBadge";
 
 /** Display a ship or release entry in the devlog timeline. */
-export function ShipEntry({ entry }: { entry: DevlogEntryType }) {
+export function ShipEntry({
+  entry,
+  onCommentClick,
+}: {
+  entry: DevlogEntryType;
+  onCommentClick?: () => void;
+}) {
   const url = entry.body;
   const href = url ? (url.startsWith("http") ? url : `https://${url}`) : undefined;
   const label = entry.isMilestone ? "shipped" : "released";
@@ -24,6 +31,7 @@ export function ShipEntry({ entry }: { entry: DevlogEntryType }) {
             {url} <ExtIcon size={10} color="currentColor" />
           </a>
         )}
+        <CommentBadge count={entry.comments} onClick={onCommentClick} />
       </div>
 
       {entry.shipNote && (

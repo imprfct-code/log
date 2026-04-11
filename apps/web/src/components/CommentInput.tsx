@@ -22,6 +22,9 @@ const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 50 * 1024 * 1024;
 const COMMENT_MAX_ATTACHMENTS = 2;
 const COMMENT_MAX_LENGTH = 2000;
+const CHAR_SHOW_THRESHOLD = 1600;
+const CHAR_WARN_THRESHOLD = 1800;
+const CHAR_DANGER_THRESHOLD = 1950;
 
 interface PendingAttachment {
   key: string;
@@ -288,6 +291,16 @@ export function CommentInput({
     }
   }
 
+  const charCount = text.length;
+  const charColorClass =
+    charCount >= COMMENT_MAX_LENGTH
+      ? "text-destructive"
+      : charCount > CHAR_DANGER_THRESHOLD
+        ? "text-accent"
+        : charCount > CHAR_WARN_THRESHOLD
+          ? "text-yellow-500"
+          : "text-[#333]";
+
   const canSubmit =
     (text.trim().length > 0 || attachments.length > 0) && !isUploading && !isSubmitting;
 
@@ -384,6 +397,12 @@ export function CommentInput({
       {error && <div className="mt-1 text-[11px] text-destructive">{error}</div>}
 
       <div className="mt-1 flex items-center justify-end gap-2">
+        {charCount > CHAR_SHOW_THRESHOLD && (
+          <span className={cn("mr-auto font-mono text-[11px]", charColorClass)}>
+            {charCount} / {COMMENT_MAX_LENGTH}
+          </span>
+        )}
+
         {attachments.length < COMMENT_MAX_ATTACHMENTS && (
           <button
             type="button"
