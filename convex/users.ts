@@ -253,27 +253,36 @@ export const getProfile = query({
 
     // Batch devlogEntries lookups: collect first and latest entries for all commitments
     const commitmentIds = allCommitments.map((c) => c._id);
-    const firstEntries = new Map<string, { committedAt?: number }>();
-    const latestEntries = new Map<string, { text?: string }>();
+    const firstEntries = new Map<string, Doc<"devlogEntries">>();
+    const latestEntries = new Map<string, Doc<"devlogEntries">>();
+    const commitmentIdSet = new Set(commitmentIds);
 
-    // Query all first entries
-    for (const id of commitmentIds) {
-      const entry = await ctx.db
-        .query("devlogEntries")
-        .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", id))
-        .order("asc")
-        .first();
-      if (entry) firstEntries.set(id, entry);
+    // Fetch all entries for these commitments in a single query
+    const allEntries = await ctx.db.query("devlogEntries").collect();
+    const entriesByCommitmentId: Record<string, Doc<"devlogEntries">[]> = {};
+
+    for (const entry of allEntries) {
+      if (!commitmentIdSet.has(entry.commitmentId)) continue;
+      if (!entriesByCommitmentId[entry.commitmentId]) {
+        entriesByCommitmentId[entry.commitmentId] = [];
+      }
+      entriesByCommitmentId[entry.commitmentId].push(entry);
     }
 
-    // Query all latest entries
+    // Extract first and latest for each commitment
     for (const id of commitmentIds) {
-      const entry = await ctx.db
-        .query("devlogEntries")
-        .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", id))
-        .order("desc")
-        .first();
-      if (entry) latestEntries.set(id, entry);
+      const entries = entriesByCommitmentId[id];
+      if (!entries || entries.length === 0) continue;
+
+      // Sort by committedAt (or _creationTime as fallback) to find first and latest
+      entries.sort((a, b) => {
+        const aTime = a.committedAt ?? a._creationTime;
+        const bTime = b.committedAt ?? b._creationTime;
+        return aTime - bTime;
+      });
+
+      firstEntries.set(id, entries[0]);
+      latestEntries.set(id, entries[entries.length - 1]);
     }
 
     for (const c of allCommitments) {
@@ -288,7 +297,7 @@ export const getProfile = query({
 
       if (c.status === "shipped") {
         const firstEntry = firstEntries.get(c._id);
-        const startTime = firstEntry?.committedAt ?? c._creationTime;
+        const startTime = firstEntry?.committedAt ?? firstEntry?._creationTime ?? c._creationTime;
         const elapsed = Math.max(0, (c.shippedAt ?? c._creationTime) - startTime);
         const days = Math.floor(elapsed / DAY_MS);
         const shippedIn = days === 0 ? "< 1 day" : days === 1 ? "1 day" : `${days} days`;
@@ -307,7 +316,7 @@ export const getProfile = query({
         const firstEntry = firstEntries.get(c._id);
         const latestEntry = latestEntries.get(c._id);
 
-        const startTime = firstEntry?.committedAt ?? c._creationTime;
+        const startTime = firstEntry?.committedAt ?? firstEntry?._creationTime ?? c._creationTime;
         const day = Math.max(1, Math.ceil((Date.now() - startTime) / DAY_MS));
 
         active.push({

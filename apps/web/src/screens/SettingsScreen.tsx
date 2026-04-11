@@ -109,6 +109,8 @@ export function SettingsScreen() {
   const handledCallback = useRef(false);
   const [bio, setBio] = useState<string | null>(null);
   const [bioSaving, setBioSaving] = useState(false);
+  const [bioSaved, setBioSaved] = useState(false);
+  const [bioError, setBioError] = useState<string | null>(null);
 
   const currentMode: SyncMode = me?.syncMode ?? "polling";
 
@@ -242,12 +244,14 @@ export function SettingsScreen() {
                   return;
                 }
                 setBioSaving(true);
+                setBioError(null);
                 try {
                   await updateProfile({ bio: displayed });
                   setBio(null);
-                  flashSaved();
+                  setBioSaved(true);
+                  setTimeout(() => setBioSaved(false), 2000);
                 } catch (e) {
-                  setError(e instanceof Error ? e.message : "Failed to save bio");
+                  setBioError(e instanceof Error ? e.message : "Failed to save bio");
                 } finally {
                   setBioSaving(false);
                 }
@@ -258,11 +262,20 @@ export function SettingsScreen() {
               className="w-full resize-none border border-border bg-transparent px-3 py-2 text-[13px] leading-relaxed text-muted-foreground outline-none focus:border-accent/50"
             />
             <div className="flex items-center justify-between text-[10px] text-muted-foreground/40">
-              <span>{bioSaving ? "saving..." : "auto-saves on blur"}</span>
+              <span>
+                {bioSaving
+                  ? "saving..."
+                  : bioError
+                    ? "error"
+                    : bioSaved
+                      ? "saved"
+                      : "auto-saves on blur"}
+              </span>
               <span>
                 {(bio ?? me.bio ?? "").length}/{BIO_MAX}
               </span>
             </div>
+            {bioError && <p className="mt-1 text-[10px] text-destructive">{bioError}</p>}
           </div>
         </SettingsSection>
 

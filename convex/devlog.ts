@@ -347,6 +347,7 @@ export const getActivityForHeatmap = query({
 
     const dayMap: Record<string, { commits: number; posts: number }> = {};
     const shippedDates = new Set<string>();
+    const commitmentPrivacyById = new Map<string, boolean>();
     const entriesQuery = ctx.db
       .query("devlogEntries")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
@@ -358,8 +359,13 @@ export const getActivityForHeatmap = query({
       if (timestamp < oneYearAgo) continue;
 
       // Check privacy: skip entries from private commitments if viewer is not owner
-      const commitment = await ctx.db.get(entry.commitmentId);
-      if (commitment?.isPrivate && !viewerIsOwner) {
+      let isPrivate = commitmentPrivacyById.get(entry.commitmentId);
+      if (isPrivate === undefined) {
+        const commitment = await ctx.db.get(entry.commitmentId);
+        isPrivate = commitment?.isPrivate ?? false;
+        commitmentPrivacyById.set(entry.commitmentId, isPrivate);
+      }
+      if (isPrivate && !viewerIsOwner) {
         continue;
       }
 
