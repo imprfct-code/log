@@ -34,8 +34,8 @@ export function ShipEntry({
           </>
         )}
         <span className="ml-auto flex items-center gap-2">
-          <span className="text-[#333]">{entry.time}</span>
           <CommentBadge count={entry.comments} onClick={onCommentClick} />
+          <span className="text-[#333]">{entry.time}</span>
         </span>
       </div>
 
