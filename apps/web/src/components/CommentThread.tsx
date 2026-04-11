@@ -127,7 +127,7 @@ export function CommentThread({
           </div>
         );
       })}
-      <div className={comments.length > 0 ? "mt-2 border-t border-border pt-1.5" : ""}>
+      <div className={comments.length > 0 ? "mt-2" : ""}>
         <CommentInput commitmentId={commitmentId} devlogEntryId={devlogEntryId} />
       </div>
     </div>
