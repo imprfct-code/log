@@ -31,8 +31,8 @@ const T = {
   fgBright: "#ffffff",
   accent: "#c7787a", // rose — the actual brand color
   accentSoft: "rgba(199,120,122,0.25)",
-  shipped: "#5cb870", // green — only for shipped status
-  shippedSoft: "rgba(92,184,112,0.13)",
+  release: "#5cb870", // green — release status
+  releaseSoft: "rgba(92,184,112,0.13)",
   muted: "#1a1a1a",
   mutedFg: "#666666",
   border: "#1a1a1a",
@@ -233,7 +233,7 @@ function renderCommitment(commitment: CommitmentData, stats: ShipStatsData | nul
   const segmenter = new Intl.Segmenter("en", { granularity: "grapheme" });
   const graphemes = Array.from(segmenter.segment(commitment.text), (s) => s.segment);
   const text = graphemes.length > 60 ? graphemes.slice(0, 57).join("") + "..." : commitment.text;
-  const statusColor = isShipped ? T.shipped : T.accent;
+  const statusColor = isShipped ? T.release : T.accent;
   const shipUrl = commitment.shipUrl?.replace(/^https?:\/\//, "");
   const daysLabel = stats
     ? `${stats.daysBuilding} ${stats.daysBuilding === 1 ? "day" : "days"}`
@@ -313,7 +313,7 @@ function renderCommitment(commitment: CommitmentData, stats: ShipStatsData | nul
               letterSpacing: 3,
             }}
           >
-            {isShipped ? "shipped" : "building"}
+            {isShipped ? "released" : "building"}
           </div>
         </div>
 

@@ -6,14 +6,12 @@ type HeatmapDay = {
   commits: number;
   posts: number;
   shipped: boolean;
-  milestone: boolean;
 };
 
 type HeatmapCell = {
   commits: number;
   posts: number;
   shipped: boolean;
-  milestone: boolean;
   total: number;
   level: number;
 };
@@ -26,19 +24,18 @@ const LEVEL_COLORS = [
   "bg-accent/80",
 ];
 
-const SHIP_COLORS = [
+const RELEASE_COLORS = [
   "bg-[#161616]",
-  "bg-shipped/20",
-  "bg-shipped/35",
-  "bg-shipped/55",
-  "bg-shipped/80",
+  "bg-release/20",
+  "bg-release/35",
+  "bg-release/55",
+  "bg-release/80",
 ];
 
 function cellTooltip(cell: HeatmapCell): string {
-  if (cell.total === 0 && !cell.shipped && !cell.milestone) return "No activity";
+  if (cell.total === 0 && !cell.shipped) return "No activity";
   const parts: string[] = [];
-  if (cell.shipped) parts.push("shipped!");
-  if (cell.milestone && !cell.shipped) parts.push("milestone");
+  if (cell.shipped) parts.push("release");
   if (cell.commits > 0) parts.push(`${cell.commits} commit${cell.commits > 1 ? "s" : ""}`);
   if (cell.posts > 0) parts.push(`${cell.posts} post${cell.posts > 1 ? "s" : ""}`);
   return parts.join(", ");
@@ -49,9 +46,9 @@ function buildGrid(data: HeatmapDay[]): { grid: HeatmapCell[][]; total: number }
   const cells: HeatmapCell[] = data.map((d) => {
     const t = d.commits + d.posts;
     total += t;
-    // Ship/milestone → max level, else normal activity level
+    // Ship → max level, else normal activity level
     let level: number;
-    if (d.shipped || d.milestone) {
+    if (d.shipped) {
       level = 4;
     } else {
       level = t === 0 ? 0 : t <= 1 ? 1 : t <= 2 ? 2 : t <= 4 ? 3 : 4;
@@ -60,7 +57,6 @@ function buildGrid(data: HeatmapDay[]): { grid: HeatmapCell[][]; total: number }
       commits: d.commits,
       posts: d.posts,
       shipped: d.shipped,
-      milestone: d.milestone,
       total: t,
       level,
     };
@@ -73,7 +69,6 @@ function buildGrid(data: HeatmapDay[]): { grid: HeatmapCell[][]; total: number }
     commits: 0,
     posts: 0,
     shipped: false,
-    milestone: false,
     total: 0,
     level: 0,
   };
@@ -171,12 +166,8 @@ export function ProfileHeatmap({ data }: { data: HeatmapDay[] }) {
             <span>more</span>
           </span>
           <span className="flex items-center gap-1">
-            <div className="h-[8px] w-[8px] bg-shipped/80" />
-            <span>milestone</span>
-          </span>
-          <span className="flex items-center gap-1">
-            <div className="h-[8px] w-[8px] bg-shipped/80 ring-1 ring-shipped/60" />
-            <span>ship</span>
+            <div className="h-[8px] w-[8px] bg-release/80" />
+            <span>release</span>
           </span>
         </div>
       </div>
@@ -193,17 +184,10 @@ export function ProfileHeatmap({ data }: { data: HeatmapDay[] }) {
                 <div
                   key={di}
                   data-hw={`${wi},${di}`}
-                  data-label={
-                    cell.total > 0 || cell.shipped || cell.milestone
-                      ? cellTooltip(cell)
-                      : "nothing here"
-                  }
+                  data-label={cell.total > 0 || cell.shipped ? cellTooltip(cell) : "nothing here"}
                   className={cn(
                     "aspect-square w-full heatmap-cell",
-                    cell.shipped || cell.milestone
-                      ? SHIP_COLORS[cell.level]
-                      : LEVEL_COLORS[cell.level],
-                    cell.shipped && "ring-1 ring-shipped/60",
+                    cell.shipped ? RELEASE_COLORS[cell.level] : LEVEL_COLORS[cell.level],
                   )}
                   style={{ animationDelay: `${wi * 20}ms` }}
                 />

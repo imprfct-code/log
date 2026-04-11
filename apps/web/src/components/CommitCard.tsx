@@ -14,10 +14,10 @@ export function CommitCard({ item, preview }: { item: Commitment; preview?: bool
         activity={item.activity}
         statusLabel={
           item.status === "shipped" ? (
-            <span className="text-shipped">shipped in {item.shippedIn}</span>
+            <span className="text-release">released in {item.shippedIn}</span>
           ) : item.shippedAt ? (
             <span>
-              <span className="text-shipped">shipped</span>
+              <span className="text-release">shipped</span>
               <span className="text-muted-foreground">
                 {" · "}day <span className="text-accent">{item.day}</span>
               </span>

@@ -8,7 +8,7 @@ import { daysSince, formatShippedIn, formatTimeAgo } from "@/lib/formatTime";
 import { cn } from "@/lib/utils";
 import type { Commitment, DevlogEntry } from "@/types";
 
-const TABS = ["all", "building", "shipped"] as const;
+const TABS = ["all", "building", "released"] as const;
 type Tab = (typeof TABS)[number];
 
 interface RawDevlogEntry {
@@ -123,7 +123,8 @@ export function FeedScreen() {
     return () => clearTimeout(debounceRef.current);
   }, [search]);
 
-  const statusArg = activeTab === "all" ? undefined : activeTab;
+  const statusArg =
+    activeTab === "all" ? undefined : activeTab === "released" ? "shipped" : activeTab;
 
   const {
     results: feedResults,

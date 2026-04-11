@@ -165,7 +165,7 @@ export function ShipModal({
       ref={overlayRef}
       role="dialog"
       aria-modal="true"
-      aria-label="Ship your project"
+      aria-label="Ship or release your project"
       onClick={handleOverlayClick}
       className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm"
     >
@@ -212,6 +212,7 @@ export function ShipModal({
             shipUrl={submittedRef.current.url}
             shipNote={submittedRef.current.shipNote}
             stats={stats}
+            keepBuilding={keepBuilding}
             copied={copied}
             onCopyLink={handleCopyLink}
             onClose={onClose}
@@ -253,7 +254,7 @@ function ReflectStep({
 }) {
   return (
     <div className="ship-step-in opacity-0">
-      <p className="mb-6 text-[13px] text-shipped">your journey</p>
+      <p className="mb-6 text-[13px] text-release">your journey</p>
 
       <p className="ship-stat-in mb-1 text-lg font-medium leading-relaxed text-foreground-bright opacity-0">
         {commitmentText}
@@ -311,7 +312,7 @@ function ReflectStep({
 
             {stats.lastCommit && (
               <div className="relative">
-                <span className="absolute -left-5 top-[2px] h-[7px] w-[7px] -translate-x-[3.5px] rounded-full border border-shipped/50 bg-shipped pulse-dot-shipped" />
+                <span className="absolute -left-5 top-[2px] h-[7px] w-[7px] -translate-x-[3.5px] rounded-full border border-release/50 bg-release pulse-dot-release" />
                 <p className="text-[11px] leading-none text-muted-foreground">
                   {shortDate(stats.lastCommit.date)}
                 </p>
@@ -378,14 +379,16 @@ function DetailsStep({
 }) {
   return (
     <div className="ship-step-in opacity-0">
-      <p className="mb-6 text-center text-[13px] text-shipped">ship it</p>
+      <p className="mb-6 text-center text-[13px] text-release">
+        {keepBuilding ? "ship it" : "release it"}
+      </p>
 
       <div className="space-y-4">
         <div>
           <label htmlFor="ship-url" className="mb-1.5 block text-[11px] text-muted-foreground">
             url <span className="text-accent">*</span>
           </label>
-          <div className="border-b border-border-strong transition-colors focus-within:border-shipped">
+          <div className="border-b border-border-strong transition-colors focus-within:border-release">
             <input
               id="ship-url"
               value={url}
@@ -406,9 +409,9 @@ function DetailsStep({
 
         <div>
           <label htmlFor="ship-note" className="mb-1.5 block text-[11px] text-muted-foreground">
-            ship note <span className="text-muted-foreground/50">(optional)</span>
+            note <span className="text-muted-foreground/50">(optional)</span>
           </label>
-          <div className="border-b border-border-strong transition-colors focus-within:border-shipped">
+          <div className="border-b border-border-strong transition-colors focus-within:border-release">
             <textarea
               id="ship-note"
               value={shipNote}
@@ -447,7 +450,7 @@ function DetailsStep({
               className={cn(
                 "border px-4 py-2 text-xs font-medium transition-all",
                 keepBuilding
-                  ? "border-shipped/30 bg-shipped/10 text-shipped"
+                  ? "border-release/30 bg-release/10 text-release"
                   : "border-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground",
               )}
             >
@@ -455,7 +458,7 @@ function DetailsStep({
             </button>
           </div>
           <p className="mt-2 text-[11px] text-muted-foreground">
-            {keepBuilding ? "ship a version — keep the devlog going" : "mark as complete"}
+            {keepBuilding ? "ship a version — keep the devlog going" : "release your project"}
           </p>
         </div>
 
@@ -475,7 +478,7 @@ function DetailsStep({
           &larr; back
         </button>
         <Button variant="ship" disabled={!url.trim() || submitting} onClick={onSubmit}>
-          {submitting ? "..." : "ship it"}
+          {submitting ? "..." : keepBuilding ? "ship it" : "release it"}
         </Button>
       </div>
     </div>
@@ -490,6 +493,7 @@ function CelebrateStep({
   shipUrl,
   shipNote,
   stats,
+  keepBuilding,
   copied,
   onCopyLink,
   onClose,
@@ -499,6 +503,7 @@ function CelebrateStep({
   shipUrl: string;
   shipNote: string;
   stats: ShipStats | null | undefined;
+  keepBuilding: boolean;
   copied: boolean;
   onCopyLink: () => void;
   onClose: () => void;
@@ -508,13 +513,13 @@ function CelebrateStep({
   return (
     <div className="ship-step-in opacity-0 text-center">
       <p
-        className="ship-celebrate mb-8 text-3xl font-bold text-shipped opacity-0"
-        style={{ textShadow: "0 0 40px var(--color-shipped-soft)" }}
+        className="ship-celebrate mb-8 text-3xl font-bold text-release opacity-0"
+        style={{ textShadow: "0 0 40px var(--color-release-soft)" }}
       >
-        shipped!
+        {keepBuilding ? "shipped!" : "released!"}
       </p>
 
-      <div className="mx-auto max-w-[340px] border border-shipped/30 bg-shipped/5 p-5 text-left">
+      <div className="mx-auto max-w-[340px] border border-release/30 bg-release/5 p-5 text-left">
         <p className="mb-2 text-sm font-medium leading-relaxed text-foreground-bright">
           {commitmentText}
         </p>
@@ -523,7 +528,7 @@ function CelebrateStep({
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className="mb-2 flex items-center gap-1 text-[12px] text-shipped transition-colors hover:text-shipped/80"
+          className="mb-2 flex items-center gap-1 text-[12px] text-release transition-colors hover:text-release/80"
         >
           {shipUrl} <ExternalLink size={10} />
         </a>
@@ -543,6 +548,7 @@ function CelebrateStep({
         commitmentId={commitmentId}
         commitmentText={commitmentText}
         stats={stats}
+        keepBuilding={keepBuilding}
         copied={copied}
         onCopyLink={onCopyLink}
         onClose={onClose}
@@ -557,6 +563,7 @@ function ShareButtons({
   commitmentId,
   commitmentText,
   stats,
+  keepBuilding,
   copied,
   onCopyLink,
   onClose,
@@ -564,6 +571,7 @@ function ShareButtons({
   commitmentId: Id<"commitments">;
   commitmentText: string;
   stats: ShipStats | null | undefined;
+  keepBuilding: boolean;
   copied: boolean;
   onCopyLink: () => void;
   onClose: () => void;
@@ -572,7 +580,8 @@ function ShareButtons({
   const daysText = stats ? `${stats.daysBuilding}d` : "";
   const commitsText = stats ? `${stats.totalCommits} commits` : "";
   const statsText = stats ? ` (${daysText}, ${commitsText})` : "";
-  const shareText = `shipped: ${commitmentText}${statsText}`;
+  const prefix = keepBuilding ? "shipped" : "released";
+  const shareText = `${prefix}: ${commitmentText}${statsText}`;
 
   function openPopup(url: string) {
     window.open(url, "_blank", "noopener,noreferrer,width=600,height=500");

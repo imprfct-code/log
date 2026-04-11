@@ -212,7 +212,6 @@ export const getProfile = query({
     const isOwner = viewer !== null && viewer._id === user._id;
 
     let totalRespects = 0;
-    let milestoneCount = 0;
     const shipped: Array<{
       _id: (typeof allCommitments)[0]["_id"];
       text: string;
@@ -244,14 +243,6 @@ export const getProfile = query({
       });
       // Hide repo name for private commitments when viewer is not the owner
       const repo = c.isPrivate && !isOwner ? undefined : c.repo;
-
-      // Count milestones across all commitments
-      const milestones = await ctx.db
-        .query("devlogEntries")
-        .withIndex("by_commitmentId", (q) => q.eq("commitmentId", c._id))
-        .filter((q) => q.eq(q.field("isMilestone"), true))
-        .collect();
-      milestoneCount += milestones.length;
 
       if (c.status === "shipped") {
         const firstEntry = await ctx.db
@@ -320,7 +311,6 @@ export const getProfile = query({
         totalShips: shipped.length,
         activeCount: active.length,
         totalRespects,
-        milestoneCount,
       },
       shipped,
       active,

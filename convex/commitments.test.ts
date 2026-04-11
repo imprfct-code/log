@@ -105,7 +105,7 @@ describe("commitments.ship", () => {
     expect(commitment?.shippedAt).toBeTypeOf("number");
   });
 
-  test("cannot ship already shipped commitment", async () => {
+  test("cannot ship already released commitment", async () => {
     const t = testCtx();
     const { as, commitmentId } = await setupUserWithCommitment(t);
 
@@ -113,7 +113,7 @@ describe("commitments.ship", () => {
 
     await expect(
       as.mutation(api.commitments.ship, { id: commitmentId, shipUrl: "https://log.dev/v2" }),
-    ).rejects.toThrow("Already shipped");
+    ).rejects.toThrow("Already released");
   });
 
   test("cannot ship someone else's commitment", async () => {

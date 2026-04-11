@@ -28,8 +28,8 @@ const STEPS = [
     text: "Every commit you push auto-appears in your public devlog. No writing required.",
   },
   {
-    title: "Ship it",
-    text: "When you\u2019re done, mark it shipped. Your full journey stays visible.",
+    title: "Release it",
+    text: "When you\u2019re done, mark it released. Your full journey stays visible.",
   },
 ];
 
@@ -39,8 +39,8 @@ const PERSONAS = [
     text: "A public commitment is the gentlest push to actually start. Unfinished is normal here.",
   },
   {
-    quote: "3 projects shipped, zero blog posts.",
-    text: "Your git history is the devlog. Ship stuff, skip the personal branding.",
+    quote: "3 projects released, zero blog posts.",
+    text: "Your git history is the devlog. Release stuff, skip the personal branding.",
   },
   {
     quote: "Not building yet \u2014 just watching.",

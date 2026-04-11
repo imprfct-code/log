@@ -48,7 +48,7 @@ describe("respects.toggle", () => {
     const { as: respector } = await setupUser(t, "respector", "fan");
 
     await expect(respector.mutation(api.respects.toggle, { commitmentId })).rejects.toThrow(
-      "Can only respect shipped commitments",
+      "Can only respect released commitments",
     );
   });
 

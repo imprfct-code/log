@@ -25,9 +25,9 @@
   --color-accent-soft: #c7787a44;
   --color-accent-foreground: #ffffff;
 
-  /* Shipped (green) */
-  --color-shipped: #5cb870;
-  --color-shipped-soft: #5cb87022;
+  /* Release (green) */
+  --color-release: #5cb870;
+  --color-release-soft: #5cb87022;
 
   /* Primary / Secondary */
   --color-primary: #e8e8e8;
@@ -374,18 +374,18 @@
   animation: pulse-dot 2s ease-in-out infinite;
 }
 
-@keyframes pulse-dot-shipped {
+@keyframes pulse-dot-release {
   0%,
   100% {
-    box-shadow: 0 0 0 0 var(--color-shipped);
+    box-shadow: 0 0 0 0 var(--color-release);
   }
   50% {
-    box-shadow: 0 0 0 4px var(--color-shipped-soft);
+    box-shadow: 0 0 0 4px var(--color-release-soft);
   }
 }
 
-.pulse-dot-shipped {
-  animation: pulse-dot-shipped 2s ease-in-out infinite;
+.pulse-dot-release {
+  animation: pulse-dot-release 2s ease-in-out infinite;
 }
 
 @keyframes dots {
@@ -648,7 +648,7 @@
   .landing-cursor,
   .respect-pulse,
   .pulse-dot,
-  .pulse-dot-shipped,
+  .pulse-dot-release,
   .commit-pulse,
   .ship-step-in,
   .ship-stat-in,

@@ -159,7 +159,7 @@ describe("devlog mutations", () => {
     ).rejects.toThrow("Post cannot be empty");
   });
 
-  test("create blocks post on shipped commitment", async () => {
+  test("create blocks post on released commitment", async () => {
     const t = testCtx();
     const { userId, as } = await setupUser(t);
 
@@ -177,7 +177,7 @@ describe("devlog mutations", () => {
 
     await expect(
       as.mutation(api.devlog.create, { commitmentId, type: "post", content: "test" }),
-    ).rejects.toThrow("Cannot post to shipped commitment");
+    ).rejects.toThrow("Cannot post to released commitment");
   });
 
   test("update post changes content and title", async () => {

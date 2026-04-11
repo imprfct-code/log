@@ -10,7 +10,7 @@ const buttonVariants = cva(
       variant: {
         default: "border-border-strong text-foreground-bright hover:bg-foreground-bright/5",
         secondary: "border-border text-muted-foreground hover:bg-foreground-bright/5",
-        ship: "border-shipped/50 text-shipped hover:bg-shipped/5",
+        ship: "border-release/50 text-release hover:bg-release/5",
         ghost: "border-transparent text-muted-foreground hover:text-foreground",
         link: "border-transparent text-foreground-bright underline-offset-4 hover:underline",
       },

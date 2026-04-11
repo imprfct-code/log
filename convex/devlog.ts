@@ -106,7 +106,7 @@ export const create = mutation({
     const commitment = await ctx.db.get(args.commitmentId);
     if (!commitment) throw new Error("Commitment not found");
     if (commitment.userId !== user._id) throw new Error("Not the owner");
-    if (commitment.status !== "building") throw new Error("Cannot post to shipped commitment");
+    if (commitment.status !== "building") throw new Error("Cannot post to released commitment");
 
     const now = Date.now();
     let text: string;
@@ -343,7 +343,7 @@ export const getActivityForHeatmap = query({
     const oneYearAgo = Date.now() - 365 * DAY_MS;
 
     const dayMap: Record<string, { commits: number; posts: number }> = {};
-    const milestoneDates = new Set<string>();
+    const shippedDates = new Set<string>();
     const entriesQuery = ctx.db
       .query("devlogEntries")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
@@ -356,23 +356,11 @@ export const getActivityForHeatmap = query({
       const date = new Date(timestamp).toISOString().slice(0, 10);
       if (!dayMap[date]) dayMap[date] = { commits: 0, posts: 0 };
       if (entry.type === "ship") {
-        milestoneDates.add(date);
+        shippedDates.add(date);
       } else if (entry.type === "commit" || entry.type === "git_commit") {
         dayMap[date].commits++;
       } else {
         dayMap[date].posts++;
-      }
-    }
-
-    // Ship dates from fully shipped commitments (shippedAt)
-    const shippedDates = new Set<string>();
-    const commitments = await ctx.db
-      .query("commitments")
-      .withIndex("by_userId_and_status", (q) => q.eq("userId", userId).eq("status", "shipped"))
-      .take(50);
-    for (const c of commitments) {
-      if (c.shippedAt && c.shippedAt >= oneYearAgo) {
-        shippedDates.add(new Date(c.shippedAt).toISOString().slice(0, 10));
       }
     }
 
@@ -381,7 +369,6 @@ export const getActivityForHeatmap = query({
       commits: number;
       posts: number;
       shipped: boolean;
-      milestone: boolean;
     }[] = [];
     const now = new Date();
     for (let i = 364; i >= 0; i--) {
@@ -393,7 +380,6 @@ export const getActivityForHeatmap = query({
         date,
         ...activity,
         shipped: shippedDates.has(date),
-        milestone: milestoneDates.has(date),
       });
     }
 

@@ -166,8 +166,8 @@ export function ProfileScreen() {
     me !== undefined && profile?.user !== undefined && me?._id === profile.user._id;
 
   const commitments = useMemo(() => {
-    if (!profile) return { all: [], building: [], shipped: [] };
-    const shipped = profile.shipped.map((c) => ({
+    if (!profile) return { all: [], building: [], released: [] };
+    const released = profile.shipped.map((c) => ({
       ...c,
       status: "shipped" as const,
       commentCount: 0,
@@ -177,8 +177,8 @@ export function ProfileScreen() {
       status: "building" as const,
       respectCount: 0,
     }));
-    const all = [...building, ...shipped];
-    return { all, building, shipped };
+    const all = [...building, ...released];
+    return { all, building, released };
   }, [profile]);
 
   // Loading
@@ -244,14 +244,8 @@ export function ProfileScreen() {
           </span>
           <span>
             <span className="text-foreground-bright">{stats.totalShips}</span>{" "}
-            {stats.totalShips === 1 ? "ship" : "ships"}
+            {stats.totalShips === 1 ? "release" : "releases"}
           </span>
-          {stats.milestoneCount > 0 && (
-            <span>
-              <span className="text-foreground-bright">{stats.milestoneCount}</span>{" "}
-              {stats.milestoneCount === 1 ? "milestone" : "milestones"}
-            </span>
-          )}
           <span>
             <span className="text-foreground-bright">{stats.totalRespects}</span>{" "}
             {stats.totalRespects === 1 ? "respect" : "respects"}
@@ -277,7 +271,7 @@ export function ProfileScreen() {
           <ProfileCommitments
             all={commitments.all}
             building={commitments.building}
-            shipped={commitments.shipped}
+            released={commitments.released}
           />
         ) : isOwnProfile ? (
           <div className="py-16 text-center">
@@ -291,7 +285,7 @@ export function ProfileScreen() {
           </div>
         ) : (
           <div className="py-16 text-center text-sm text-muted-foreground">
-            {user.username} hasn't shipped anything yet.
+            {user.username} hasn't released anything yet.
           </div>
         )}
       </div>

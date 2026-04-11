@@ -19,27 +19,27 @@ interface ProfileCommitment {
   lastEntryPreview?: string;
 }
 
-const TABS = ["all", "building", "shipped"] as const;
+const TABS = ["all", "building", "released"] as const;
 
 export function ProfileCommitments({
   all,
   building,
-  shipped,
+  released,
 }: {
   all: ProfileCommitment[];
   building: ProfileCommitment[];
-  shipped: ProfileCommitment[];
+  released: ProfileCommitment[];
 }) {
   const [tab, setTab] = useState("all");
 
-  const filtered = tab === "all" ? all : tab === "building" ? building : shipped;
+  const filtered = tab === "all" ? all : tab === "building" ? building : released;
 
   return (
     <div>
       <div className="flex gap-4 border-b border-border pb-px" role="tablist" aria-label="Filter">
         {TABS.map((t) => {
           const count =
-            t === "all" ? all.length : t === "building" ? building.length : shipped.length;
+            t === "all" ? all.length : t === "building" ? building.length : released.length;
           return (
             <button
               key={t}
@@ -89,11 +89,11 @@ export function ProfileCommitments({
                   <span
                     className={cn(
                       "shrink-0 whitespace-nowrap text-[11px]",
-                      item.status === "shipped" ? "text-shipped" : "text-accent",
+                      item.status === "shipped" ? "text-release" : "text-accent",
                     )}
                   >
                     {item.status === "shipped"
-                      ? `shipped in ${item.shippedIn}`
+                      ? `released in ${item.shippedIn}`
                       : `building for ${item.day} ${item.day === 1 ? "day" : "days"}`}
                   </span>
                 </div>
@@ -114,7 +114,7 @@ export function ProfileCommitments({
                     </span>
                   )}
                   {item.status === "shipped" && item.respectCount > 0 && (
-                    <span className="flex items-center gap-0.5 text-shipped">
+                    <span className="flex items-center gap-0.5 text-release">
                       <RespectIcon size={9} color="currentColor" /> {item.respectCount}
                     </span>
                   )}

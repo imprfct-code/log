@@ -28,7 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const isShipped = commitment.status === "shipped" || !!commitment.shipUrl;
       const username = commitment.user?.username ?? "builder";
 
-      title = isShipped ? `shipped: ${commitment.text}` : `building: ${commitment.text}`;
+      title = isShipped ? `released: ${commitment.text}` : `building: ${commitment.text}`;
       title += ` \u2014 @${username}`;
 
       const parts: string[] = [];

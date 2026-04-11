@@ -333,7 +333,7 @@ export const ship = mutation({
     const commitment = await ctx.db.get(id);
     if (!commitment) throw new Error("Commitment not found");
     if (commitment.userId !== user._id) throw new Error("Not the owner");
-    if (commitment.status !== "building") throw new Error("Already shipped");
+    if (commitment.status !== "building") throw new Error("Already released");
 
     const now = Date.now();
     const done = !keepBuilding;
