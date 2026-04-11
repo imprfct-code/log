@@ -54,7 +54,6 @@ export function App() {
       <Suspense fallback={<FullPageLoader />}>
         <Routes>
           <Route index element={<LandingScreen />} />
-          <Route path="test" element={<FullPageLoader />} />
           <Route path="sso-callback" element={<SSOCallbackScreen />} />
           <Route
             path="feed"
