@@ -23,7 +23,7 @@ export interface Attachment {
 
 export interface DevlogEntry {
   id: Id<"devlogEntries">;
-  type: "commit" | "post" | "git_commit" | "ship";
+  type: "commit" | "post" | "git_commit" | "ship" | "abandon";
   text: string;
   body?: string;
   image?: string;
@@ -54,7 +54,7 @@ export interface Commitment {
   comments: number;
   devlog: DevlogEntry[];
   boosts: number;
-  status: "building" | "shipped";
+  status: "building" | "shipped" | "abandoned";
   shipUrl?: string;
   shipNote?: string;
   shippedAt?: number;

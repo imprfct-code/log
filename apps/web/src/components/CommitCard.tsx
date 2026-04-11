@@ -15,7 +15,9 @@ export function CommitCard({ item, preview }: { item: Commitment; preview?: bool
         isPrivate={item.isPrivate}
         activity={item.activity}
         statusLabel={
-          item.status === "shipped" ? (
+          item.status === "abandoned" ? (
+            <span className="text-muted-foreground/60">abandoned</span>
+          ) : item.status === "shipped" ? (
             <span className="text-release">released in {item.shippedIn}</span>
           ) : item.shippedAt ? (
             <span>

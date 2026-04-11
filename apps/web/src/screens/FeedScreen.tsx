@@ -14,7 +14,7 @@ type Tab = (typeof TABS)[number];
 
 interface RawDevlogEntry {
   _id: Id<"devlogEntries">;
-  type: "commit" | "post" | "git_commit" | "ship";
+  type: "commit" | "post" | "git_commit" | "ship" | "abandon";
   text: string;
   body?: string;
   hash?: string;
@@ -61,7 +61,7 @@ interface RawFeedItem {
   text: string;
   repo?: string;
   isPrivate?: boolean;
-  status: "building" | "shipped";
+  status: "building" | "shipped" | "abandoned";
   shipNote?: string;
   initialSyncStatus?: "syncing" | "ready";
   activity: number[];

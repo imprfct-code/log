@@ -31,7 +31,7 @@ export function PostEntry({
   entry: DevlogEntryType;
   commitmentId: Id<"commitments">;
   isLatest?: boolean;
-  status?: "building" | "shipped";
+  status?: "building" | "shipped" | "abandoned";
   isDetailPage?: boolean;
   onCommentClick?: () => void;
 }) {

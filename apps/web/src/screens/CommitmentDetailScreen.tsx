@@ -12,6 +12,7 @@ import { ConnectRepoForm } from "@/components/ConnectRepoForm";
 import { CreatePostForm } from "@/components/CreatePostForm";
 import { DevlogTimeline } from "@/components/DevlogTimeline";
 import { ShipModal } from "@/components/ShipModal";
+import { AbandonModal } from "@/components/AbandonModal";
 import { Button } from "@/components/ui/button";
 import { daysSince, formatShippedIn, formatTimeAgo } from "@/lib/formatTime";
 import type { DevlogEntry as DevlogEntryType } from "@/types";
@@ -42,6 +43,7 @@ export function CommitmentDetailScreen() {
   const me = useQuery(api.users.getMe);
   const [connectingRepo, setConnectingRepo] = useState(false);
   const [shipModalOpen, setShipModalOpen] = useState(false);
+  const [abandonModalOpen, setAbandonModalOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [viewAsGuest, setViewAsGuest] = useState(false);
@@ -126,6 +128,7 @@ export function CommitmentDetailScreen() {
   const canPost = effectiveAuthor && commitment.status === "building";
   const canShip =
     effectiveAuthor && commitment.status === "building" && !isSyncing && entries.length > 0;
+  const canAbandon = effectiveAuthor && commitment.status === "building";
   const day = daysSince(commitment.firstEntryAt ?? commitment._creationTime);
 
   async function handleSync() {
@@ -157,6 +160,8 @@ export function CommitmentDetailScreen() {
           statusLabel={
             isSyncing ? (
               <span className="text-muted-foreground">syncing</span>
+            ) : commitment.status === "abandoned" ? (
+              <span className="text-muted-foreground/60">abandoned</span>
             ) : commitment.status === "shipped" && commitment.shippedAt ? (
               <span className="text-release">
                 released in{" "}
@@ -235,6 +240,14 @@ export function CommitmentDetailScreen() {
             onClose={() => setShipModalOpen(false)}
           />
         )}
+
+        {abandonModalOpen && (
+          <AbandonModal
+            commitmentId={commitment._id}
+            commitmentText={commitment.text}
+            onClose={() => setAbandonModalOpen(false)}
+          />
+        )}
       </div>
 
       {isSyncing ? (
@@ -279,16 +292,22 @@ export function CommitmentDetailScreen() {
                   >
                     + add update
                   </button>
-                  {canShip && (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="ml-auto"
-                      onClick={() => setShipModalOpen(true)}
-                    >
-                      ship it
-                    </Button>
-                  )}
+                  <div className="ml-auto flex items-center gap-3">
+                    {canAbandon && (
+                      <button
+                        type="button"
+                        onClick={() => setAbandonModalOpen(true)}
+                        className="cursor-pointer border-none bg-transparent p-0 font-mono text-[11px] text-muted-foreground/60 transition-colors hover:text-muted-foreground"
+                      >
+                        abandon
+                      </button>
+                    )}
+                    {canShip && (
+                      <Button variant="default" size="sm" onClick={() => setShipModalOpen(true)}>
+                        ship it
+                      </Button>
+                    )}
+                  </div>
                 </>
               )}
             </div>

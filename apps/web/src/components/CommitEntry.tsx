@@ -24,7 +24,7 @@ export function CommitEntry({
   showBranches?: boolean;
   authorLinks?: boolean;
   isLatest?: boolean;
-  status?: "building" | "shipped";
+  status?: "building" | "shipped" | "abandoned";
   onCommentClick?: () => void;
 }) {
   const showPulse = isLatest && status === "building";

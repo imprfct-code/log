@@ -11,9 +11,10 @@ interface ProfileCommitment {
   _id: Id<"commitments">;
   text: string;
   repo?: string;
-  status: "building" | "shipped";
+  status: "building" | "shipped" | "abandoned";
   day?: number;
   shippedIn?: string;
+  abandonedIn?: string;
   shipUrl?: string;
   boostCount: number;
   commentCount: number;
@@ -21,27 +22,36 @@ interface ProfileCommitment {
   lastEntryPreview?: string;
 }
 
-const TABS = ["all", "building", "released"] as const;
+const TABS = ["all", "building", "released", "abandoned"] as const;
 
 export function ProfileCommitments({
   all,
   building,
   released,
+  abandoned,
 }: {
   all: ProfileCommitment[];
   building: ProfileCommitment[];
   released: ProfileCommitment[];
+  abandoned: ProfileCommitment[];
 }) {
   const [tab, setTab] = useState<(typeof TABS)[number]>("all");
 
-  const filtered = tab === "all" ? all : tab === "building" ? building : released;
+  const filtered =
+    tab === "all" ? all : tab === "building" ? building : tab === "released" ? released : abandoned;
 
   return (
     <div>
       <div className="flex gap-4 border-b border-border pb-px" role="tablist" aria-label="Filter">
         {TABS.map((t) => {
           const count =
-            t === "all" ? all.length : t === "building" ? building.length : released.length;
+            t === "all"
+              ? all.length
+              : t === "building"
+                ? building.length
+                : t === "released"
+                  ? released.length
+                  : abandoned.length;
           return (
             <button
               key={t}
@@ -91,12 +101,18 @@ export function ProfileCommitments({
                   <span
                     className={cn(
                       "shrink-0 whitespace-nowrap text-[11px]",
-                      item.status === "shipped" ? "text-release" : "text-accent",
+                      item.status === "shipped"
+                        ? "text-release"
+                        : item.status === "abandoned"
+                          ? "text-muted-foreground/60"
+                          : "text-accent",
                     )}
                   >
                     {item.status === "shipped"
                       ? `released in ${item.shippedIn ?? "unknown"}`
-                      : `building for ${item.day ?? 0} ${(item.day ?? 0) === 1 ? "day" : "days"}`}
+                      : item.status === "abandoned"
+                        ? `abandoned after ${item.abandonedIn ?? "unknown"}`
+                        : `building for ${item.day ?? 0} ${(item.day ?? 0) === 1 ? "day" : "days"}`}
                   </span>
                 </div>
                 <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground">

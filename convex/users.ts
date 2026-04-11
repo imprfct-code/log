@@ -214,9 +214,12 @@ export const getProfile = query({
     let totalBoosts = 0;
     let totalShips = 0;
     let activeCount = 0;
+    let abandonedCount = 0;
     for (const c of allCommitmentsForTotals) {
       if (c.status === "shipped") {
         totalShips++;
+      } else if (c.status === "abandoned") {
+        abandonedCount++;
       } else {
         activeCount++;
       }
@@ -247,6 +250,14 @@ export const getProfile = query({
       day: number;
       lastEntryPreview?: string;
       commentCount: number;
+      activity: number[];
+      _creationTime: number;
+    }> = [];
+    const abandoned: Array<{
+      _id: (typeof allCommitments)[0]["_id"];
+      text: string;
+      repo?: string;
+      abandonedIn: string;
       activity: number[];
       _creationTime: number;
     }> = [];
@@ -298,6 +309,21 @@ export const getProfile = query({
           activity,
           _creationTime: c._creationTime,
         });
+      } else if (c.status === "abandoned") {
+        const firstEntry = firstEntries.get(c._id);
+        const startTime = firstEntry?.committedAt ?? firstEntry?._creationTime ?? c._creationTime;
+        const elapsed = Math.max(0, c.lastActivityAt - startTime);
+        const days = Math.floor(elapsed / DAY_MS);
+        const abandonedIn = days === 0 ? "< 1 day" : days === 1 ? "1 day" : `${days} days`;
+
+        abandoned.push({
+          _id: c._id,
+          text: c.text,
+          repo,
+          abandonedIn,
+          activity,
+          _creationTime: c._creationTime,
+        });
       } else {
         const firstEntry = firstEntries.get(c._id);
         const latestEntry = latestEntries.get(c._id);
@@ -335,10 +361,12 @@ export const getProfile = query({
       stats: {
         totalShips,
         activeCount,
+        abandonedCount,
         totalBoosts,
       },
       shipped,
       active,
+      abandoned,
     };
   },
 });
