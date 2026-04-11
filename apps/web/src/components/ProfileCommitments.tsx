@@ -5,6 +5,7 @@ import { GhIcon, CommentIcon, RespectIcon } from "./Icons";
 import { ActivitySparkline } from "./ActivitySparkline";
 import { cn } from "@/lib/utils";
 
+/** status "shipped" is displayed as "released" in the UI (see TABS and ProfileScreen mapping) */
 interface ProfileCommitment {
   _id: Id<"commitments">;
   text: string;
@@ -30,7 +31,7 @@ export function ProfileCommitments({
   building: ProfileCommitment[];
   released: ProfileCommitment[];
 }) {
-  const [tab, setTab] = useState("all");
+  const [tab, setTab] = useState<(typeof TABS)[number]>("all");
 
   const filtered = tab === "all" ? all : tab === "building" ? building : released;
 
@@ -93,8 +94,8 @@ export function ProfileCommitments({
                     )}
                   >
                     {item.status === "shipped"
-                      ? `released in ${item.shippedIn}`
-                      : `building for ${item.day} ${item.day === 1 ? "day" : "days"}`}
+                      ? `released in ${item.shippedIn ?? "unknown"}`
+                      : `building for ${item.day ?? 0} ${(item.day ?? 0) === 1 ? "day" : "days"}`}
                   </span>
                 </div>
                 <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground">

@@ -67,7 +67,7 @@ function buildGrid(data: HeatmapDay[]): { grid: HeatmapCell[][]; total: number }
   });
 
   const firstDate = new Date(data[0].date);
-  const jsDay = firstDate.getDay();
+  const jsDay = firstDate.getUTCDay();
   const weekday = jsDay === 0 ? 6 : jsDay - 1;
   const empty: HeatmapCell = {
     commits: 0,

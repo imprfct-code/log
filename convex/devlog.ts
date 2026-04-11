@@ -342,6 +342,9 @@ export const getActivityForHeatmap = query({
   handler: async (ctx, { userId }) => {
     const oneYearAgo = Date.now() - 365 * DAY_MS;
 
+    const viewer = await getUserByToken(ctx);
+    const viewerIsOwner = viewer !== null && viewer._id === userId;
+
     const dayMap: Record<string, { commits: number; posts: number }> = {};
     const shippedDates = new Set<string>();
     const entriesQuery = ctx.db
@@ -353,6 +356,13 @@ export const getActivityForHeatmap = query({
       const timestamp = entry.committedAt ?? entry._creationTime;
       if (entry._creationTime < oneYearAgo && timestamp < oneYearAgo) break;
       if (timestamp < oneYearAgo) continue;
+
+      // Check privacy: skip entries from private commitments if viewer is not owner
+      const commitment = await ctx.db.get(entry.commitmentId);
+      if (commitment?.isPrivate && !viewerIsOwner) {
+        continue;
+      }
+
       const date = new Date(timestamp).toISOString().slice(0, 10);
       if (!dayMap[date]) dayMap[date] = { commits: 0, posts: 0 };
       if (entry.type === "ship") {

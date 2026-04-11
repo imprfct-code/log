@@ -202,16 +202,34 @@ export const getProfile = query({
       .unique();
     if (!user) return null;
 
+    const viewer = await getUserByToken(ctx);
+    const isOwner = viewer !== null && viewer._id === user._id;
+
+    // Compute totals from all commitments (no limit)
+    const allCommitmentsForTotals = await ctx.db
+      .query("commitments")
+      .withIndex("by_userId_and_status", (q) => q.eq("userId", user._id))
+      .collect();
+
+    let totalRespects = 0;
+    let totalShips = 0;
+    let activeCount = 0;
+    for (const c of allCommitmentsForTotals) {
+      if (c.status === "shipped") {
+        totalShips++;
+      } else {
+        activeCount++;
+      }
+      totalRespects += c.respectCount;
+    }
+
+    // Get paginated list for display
     const allCommitments = await ctx.db
       .query("commitments")
       .withIndex("by_userId_and_status", (q) => q.eq("userId", user._id))
       .order("desc")
       .take(50);
 
-    const viewer = await getUserByToken(ctx);
-    const isOwner = viewer !== null && viewer._id === user._id;
-
-    let totalRespects = 0;
     const shipped: Array<{
       _id: (typeof allCommitments)[0]["_id"];
       text: string;
@@ -233,8 +251,32 @@ export const getProfile = query({
       _creationTime: number;
     }> = [];
 
+    // Batch devlogEntries lookups: collect first and latest entries for all commitments
+    const commitmentIds = allCommitments.map((c) => c._id);
+    const firstEntries = new Map<string, { committedAt?: number }>();
+    const latestEntries = new Map<string, { text?: string }>();
+
+    // Query all first entries
+    for (const id of commitmentIds) {
+      const entry = await ctx.db
+        .query("devlogEntries")
+        .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", id))
+        .order("asc")
+        .first();
+      if (entry) firstEntries.set(id, entry);
+    }
+
+    // Query all latest entries
+    for (const id of commitmentIds) {
+      const entry = await ctx.db
+        .query("devlogEntries")
+        .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", id))
+        .order("desc")
+        .first();
+      if (entry) latestEntries.set(id, entry);
+    }
+
     for (const c of allCommitments) {
-      totalRespects += c.respectCount;
       const activity = currentWeekActivity(c.activity, c.lastActivityAt);
       const { showMessages } = computeVisibility({
         isPrivate: c.isPrivate,
@@ -245,11 +287,7 @@ export const getProfile = query({
       const repo = c.isPrivate && !isOwner ? undefined : c.repo;
 
       if (c.status === "shipped") {
-        const firstEntry = await ctx.db
-          .query("devlogEntries")
-          .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", c._id))
-          .order("asc")
-          .first();
+        const firstEntry = firstEntries.get(c._id);
         const startTime = firstEntry?.committedAt ?? c._creationTime;
         const elapsed = Math.max(0, (c.shippedAt ?? c._creationTime) - startTime);
         const days = Math.floor(elapsed / DAY_MS);
@@ -266,16 +304,8 @@ export const getProfile = query({
           _creationTime: c._creationTime,
         });
       } else {
-        const firstEntry = await ctx.db
-          .query("devlogEntries")
-          .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", c._id))
-          .order("asc")
-          .first();
-        const latestEntry = await ctx.db
-          .query("devlogEntries")
-          .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", c._id))
-          .order("desc")
-          .first();
+        const firstEntry = firstEntries.get(c._id);
+        const latestEntry = latestEntries.get(c._id);
 
         const startTime = firstEntry?.committedAt ?? c._creationTime;
         const day = Math.max(1, Math.ceil((Date.now() - startTime) / DAY_MS));
@@ -308,8 +338,8 @@ export const getProfile = query({
         _creationTime: user._creationTime,
       },
       stats: {
-        totalShips: shipped.length,
-        activeCount: active.length,
+        totalShips,
+        activeCount,
         totalRespects,
       },
       shipped,

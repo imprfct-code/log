@@ -100,12 +100,14 @@ function InlineBio({ initialValue }: { initialValue?: string }) {
 
   if (initialValue) {
     return (
-      <p
+      <button
+        type="button"
         onClick={startEditing}
-        className="mt-2 cursor-pointer text-[13px] leading-relaxed text-muted-foreground transition-colors hover:text-foreground"
+        className="mt-2 cursor-pointer bg-transparent text-left text-[13px] leading-relaxed text-muted-foreground transition-colors hover:text-foreground"
+        aria-label="Edit bio"
       >
         {initialValue}
-      </p>
+      </button>
     );
   }
 

@@ -236,14 +236,14 @@ export function SettingsScreen() {
               value={bio ?? me.bio ?? ""}
               onChange={(e) => setBio(e.target.value.slice(0, BIO_MAX))}
               onBlur={async () => {
-                const trimmed = (bio ?? "").trim();
-                if (trimmed === (me.bio ?? "")) {
+                const displayed = (bio ?? me.bio ?? "").trim();
+                if (displayed === (me.bio ?? "")) {
                   setBio(null);
                   return;
                 }
                 setBioSaving(true);
                 try {
-                  await updateProfile({ bio: trimmed });
+                  await updateProfile({ bio: displayed });
                   setBio(null);
                   flashSaved();
                 } catch (e) {
