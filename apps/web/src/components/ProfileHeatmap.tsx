@@ -166,7 +166,8 @@ export function ProfileHeatmap({ data }: { data: HeatmapDay[] }) {
     <div>
       <div className="mb-2 flex items-baseline justify-between">
         <span className="text-[11px] text-muted-foreground">
-          {total} contribution{total !== 1 ? "s" : ""} in {new Date().getFullYear()}
+          {total} contribution{total !== 1 ? "s" : ""} in{" "}
+          {data[0] ? data[0].date.slice(0, 4) : new Date().getUTCFullYear()}
         </span>
         <div className="flex items-center gap-3 text-[9px] text-muted-foreground">
           <span className="flex items-center gap-1">

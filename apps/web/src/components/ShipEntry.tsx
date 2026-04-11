@@ -27,9 +27,9 @@ export function ShipEntry({
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              className="min-w-0 truncate text-release transition-colors hover:text-release/80"
+              className="flex min-w-0 items-center text-release transition-colors hover:text-release/80"
             >
-              {url}
+              <span className="truncate">{url}</span>
               <span className="ml-1 inline-flex shrink-0 align-middle">
                 <ExtIcon size={10} color="currentColor" />
               </span>

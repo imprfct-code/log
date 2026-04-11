@@ -362,9 +362,8 @@ export const listByUser = query({
 export const getActivityForHeatmap = query({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => {
-    const now = new Date();
-    const janFirst = new Date(now.getFullYear(), 0, 1);
-    const janFirstMs = janFirst.getTime();
+    const year = new Date().getUTCFullYear();
+    const janFirstMs = Date.UTC(year, 0, 1);
 
     const viewer = await getUserByToken(ctx);
     const viewerIsOwner = viewer !== null && viewer._id === userId;
@@ -410,9 +409,9 @@ export const getActivityForHeatmap = query({
       posts: number;
       shipped: boolean;
     }[] = [];
-    const decThirtyFirst = new Date(now.getFullYear(), 11, 31);
-    for (let d = new Date(janFirst); d <= decThirtyFirst; d.setDate(d.getDate() + 1)) {
-      const date = d.toISOString().slice(0, 10);
+    const decThirtyFirstMs = Date.UTC(year, 11, 31);
+    for (let ms = janFirstMs; ms <= decThirtyFirstMs; ms += 24 * 60 * 60 * 1000) {
+      const date = new Date(ms).toISOString().slice(0, 10);
       const activity = dayMap[date] ?? { commits: 0, posts: 0 };
       days.push({
         date,
