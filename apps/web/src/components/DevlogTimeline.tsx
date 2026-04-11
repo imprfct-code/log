@@ -69,14 +69,18 @@ export function DevlogTimeline({
 
         {hasComments && (
           <div className="pl-6 pb-2">
-            <CommentThread comments={entry.commentData!} />
+            <CommentThread
+              comments={entry.commentData!}
+              commitmentId={commitmentId}
+              devlogEntryId={entry.id}
+            />
           </div>
         )}
 
         {openInputs.has(entry.id) && !hasComments && (
           <div className="pl-6 pb-2">
             <div className="mt-1 border-l-2 border-border-strong px-3.5 py-1.5">
-              <CommentInput autoFocus />
+              <CommentInput autoFocus commitmentId={commitmentId} devlogEntryId={entry.id} />
             </div>
           </div>
         )}

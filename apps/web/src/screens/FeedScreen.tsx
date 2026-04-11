@@ -24,6 +24,12 @@ interface RawDevlogEntry {
   shipNote?: string;
   isMilestone?: boolean;
   commentCount: number;
+  commentData: Array<{
+    username: string;
+    avatarUrl?: string;
+    text: string;
+    createdAt: number;
+  }>;
   _creationTime: number;
   resolvedAttachments?: Array<{
     url: string;
@@ -77,6 +83,12 @@ function toDevlogEntry(entry: RawDevlogEntry): DevlogEntry {
     shipNote: entry.shipNote,
     isMilestone: entry.isMilestone,
     comments: entry.commentCount,
+    commentData: entry.commentData.map((c) => ({
+      user: c.username,
+      avatar: c.avatarUrl,
+      text: c.text,
+      time: formatTimeAgo(c.createdAt),
+    })),
   };
 }
 

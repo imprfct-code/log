@@ -76,7 +76,11 @@ export const listByCommitment = query({
     return await Promise.all(
       comments.map(async (comment) => {
         const user = await ctx.db.get(comment.userId);
-        return { ...comment, username: user?.username ?? "unknown" };
+        return {
+          ...comment,
+          username: user?.username ?? "unknown",
+          avatarUrl: user?.avatarUrl,
+        };
       }),
     );
   },
@@ -94,7 +98,11 @@ export const listByDevlogEntry = query({
     return await Promise.all(
       comments.map(async (comment) => {
         const user = await ctx.db.get(comment.userId);
-        return { ...comment, username: user?.username ?? "unknown" };
+        return {
+          ...comment,
+          username: user?.username ?? "unknown",
+          avatarUrl: user?.avatarUrl,
+        };
       }),
     );
   },

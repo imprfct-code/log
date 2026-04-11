@@ -2,6 +2,7 @@ import type { Id } from "@convex/_generated/dataModel";
 
 export interface Comment {
   user: string;
+  avatar?: string;
   text: string;
   time: string;
 }

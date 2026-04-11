@@ -158,10 +158,33 @@ export const listFeed = query({
         const redacted = await Promise.all(
           entries.slice(0, 4).map(async (e) => {
             const entry = redactEntry(e, flags, commitment.isPrivate, isAuthor);
+
+            const commentDocs =
+              e.commentCount > 0
+                ? await ctx.db
+                    .query("comments")
+                    .withIndex("by_devlogEntryId", (q) => q.eq("devlogEntryId", e._id))
+                    .order("asc")
+                    .take(200)
+                : [];
+
+            const commentData = await Promise.all(
+              commentDocs.map(async (c) => {
+                const commentUser = await ctx.db.get(c.userId);
+                return {
+                  username: commentUser?.username ?? "unknown",
+                  avatarUrl: commentUser?.avatarUrl,
+                  text: c.text,
+                  createdAt: c._creationTime,
+                };
+              }),
+            );
+
             return {
               ...entry,
               // Feed preview only needs the first attachment (thumbnail/cover)
               resolvedAttachments: await resolveAttachments(e.attachments?.slice(0, 1)),
+              commentData,
             };
           }),
         );

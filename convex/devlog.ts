@@ -294,9 +294,32 @@ export const listByCommitment = query({
       page: await Promise.all(
         result.page.map(async (e) => {
           const redacted = redactEntry(e, flags, commitment.isPrivate, effectiveAuthor);
+
+          const commentDocs =
+            e.commentCount > 0
+              ? await ctx.db
+                  .query("comments")
+                  .withIndex("by_devlogEntryId", (q) => q.eq("devlogEntryId", e._id))
+                  .order("asc")
+                  .take(200)
+              : [];
+
+          const commentData = await Promise.all(
+            commentDocs.map(async (c) => {
+              const user = await ctx.db.get(c.userId);
+              return {
+                username: user?.username ?? "unknown",
+                avatarUrl: user?.avatarUrl,
+                text: c.text,
+                createdAt: c._creationTime,
+              };
+            }),
+          );
+
           return {
             ...redacted,
             resolvedAttachments: await resolveAttachments(e.attachments),
+            commentData,
           };
         }),
       ),

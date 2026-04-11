@@ -79,6 +79,12 @@ export function CommitmentDetailScreen() {
         shipNote: e.shipNote,
         isMilestone: e.isMilestone,
         comments: e.commentCount,
+        commentData: e.commentData.map((c) => ({
+          user: c.username,
+          avatar: c.avatarUrl,
+          text: c.text,
+          time: formatTimeAgo(c.createdAt),
+        })),
         isOwn: effectiveAuthor,
       })),
     [entries, effectiveAuthor],
