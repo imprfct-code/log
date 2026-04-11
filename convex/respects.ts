@@ -10,7 +10,7 @@ export const toggle = mutation({
 
     const commitment = await ctx.db.get(commitmentId);
     if (!commitment) throw new Error("Commitment not found");
-    if (commitment.status !== "shipped") throw new Error("Can only respect shipped commitments");
+    if (commitment.status !== "shipped") throw new Error("Can only respect released commitments");
 
     const existing = await ctx.db
       .query("respects")

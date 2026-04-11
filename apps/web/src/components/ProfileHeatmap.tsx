@@ -1,5 +1,12 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { cn } from "@/lib/utils";
+
+type HeatmapDay = {
+  date: string;
+  commits: number;
+  posts: number;
+  shipped: boolean;
+};
 
 type HeatmapCell = {
   commits: number;
@@ -7,41 +14,8 @@ type HeatmapCell = {
   shipped: boolean;
   total: number;
   level: number;
+  isPadding?: boolean;
 };
-
-function generateHeatmap(): HeatmapCell[][] {
-  let seed = 42;
-  function next() {
-    seed = (seed * 16807 + 0) % 2147483647;
-    return seed / 2147483647;
-  }
-  const shipDays = new Set([`${38}-${3}`, `${45}-${5}`]);
-
-  return Array.from({ length: 52 }, (_, wi) =>
-    Array.from({ length: 7 }, (_, di) => {
-      const r = next();
-      const boost = wi / 52;
-      const isShip = shipDays.has(`${wi}-${di}`);
-
-      if (isShip) {
-        return { commits: 1, posts: 1, shipped: true, total: 2, level: 4 };
-      }
-
-      let commits = 0;
-      let posts = 0;
-      if (r >= 0.35 - boost * 0.15) {
-        commits = r < 0.7 ? Math.ceil(next() * 3) : Math.ceil(next() * 5);
-        posts = next() > 0.7 ? 1 : 0;
-      }
-      const total = commits + posts;
-      const level = total === 0 ? 0 : total <= 1 ? 1 : total <= 2 ? 2 : total <= 4 ? 3 : 4;
-      return { commits, posts, shipped: false, total, level };
-    }),
-  );
-}
-
-const HEATMAP = generateHeatmap();
-const TOTAL_CONTRIBUTIONS = HEATMAP.flat().reduce((sum, c) => sum + c.total, 0);
 
 const LEVEL_COLORS = [
   "bg-[#111111]",
@@ -51,21 +25,69 @@ const LEVEL_COLORS = [
   "bg-accent/80",
 ];
 
-const SHIP_COLORS = [
+const RELEASE_COLORS = [
   "bg-[#161616]",
-  "bg-shipped/20",
-  "bg-shipped/35",
-  "bg-shipped/55",
-  "bg-shipped/80",
+  "bg-release/20",
+  "bg-release/35",
+  "bg-release/55",
+  "bg-release/80",
 ];
 
 function cellTooltip(cell: HeatmapCell): string {
-  if (cell.total === 0) return "No activity";
+  if (cell.total === 0 && !cell.shipped) return "No activity";
   const parts: string[] = [];
+  if (cell.shipped) parts.push("release");
   if (cell.commits > 0) parts.push(`${cell.commits} commit${cell.commits > 1 ? "s" : ""}`);
   if (cell.posts > 0) parts.push(`${cell.posts} post${cell.posts > 1 ? "s" : ""}`);
-  if (cell.shipped) parts.push("shipped!");
   return parts.join(", ");
+}
+
+function buildGrid(data: HeatmapDay[]): { grid: HeatmapCell[][]; total: number } {
+  if (data.length === 0) {
+    return { grid: [], total: 0 };
+  }
+
+  let total = 0;
+  const cells: HeatmapCell[] = data.map((d) => {
+    const t = d.commits + d.posts;
+    total += t;
+    // Ship → max level, else normal activity level
+    let level: number;
+    if (d.shipped) {
+      level = 4;
+    } else {
+      level = t === 0 ? 0 : t <= 1 ? 1 : t <= 2 ? 2 : t <= 4 ? 3 : 4;
+    }
+    return {
+      commits: d.commits,
+      posts: d.posts,
+      shipped: d.shipped,
+      total: t,
+      level,
+    };
+  });
+
+  const firstDate = new Date(data[0].date);
+  const jsDay = firstDate.getUTCDay();
+  const weekday = jsDay === 0 ? 6 : jsDay - 1;
+  const padding: HeatmapCell = {
+    commits: 0,
+    posts: 0,
+    shipped: false,
+    total: 0,
+    level: 0,
+    isPadding: true,
+  };
+  const padded = [...Array.from<HeatmapCell>({ length: weekday }).fill(padding), ...cells];
+
+  const grid: HeatmapCell[][] = [];
+  for (let i = 0; i < padded.length; i += 7) {
+    const week = padded.slice(i, i + 7);
+    while (week.length < 7) week.push(padding);
+    grid.push(week);
+  }
+
+  return { grid, total };
 }
 
 function useHeatmapLens() {
@@ -131,14 +153,15 @@ function useHeatmapLens() {
   return { gridRef, tooltipRef, handleMove, handleLeave };
 }
 
-export function ProfileHeatmap() {
+export function ProfileHeatmap({ data }: { data: HeatmapDay[] }) {
+  const { grid, total } = useMemo(() => buildGrid(data), [data]);
   const heatmap = useHeatmapLens();
 
   return (
     <div>
       <div className="mb-2 flex items-baseline justify-between">
         <span className="text-[11px] text-muted-foreground">
-          {TOTAL_CONTRIBUTIONS} contributions in the last year
+          {total} contribution{total !== 1 ? "s" : ""} in the last year
         </span>
         <div className="flex items-center gap-3 text-[9px] text-muted-foreground">
           <span className="flex items-center gap-1">
@@ -149,8 +172,8 @@ export function ProfileHeatmap() {
             <span>more</span>
           </span>
           <span className="flex items-center gap-1">
-            <div className="h-[8px] w-[8px] bg-shipped/80" />
-            <span>ship</span>
+            <div className="h-[8px] w-[8px] bg-release/80" />
+            <span>release</span>
           </span>
         </div>
       </div>
@@ -161,16 +184,16 @@ export function ProfileHeatmap() {
         onMouseLeave={heatmap.handleLeave}
       >
         <div className="flex w-full gap-[3px]">
-          {HEATMAP.map((week, wi) => (
+          {grid.map((week, wi) => (
             <div key={wi} className="flex flex-1 flex-col gap-[3px]">
               {week.map((cell, di) => (
                 <div
                   key={di}
                   data-hw={`${wi},${di}`}
-                  data-label={cell.total > 0 ? cellTooltip(cell) : "nothing here"}
+                  data-label={cell.isPadding ? undefined : cellTooltip(cell)}
                   className={cn(
                     "aspect-square w-full heatmap-cell",
-                    cell.shipped ? SHIP_COLORS[cell.level] : LEVEL_COLORS[cell.level],
+                    cell.shipped ? RELEASE_COLORS[cell.level] : LEVEL_COLORS[cell.level],
                   )}
                   style={{ animationDelay: `${wi * 20}ms` }}
                 />
@@ -184,6 +207,11 @@ export function ProfileHeatmap() {
           style={{ left: 0, top: 0 }}
         />
       </div>
+      {total < 20 && (
+        <p className="mt-2 text-center text-[10px] text-muted-foreground/40">
+          keep building — every commit counts
+        </p>
+      )}
     </div>
   );
 }

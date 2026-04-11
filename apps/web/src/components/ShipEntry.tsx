@@ -1,27 +1,25 @@
 import type { DevlogEntry as DevlogEntryType } from "@/types";
 import { ExtIcon } from "./Icons";
 
-/** Display a ship or milestone entry in the devlog timeline. */
+/** Display a ship or release entry in the devlog timeline. */
 export function ShipEntry({ entry }: { entry: DevlogEntryType }) {
   const url = entry.body;
   const href = url ? (url.startsWith("http") ? url : `https://${url}`) : undefined;
-  const isMilestone = entry.isMilestone;
+  const label = entry.isMilestone ? "shipped" : "released";
 
   return (
     <div className="relative py-2.5 pl-6">
-      <span className="absolute left-0 top-4 h-[7px] w-[7px] -translate-x-[4px] rounded-full border border-shipped bg-shipped" />
+      <span className="absolute left-0 top-4 h-[7px] w-[7px] -translate-x-[4px] rounded-full border border-release bg-release" />
 
       <div className="flex items-baseline gap-2 text-[11px]">
-        <span className={isMilestone ? "text-shipped/70" : "text-shipped"}>
-          {isMilestone ? "milestone" : "shipped"}
-        </span>
+        <span className="text-release">{label}</span>
         <span className="text-[#333]">{entry.time}</span>
         {href && (
           <a
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 truncate text-shipped transition-colors hover:text-shipped/80"
+            className="flex items-center gap-1 truncate text-release transition-colors hover:text-release/80"
           >
             {url} <ExtIcon size={10} color="currentColor" />
           </a>

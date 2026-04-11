@@ -1,31 +1,46 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import type { Commitment } from "@/types";
+import type { Id } from "@convex/_generated/dataModel";
 import { GhIcon, CommentIcon, RespectIcon } from "./Icons";
 import { ActivitySparkline } from "./ActivitySparkline";
 import { cn } from "@/lib/utils";
 
-const TABS = ["all", "building", "shipped"] as const;
+/** status "shipped" is displayed as "released" in the UI (see TABS and ProfileScreen mapping) */
+interface ProfileCommitment {
+  _id: Id<"commitments">;
+  text: string;
+  repo?: string;
+  status: "building" | "shipped";
+  day?: number;
+  shippedIn?: string;
+  shipUrl?: string;
+  respectCount: number;
+  commentCount: number;
+  activity: number[];
+  lastEntryPreview?: string;
+}
+
+const TABS = ["all", "building", "released"] as const;
 
 export function ProfileCommitments({
   all,
   building,
-  shipped,
+  released,
 }: {
-  all: Commitment[];
-  building: Commitment[];
-  shipped: Commitment[];
+  all: ProfileCommitment[];
+  building: ProfileCommitment[];
+  released: ProfileCommitment[];
 }) {
-  const [tab, setTab] = useState("all");
+  const [tab, setTab] = useState<(typeof TABS)[number]>("all");
 
-  const filtered = tab === "all" ? all : tab === "building" ? building : shipped;
+  const filtered = tab === "all" ? all : tab === "building" ? building : released;
 
   return (
     <div>
       <div className="flex gap-4 border-b border-border pb-px" role="tablist" aria-label="Filter">
         {TABS.map((t) => {
           const count =
-            t === "all" ? all.length : t === "building" ? building.length : shipped.length;
+            t === "all" ? all.length : t === "building" ? building.length : released.length;
           return (
             <button
               key={t}
@@ -63,8 +78,8 @@ export function ProfileCommitments({
         ) : (
           filtered.map((item) => (
             <Link
-              key={item.id}
-              to={`/commitment/${item.id}`}
+              key={item._id}
+              to={`/commitment/${item._id}`}
               className="flex items-center gap-4 border-b border-border py-4 no-underline transition-colors hover:bg-muted/30"
             >
               <div className="min-w-0 flex-1">
@@ -75,33 +90,34 @@ export function ProfileCommitments({
                   <span
                     className={cn(
                       "shrink-0 whitespace-nowrap text-[11px]",
-                      item.status === "shipped" ? "text-shipped" : "text-accent",
+                      item.status === "shipped" ? "text-release" : "text-accent",
                     )}
                   >
-                    {item.status === "shipped" ? `shipped in ${item.shippedIn}` : `day ${item.day}`}
+                    {item.status === "shipped"
+                      ? `released in ${item.shippedIn ?? "unknown"}`
+                      : `building for ${item.day ?? 0} ${(item.day ?? 0) === 1 ? "day" : "days"}`}
                   </span>
                 </div>
-                <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <GhIcon size={10} color="#444" /> {item.repo}
-                  </span>
-                  <span className="text-[#333]">&middot;</span>
-                  <span>{item.devlog.length} entries</span>
-                  {item.comments > 0 && (
-                    <>
-                      <span className="text-[#333]">&middot;</span>
-                      <span className="flex items-center gap-0.5">
-                        <CommentIcon size={9} color="#666" /> {item.comments}
-                      </span>
-                    </>
+                <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground">
+                  {item.repo && (
+                    <span className="flex items-center gap-1">
+                      <GhIcon size={10} color="#444" /> {item.repo}
+                    </span>
                   )}
-                  {item.status === "shipped" && item.respects > 0 && (
-                    <>
-                      <span className="text-[#333]">&middot;</span>
-                      <span className="flex items-center gap-0.5 text-shipped">
-                        <RespectIcon size={9} color="currentColor" /> {item.respects}
-                      </span>
-                    </>
+                  {item.status === "building" && item.lastEntryPreview && (
+                    <span className="min-w-0 flex-1 truncate italic text-muted-foreground/60">
+                      {item.lastEntryPreview}
+                    </span>
+                  )}
+                  {item.commentCount > 0 && (
+                    <span className="flex items-center gap-0.5">
+                      <CommentIcon size={9} color="#666" /> {item.commentCount}
+                    </span>
+                  )}
+                  {item.status === "shipped" && item.respectCount > 0 && (
+                    <span className="flex items-center gap-0.5 text-release">
+                      <RespectIcon size={9} color="currentColor" /> {item.respectCount}
+                    </span>
                   )}
                 </div>
               </div>

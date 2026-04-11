@@ -148,8 +148,8 @@ export function CommitmentDetailScreen() {
             isSyncing ? (
               <span className="text-muted-foreground">syncing</span>
             ) : commitment.status === "shipped" && commitment.shippedAt ? (
-              <span className="text-shipped">
-                shipped in{" "}
+              <span className="text-release">
+                released in{" "}
                 {formatShippedIn(
                   commitment.shippedAt,
                   commitment.firstEntryAt ?? commitment._creationTime,
@@ -157,7 +157,7 @@ export function CommitmentDetailScreen() {
               </span>
             ) : commitment.shippedAt ? (
               <span>
-                <span className="text-shipped">shipped</span>
+                <span className="text-release">shipped</span>
                 <span className="text-muted-foreground">
                   {" · "}day <span className="text-accent">{day}</span>
                 </span>

@@ -6,7 +6,7 @@ const badgeVariants = cva("inline-flex items-center border px-2.5 py-0.5 text-xs
   variants: {
     variant: {
       building: "border-border-strong text-foreground",
-      shipped: "border-shipped/50 text-shipped",
+      released: "border-release/50 text-release",
     },
   },
   defaultVariants: {

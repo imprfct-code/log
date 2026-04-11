@@ -16,7 +16,7 @@ const MESSAGES = [
     sub: "just not here.",
   },
   {
-    line: "this page was shipped once.",
+    line: "this page was released once.",
     sub: "then force-pushed into oblivion.",
   },
   {

@@ -106,7 +106,7 @@ export const create = mutation({
     const commitment = await ctx.db.get(args.commitmentId);
     if (!commitment) throw new Error("Commitment not found");
     if (commitment.userId !== user._id) throw new Error("Not the owner");
-    if (commitment.status !== "building") throw new Error("Cannot post to shipped commitment");
+    if (commitment.status !== "building") throw new Error("Cannot post to released commitment");
 
     const now = Date.now();
     let text: string;
@@ -342,39 +342,61 @@ export const getActivityForHeatmap = query({
   handler: async (ctx, { userId }) => {
     const oneYearAgo = Date.now() - 365 * DAY_MS;
 
+    const viewer = await getUserByToken(ctx);
+    const viewerIsOwner = viewer !== null && viewer._id === userId;
+
     const dayMap: Record<string, { commits: number; posts: number }> = {};
+    const shippedDates = new Set<string>();
+    const commitmentPrivacyById = new Map<string, boolean>();
     const entriesQuery = ctx.db
       .query("devlogEntries")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .order("desc");
 
     for await (const entry of entriesQuery) {
-      if (entry._creationTime < oneYearAgo) break;
-      const date = new Date(entry._creationTime).toISOString().slice(0, 10);
+      const timestamp = entry.committedAt ?? entry._creationTime;
+      if (entry._creationTime < oneYearAgo && timestamp < oneYearAgo) break;
+      if (timestamp < oneYearAgo) continue;
+
+      // Check privacy: skip entries from private commitments if viewer is not owner
+      let isPrivate = commitmentPrivacyById.get(entry.commitmentId);
+      if (isPrivate === undefined) {
+        const commitment = await ctx.db.get(entry.commitmentId);
+        isPrivate = commitment?.isPrivate ?? false;
+        commitmentPrivacyById.set(entry.commitmentId, isPrivate);
+      }
+      if (isPrivate && !viewerIsOwner) {
+        continue;
+      }
+
+      const date = new Date(timestamp).toISOString().slice(0, 10);
       if (!dayMap[date]) dayMap[date] = { commits: 0, posts: 0 };
-      if (entry.type === "commit" || entry.type === "git_commit") dayMap[date].commits++;
-      else dayMap[date].posts++;
+      if (entry.type === "ship") {
+        shippedDates.add(date);
+      } else if (entry.type === "commit" || entry.type === "git_commit") {
+        dayMap[date].commits++;
+      } else {
+        dayMap[date].posts++;
+      }
     }
 
-    const commitments = await ctx.db
-      .query("commitments")
-      .withIndex("by_userId_and_status", (q) => q.eq("userId", userId).eq("status", "shipped"))
-      .take(50);
-
-    const shippedDates = new Set(
-      commitments
-        .filter((c) => c.shippedAt && c.shippedAt >= oneYearAgo)
-        .map((c) => new Date(c.shippedAt!).toISOString().slice(0, 10)),
-    );
-
-    const days: { date: string; commits: number; posts: number; shipped: boolean }[] = [];
+    const days: {
+      date: string;
+      commits: number;
+      posts: number;
+      shipped: boolean;
+    }[] = [];
     const now = new Date();
     for (let i = 364; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
       const date = d.toISOString().slice(0, 10);
       const activity = dayMap[date] ?? { commits: 0, posts: 0 };
-      days.push({ date, ...activity, shipped: shippedDates.has(date) });
+      days.push({
+        date,
+        ...activity,
+        shipped: shippedDates.has(date),
+      });
     }
 
     return days;
