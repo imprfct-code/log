@@ -31,8 +31,9 @@ export function CommentThread({
       setConfirmDeleteId(null);
     } catch (err) {
       console.error("Failed to delete comment:", err);
+    } finally {
+      setIsDeleting(false);
     }
-    setIsDeleting(false);
   }
 
   return (

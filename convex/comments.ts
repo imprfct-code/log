@@ -1,11 +1,58 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { QueryCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { getUserByToken } from "./users";
 import { attachmentValidator } from "./schema";
 import { resolveAttachments } from "./devlog";
 import { r2 } from "./r2";
 
 const MAX_COMMENT_ATTACHMENTS = 2;
+const MAX_COMMENT_LENGTH = 2000;
+
+function clampWidthPercent(n?: number): number | undefined {
+  if (n === undefined) return undefined;
+  return Math.min(100, Math.max(10, n));
+}
+
+function sanitizeAttachments(attachments?: (typeof attachmentValidator.type)[]) {
+  if (!attachments || attachments.length === 0) return attachments;
+  return attachments.map((a) => ({
+    ...a,
+    widthPercent: clampWidthPercent(a.widthPercent),
+  }));
+}
+
+/** Fetch resolved comment data for a devlog entry. Shared by commitments.ts and devlog.ts. */
+export async function fetchCommentDataForEntry(
+  ctx: QueryCtx,
+  entryId: Id<"devlogEntries">,
+  commentCount: number,
+) {
+  const commentDocs =
+    commentCount > 0
+      ? await ctx.db
+          .query("comments")
+          .withIndex("by_devlogEntryId", (q) => q.eq("devlogEntryId", entryId))
+          .order("asc")
+          .take(200)
+      : [];
+
+  return await Promise.all(
+    commentDocs.map(async (c) => {
+      const user = await ctx.db.get(c.userId);
+      return {
+        _id: c._id,
+        userId: c.userId,
+        username: user?.username ?? "unknown",
+        avatarUrl: user?.avatarUrl,
+        text: c.text,
+        createdAt: c._creationTime,
+        attachments: await resolveAttachments(c.attachments),
+      };
+    }),
+  );
+}
 
 export const create = mutation({
   args: {
@@ -21,6 +68,10 @@ export const create = mutation({
     const trimmed = text.trim();
     const hasAttachments = attachments && attachments.length > 0;
     if (!trimmed && !hasAttachments) throw new Error("Comment cannot be empty");
+
+    if (trimmed.length > MAX_COMMENT_LENGTH) {
+      throw new Error(`Comment text is too long (max ${MAX_COMMENT_LENGTH} characters)`);
+    }
 
     if (attachments && attachments.length > MAX_COMMENT_ATTACHMENTS) {
       throw new Error(`Comments support up to ${MAX_COMMENT_ATTACHMENTS} attachments`);
@@ -44,7 +95,7 @@ export const create = mutation({
       commitmentId,
       devlogEntryId,
       text: trimmed,
-      attachments,
+      attachments: sanitizeAttachments(attachments),
     });
   },
 });
@@ -108,6 +159,10 @@ export const update = mutation({
       : (comment.attachments ?? []).length > 0;
     if (!trimmed && !hasAttachments) throw new Error("Text cannot be empty");
 
+    if (trimmed.length > MAX_COMMENT_LENGTH) {
+      throw new Error(`Comment text is too long (max ${MAX_COMMENT_LENGTH} characters)`);
+    }
+
     if (attachments && attachments.length > MAX_COMMENT_ATTACHMENTS) {
       throw new Error(`Comments support up to ${MAX_COMMENT_ATTACHMENTS} attachments`);
     }
@@ -132,7 +187,7 @@ export const update = mutation({
 
     const patch: { text: string; attachments?: typeof attachments } = { text: trimmed };
     if (attachments !== undefined) {
-      patch.attachments = attachments;
+      patch.attachments = sanitizeAttachments(attachments);
     }
     await ctx.db.patch(id, patch);
   },

@@ -238,12 +238,12 @@ export function PostDetailScreen() {
             <CommentThread
               comments={commentData}
               commitmentId={data.commitmentId}
-              devlogEntryId={entryId!}
+              devlogEntryId={entryId}
             />
           </div>
         ) : (
           <div className="mt-3 border-l-2 border-border-strong px-3.5 py-1.5">
-            <CommentInput commitmentId={data.commitmentId} devlogEntryId={entryId!} />
+            <CommentInput commitmentId={data.commitmentId} devlogEntryId={entryId} />
           </div>
         )}
       </div>

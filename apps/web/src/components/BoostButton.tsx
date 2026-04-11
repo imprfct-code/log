@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
@@ -17,11 +17,17 @@ export function BoostButton({
 
   const [optimistic, setOptimistic] = useState<{ boosted: boolean; count: number } | null>(null);
   const [pulsing, setPulsing] = useState(false);
+  const pulseTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Clear optimistic state when server catches up
   useEffect(() => {
     setOptimistic(null);
   }, [serverBoosted]);
+
+  // Cleanup pulse timer on unmount
+  useEffect(() => {
+    return () => clearTimeout(pulseTimerRef.current);
+  }, []);
 
   const boosted = optimistic?.boosted ?? serverBoosted ?? false;
   const count = optimistic?.count ?? initialCount;
@@ -33,7 +39,8 @@ export function BoostButton({
     setOptimistic({ boosted: nextBoosted, count: nextCount });
     if (nextBoosted) {
       setPulsing(true);
-      setTimeout(() => setPulsing(false), 300);
+      clearTimeout(pulseTimerRef.current);
+      pulseTimerRef.current = setTimeout(() => setPulsing(false), 300);
     }
     try {
       await toggle({ commitmentId });

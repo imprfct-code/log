@@ -6,6 +6,7 @@ import { DAY_MS, utcWeekday, utcMondayOf } from "./dates";
 import { getUserByToken, updateStreak } from "./users";
 import { computeVisibility, redactEntry } from "./privacy";
 import { attachmentValidator } from "./schema";
+import { fetchCommentDataForEntry } from "./comments";
 import { r2 } from "./r2";
 
 const MAX_CONTENT_LENGTH = 20_000;
@@ -308,29 +309,7 @@ export const listByCommitment = query({
         result.page.map(async (e) => {
           const redacted = redactEntry(e, flags, commitment.isPrivate, effectiveAuthor);
 
-          const commentDocs =
-            e.commentCount > 0
-              ? await ctx.db
-                  .query("comments")
-                  .withIndex("by_devlogEntryId", (q) => q.eq("devlogEntryId", e._id))
-                  .order("asc")
-                  .take(200)
-              : [];
-
-          const commentData = await Promise.all(
-            commentDocs.map(async (c) => {
-              const user = await ctx.db.get(c.userId);
-              return {
-                _id: c._id,
-                userId: c.userId,
-                username: user?.username ?? "unknown",
-                avatarUrl: user?.avatarUrl,
-                text: c.text,
-                createdAt: c._creationTime,
-                attachments: await resolveAttachments(c.attachments),
-              };
-            }),
-          );
+          const commentData = await fetchCommentDataForEntry(ctx, e._id, e.commentCount);
 
           return {
             ...redacted,

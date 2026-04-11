@@ -8,6 +8,7 @@ import { currentWeekActivity } from "./dates";
 import { getUserByToken } from "./users";
 import { computeVisibility, redactEntry } from "./privacy";
 import { resolveAttachments, updateActivity } from "./devlog";
+import { fetchCommentDataForEntry } from "./comments";
 import { r2 } from "./r2";
 
 const REPO_RE = /^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/;
@@ -159,29 +160,7 @@ export const listFeed = query({
           entries.slice(0, 4).map(async (e) => {
             const entry = redactEntry(e, flags, commitment.isPrivate, isAuthor);
 
-            const commentDocs =
-              e.commentCount > 0
-                ? await ctx.db
-                    .query("comments")
-                    .withIndex("by_devlogEntryId", (q) => q.eq("devlogEntryId", e._id))
-                    .order("asc")
-                    .take(200)
-                : [];
-
-            const commentData = await Promise.all(
-              commentDocs.map(async (c) => {
-                const commentUser = await ctx.db.get(c.userId);
-                return {
-                  _id: c._id,
-                  userId: c.userId,
-                  username: commentUser?.username ?? "unknown",
-                  avatarUrl: commentUser?.avatarUrl,
-                  text: c.text,
-                  createdAt: c._creationTime,
-                  attachments: await resolveAttachments(c.attachments),
-                };
-              }),
-            );
+            const commentData = await fetchCommentDataForEntry(ctx, e._id, e.commentCount);
 
             return {
               ...entry,
