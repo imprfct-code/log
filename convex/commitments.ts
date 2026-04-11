@@ -338,7 +338,13 @@ export const ship = mutation({
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
       throw new Error("Invalid shipUrl");
     }
-    if (!parsed.hostname.includes(".")) {
+    const host = parsed.hostname;
+    if (
+      host === "localhost" ||
+      /^\d{1,3}(\.\d{1,3}){3}$/.test(host) ||
+      host.includes(":") ||
+      !host.includes(".")
+    ) {
       throw new Error("Invalid shipUrl");
     }
 

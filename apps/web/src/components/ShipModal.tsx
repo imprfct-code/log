@@ -111,7 +111,14 @@ export function ShipModal({
     try {
       const toValidate = /^https?:\/\//i.test(rawUrl) ? rawUrl : "https://" + rawUrl;
       const parsed = new URL(toValidate);
-      if (!parsed.hostname.includes(".")) {
+
+      const host = parsed.hostname;
+      if (
+        host === "localhost" ||
+        /^\d{1,3}(\.\d{1,3}){3}$/.test(host) ||
+        host.includes(":") ||
+        !host.includes(".")
+      ) {
         return "enter a valid url, e.g. example.com";
       }
       return null;
