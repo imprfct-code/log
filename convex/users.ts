@@ -251,38 +251,24 @@ export const getProfile = query({
       _creationTime: number;
     }> = [];
 
-    // Batch devlogEntries lookups: collect first and latest entries for all commitments
-    const commitmentIds = allCommitments.map((c) => c._id);
+    // Fetch first and latest devlog entries for each commitment via indexed lookups
     const firstEntries = new Map<string, Doc<"devlogEntries">>();
     const latestEntries = new Map<string, Doc<"devlogEntries">>();
-    const commitmentIdSet = new Set(commitmentIds);
 
-    // Fetch all entries for these commitments in a single query
-    const allEntries = await ctx.db.query("devlogEntries").collect();
-    const entriesByCommitmentId: Record<string, Doc<"devlogEntries">[]> = {};
+    for (const c of allCommitments) {
+      const first = await ctx.db
+        .query("devlogEntries")
+        .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", c._id))
+        .order("asc")
+        .first();
+      if (first) firstEntries.set(c._id, first);
 
-    for (const entry of allEntries) {
-      if (!commitmentIdSet.has(entry.commitmentId)) continue;
-      if (!entriesByCommitmentId[entry.commitmentId]) {
-        entriesByCommitmentId[entry.commitmentId] = [];
-      }
-      entriesByCommitmentId[entry.commitmentId].push(entry);
-    }
-
-    // Extract first and latest for each commitment
-    for (const id of commitmentIds) {
-      const entries = entriesByCommitmentId[id];
-      if (!entries || entries.length === 0) continue;
-
-      // Sort by committedAt (or _creationTime as fallback) to find first and latest
-      entries.sort((a, b) => {
-        const aTime = a.committedAt ?? a._creationTime;
-        const bTime = b.committedAt ?? b._creationTime;
-        return aTime - bTime;
-      });
-
-      firstEntries.set(id, entries[0]);
-      latestEntries.set(id, entries[entries.length - 1]);
+      const latest = await ctx.db
+        .query("devlogEntries")
+        .withIndex("by_commitmentId_and_committedAt", (q) => q.eq("commitmentId", c._id))
+        .order("desc")
+        .first();
+      if (latest) latestEntries.set(c._id, latest);
     }
 
     for (const c of allCommitments) {

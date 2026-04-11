@@ -261,21 +261,23 @@ export function SettingsScreen() {
               placeholder="what are you building?"
               className="w-full resize-none border border-border bg-transparent px-3 py-2 text-[13px] leading-relaxed text-muted-foreground outline-none focus:border-accent/50"
             />
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground/40">
-              <span>
-                {bioSaving
-                  ? "saving..."
-                  : bioError
-                    ? "error"
-                    : bioSaved
-                      ? "saved"
-                      : "auto-saves on blur"}
-              </span>
-              <span>
+            <div className="flex items-center justify-between text-[10px]">
+              {bioSaving ? (
+                <span className="text-muted-foreground/40">saving...</span>
+              ) : bioSaved ? (
+                <span className="flex items-center gap-1 text-accent">
+                  <Check size={10} />
+                  saved
+                </span>
+              ) : bioError ? (
+                <span className="text-destructive">{bioError}</span>
+              ) : (
+                <span className="text-muted-foreground/40">auto-saves on blur</span>
+              )}
+              <span className="text-muted-foreground/40">
                 {(bio ?? me.bio ?? "").length}/{BIO_MAX}
               </span>
             </div>
-            {bioError && <p className="mt-1 text-[10px] text-destructive">{bioError}</p>}
           </div>
         </SettingsSection>
 

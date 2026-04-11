@@ -78,19 +78,12 @@ function buildGrid(data: HeatmapDay[]): { grid: HeatmapCell[][]; total: number }
     level: 0,
     isPadding: true,
   };
-  const empty: HeatmapCell = {
-    commits: 0,
-    posts: 0,
-    shipped: false,
-    total: 0,
-    level: 0,
-  };
   const padded = [...Array.from<HeatmapCell>({ length: weekday }).fill(padding), ...cells];
 
   const grid: HeatmapCell[][] = [];
   for (let i = 0; i < padded.length; i += 7) {
     const week = padded.slice(i, i + 7);
-    while (week.length < 7) week.push(empty);
+    while (week.length < 7) week.push(padding);
     grid.push(week);
   }
 
@@ -197,13 +190,7 @@ export function ProfileHeatmap({ data }: { data: HeatmapDay[] }) {
                 <div
                   key={di}
                   data-hw={`${wi},${di}`}
-                  data-label={
-                    cell.isPadding
-                      ? ""
-                      : cell.total > 0 || cell.shipped
-                        ? cellTooltip(cell)
-                        : "No activity"
-                  }
+                  data-label={cell.isPadding ? undefined : cellTooltip(cell)}
                   className={cn(
                     "aspect-square w-full heatmap-cell",
                     cell.shipped ? RELEASE_COLORS[cell.level] : LEVEL_COLORS[cell.level],
