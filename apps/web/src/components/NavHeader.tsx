@@ -19,21 +19,10 @@ export function NavHeader() {
     <header className="flex items-center justify-between border-b border-border px-4 py-4 sm:px-8">
       <Link to="/" className="flex items-center gap-2.5 no-underline">
         <LogIcon size={20} />
-        <span className="text-sm font-bold text-foreground-bright">imprfct Log</span>
+        <span className="text-sm font-bold text-foreground-bright">log</span>
       </Link>
 
       <nav className="flex items-center gap-4">
-        <Link
-          to="/feed"
-          className={`text-xs no-underline transition-colors ${
-            location.pathname.startsWith("/feed")
-              ? "text-foreground-bright"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          feed
-        </Link>
-
         {isAuthenticated && (
           <Link
             to="/create"

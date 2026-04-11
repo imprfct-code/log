@@ -311,9 +311,9 @@ export function CreatePostForm({
       )}
 
       {/* Footer: char count + buttons */}
-      <div className="mt-2 flex items-center justify-end gap-3">
+      <div className="mt-2 flex flex-wrap items-center justify-end gap-3">
         {charCount > 0 && (
-          <span className={cn("text-[11px]", charColorClass)}>
+          <span className={cn("mr-auto text-[11px]", charColorClass)}>
             {charCount.toLocaleString()} / ~{(CHAR_SOFT_LIMIT / 1000).toFixed(0)}k
           </span>
         )}

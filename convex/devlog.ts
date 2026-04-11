@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { mutation, query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
-import { DAY_MS, utcWeekday, utcMondayOf } from "./dates";
+import { utcWeekday, utcMondayOf } from "./dates";
 import { getUserByToken, updateStreak } from "./users";
 import { computeVisibility, redactEntry } from "./privacy";
 import { attachmentValidator } from "./schema";
@@ -362,7 +362,8 @@ export const listByUser = query({
 export const getActivityForHeatmap = query({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => {
-    const oneYearAgo = Date.now() - 365 * DAY_MS;
+    const year = new Date().getUTCFullYear();
+    const janFirstMs = Date.UTC(year, 0, 1);
 
     const viewer = await getUserByToken(ctx);
     const viewerIsOwner = viewer !== null && viewer._id === userId;
@@ -377,8 +378,8 @@ export const getActivityForHeatmap = query({
 
     for await (const entry of entriesQuery) {
       const timestamp = entry.committedAt ?? entry._creationTime;
-      if (entry._creationTime < oneYearAgo && timestamp < oneYearAgo) break;
-      if (timestamp < oneYearAgo) continue;
+      if (entry._creationTime < janFirstMs && timestamp < janFirstMs) break;
+      if (timestamp < janFirstMs) continue;
 
       // Check privacy: skip entries from private commitments if viewer is not owner
       let isPrivate = commitmentPrivacyById.get(entry.commitmentId);
@@ -408,11 +409,9 @@ export const getActivityForHeatmap = query({
       posts: number;
       shipped: boolean;
     }[] = [];
-    const now = new Date();
-    for (let i = 364; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - i);
-      const date = d.toISOString().slice(0, 10);
+    const decThirtyFirstMs = Date.UTC(year, 11, 31);
+    for (let ms = janFirstMs; ms <= decThirtyFirstMs; ms += 24 * 60 * 60 * 1000) {
+      const date = new Date(ms).toISOString().slice(0, 10);
       const activity = dayMap[date] ?? { commits: 0, posts: 0 };
       days.push({
         date,

@@ -18,22 +18,25 @@ export function ShipEntry({
     <div className="relative py-2.5 pl-6">
       <span className="absolute left-0 top-4 h-[7px] w-[7px] -translate-x-[4px] rounded-full border border-release bg-release" />
 
-      <div className="flex items-baseline gap-2 text-[11px]">
-        <span className="text-release">{label}</span>
+      <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[11px] sm:flex-nowrap">
+        <span className="shrink-0 text-release">{label}</span>
         {href && (
           <>
-            <span className="text-[#333]">check it out:</span>
+            <span className="shrink-0 text-[#333]">check it out:</span>
             <a
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 truncate text-release transition-colors hover:text-release/80"
+              className="flex min-w-0 items-center text-release transition-colors hover:text-release/80"
             >
-              {url} <ExtIcon size={10} color="currentColor" />
+              <span className="truncate">{url}</span>
+              <span className="ml-1 inline-flex shrink-0 align-middle">
+                <ExtIcon size={10} color="currentColor" />
+              </span>
             </a>
           </>
         )}
-        <span className="ml-auto flex items-center gap-2">
+        <span className="ml-auto flex shrink-0 items-center gap-2">
           <CommentBadge count={entry.comments} onClick={onCommentClick} />
           <span className="text-[#333]">{entry.time}</span>
         </span>

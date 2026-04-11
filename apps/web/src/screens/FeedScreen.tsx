@@ -200,7 +200,7 @@ export function FeedScreen() {
               ))}
             </div>
           </div>
-          <div className="relative">
+          <div className="relative w-full sm:w-auto">
             <Search
               size={14}
               className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground"
@@ -211,7 +211,7 @@ export function FeedScreen() {
               onChange={(e) => setSearch(e.target.value)}
               placeholder="search..."
               aria-label="Search commitments"
-              className="h-8 w-32 rounded-md border border-border bg-card/50 pl-8 pr-3 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:border-border-strong focus:ring-1 focus:ring-border-strong focus:outline-none sm:w-48"
+              className="h-8 w-full rounded-md border border-border bg-card/50 pl-8 pr-3 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:border-border-strong focus:ring-1 focus:ring-border-strong focus:outline-none sm:w-48"
             />
           </div>
         </div>

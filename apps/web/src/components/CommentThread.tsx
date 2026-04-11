@@ -7,6 +7,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import type { Comment } from "@/types";
 import { CommentInput } from "./CommentInput";
 import { AttachmentGrid } from "./AttachmentGrid";
+import { CommentBody } from "./CommentBody";
 
 export function CommentThread({
   comments,
@@ -117,9 +118,7 @@ export function CommentThread({
               </div>
             ) : (
               <>
-                {comment.text && (
-                  <div className="text-[13px] text-muted-foreground">{comment.text}</div>
-                )}
+                {comment.text && <CommentBody text={comment.text} />}
                 {comment.attachments && comment.attachments.length > 0 && (
                   <AttachmentGrid attachments={comment.attachments} />
                 )}

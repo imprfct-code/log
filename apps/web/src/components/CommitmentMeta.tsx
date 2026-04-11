@@ -25,7 +25,7 @@ export function CommitmentMeta({
   connectSlot?: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[13px]">
+    <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 text-[13px]">
       <Link
         to={`/profile/${username}`}
         className="font-semibold text-foreground-bright no-underline hover:underline"
@@ -41,10 +41,12 @@ export function CommitmentMeta({
               href={repoHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 text-muted-foreground no-underline transition-colors hover:text-foreground"
+              className="flex min-w-0 items-center gap-1 text-muted-foreground no-underline transition-colors hover:text-foreground"
             >
-              <GhIcon size={11} />
-              {repo}
+              <span className="shrink-0">
+                <GhIcon size={11} />
+              </span>
+              <span className="truncate">{repo}</span>
             </a>
           ) : (
             <span className="flex items-center gap-1 truncate text-muted-foreground">

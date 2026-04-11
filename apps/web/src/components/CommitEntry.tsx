@@ -53,7 +53,7 @@ export function CommitEntry({
       : undefined;
 
   const branchBadgeClass =
-    "flex shrink-0 items-center gap-1 border border-border px-1 py-px text-[10px] text-[#555]";
+    "flex min-w-0 max-w-[120px] items-center gap-1 border border-border px-1 py-px text-[10px] text-[#555] sm:max-w-[200px]";
   const renderBranchBadge = () =>
     branchHref ? (
       <a
@@ -62,18 +62,18 @@ export function CommitEntry({
         rel="noopener noreferrer"
         className={`${branchBadgeClass} no-underline transition-colors hover:border-accent/40 hover:text-accent`}
       >
-        <GitBranch size={10} />
-        {entry.gitBranch}
+        <GitBranch size={10} className="shrink-0" />
+        <span className="truncate">{entry.gitBranch}</span>
       </a>
     ) : (
       <span className={branchBadgeClass}>
-        <GitBranch size={10} />
-        {entry.gitBranch}
+        <GitBranch size={10} className="shrink-0" />
+        <span className="truncate">{entry.gitBranch}</span>
       </span>
     );
 
   return (
-    <div className="relative flex items-baseline gap-2.5 py-1.5 pl-6 text-[13px]">
+    <div className="relative flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 py-1.5 pl-6 text-[13px] sm:flex-nowrap">
       <span
         className={cn(
           "absolute left-0 top-1/2 h-[7px] w-[7px] -translate-x-[3.5px] -translate-y-1/2 rounded-full border border-border-strong bg-muted",
@@ -84,7 +84,10 @@ export function CommitEntry({
       {hashElement}
       {showBranch && renderBranchBadge()}
       <span
-        className={cn("min-w-0 flex-1 truncate text-muted-foreground", !showMessages && "italic")}
+        className={cn(
+          "min-w-[60%] flex-1 truncate text-muted-foreground sm:min-w-0",
+          !showMessages && "italic",
+        )}
       >
         {showMessages ? entry.text : "private commit"}
       </span>
