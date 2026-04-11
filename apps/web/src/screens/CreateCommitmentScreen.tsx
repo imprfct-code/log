@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
-import { GhIcon } from "@/components/Icons";
 import { CommitCard } from "@/components/CommitCard";
+import { RepoPickerInput } from "@/components/RepoPickerInput";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { stripGithubUrl } from "@/lib/github";
+import { extractErrorMessage } from "@/lib/convexError";
 import type { Id } from "@convex/_generated/dataModel";
 import type { Commitment } from "@/types";
 
@@ -63,7 +63,7 @@ function buildPreviewCommitment(
 export function CreateCommitmentScreen() {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
-  const createCommitment = useMutation(api.commitments.create);
+  const createCommitment = useAction(api.commitments.create);
   const me = useQuery(api.users.getMe);
 
   const [declaration, setDeclaration] = useState("");
@@ -105,13 +105,10 @@ export function CreateCommitmentScreen() {
       });
       void navigate(`/commitment/${id}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to create commitment");
+      setError(extractErrorMessage(e, "Failed to create commitment"));
+      setTimeout(() => setError(null), 5000);
       setSubmitting(false);
     }
-  }
-
-  function handleRepoChange(value: string, strip = false) {
-    setRepo(strip ? stripGithubUrl(value) : value);
   }
 
   function acceptIdea() {
@@ -174,7 +171,7 @@ export function CreateCommitmentScreen() {
           </div>
         </div>
 
-        <div className="mb-6 flex items-center justify-end">
+        <div className="mb-2 flex items-center justify-end">
           <span
             className={cn(
               "text-[11px] transition-colors",
@@ -185,7 +182,7 @@ export function CreateCommitmentScreen() {
           </span>
         </div>
 
-        <div className="feed-in mb-6 opacity-0" style={{ animationDelay: "120ms" }}>
+        <div className="feed-in relative z-10 mb-6 opacity-0" style={{ animationDelay: "120ms" }}>
           {!showRepo ? (
             <button
               type="button"
@@ -196,34 +193,12 @@ export function CreateCommitmentScreen() {
             </button>
           ) : (
             <div>
-              <label
-                htmlFor="repo"
-                className="mb-1.5 block text-[11px] font-medium uppercase tracking-widest text-muted-foreground"
-              >
+              <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
                 GitHub repo
                 <span className="ml-2 normal-case tracking-normal text-[#333]">optional</span>
               </label>
-              <div className="flex items-center gap-0 border-b border-border-strong transition-colors focus-within:border-accent">
-                <span className="flex items-center gap-1.5 py-2.5 pl-3.5 text-sm text-muted-foreground">
-                  <GhIcon size={13} color="#666" />
-                  github.com/
-                </span>
-                <input
-                  id="repo"
-                  value={repo}
-                  onChange={(e) => handleRepoChange(e.target.value)}
-                  onPaste={(e) => {
-                    const pasted = e.clipboardData.getData("text");
-                    if (pasted.includes("github.com/")) {
-                      e.preventDefault();
-                      handleRepoChange(pasted, true);
-                    }
-                  }}
-                  placeholder="user/repo"
-                  className="w-full bg-transparent py-2.5 pr-3.5 text-sm text-foreground outline-none placeholder:text-muted-foreground"
-                  autoComplete="off"
-                />
-              </div>
+              <RepoPickerInput value={repo} onChange={setRepo} />
+              {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
             </div>
           )}
         </div>
@@ -263,7 +238,6 @@ export function CreateCommitmentScreen() {
             >
               {submitting ? "committing..." : "Commit publicly"}
             </button>
-            {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
           </div>
         </div>
       </div>

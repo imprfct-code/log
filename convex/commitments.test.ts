@@ -1,14 +1,17 @@
 import { describe, expect, test } from "vite-plus/test";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { setupUser, setupUserWithCommitment, testCtx } from "./testing.test";
 
-describe("commitments.create", () => {
+describe("commitments.createInternal", () => {
   test("creates a commitment with correct defaults", async () => {
     const t = testCtx();
-    const { as } = await setupUser(t);
+    const { userId } = await setupUser(t);
 
-    const id = await as.mutation(api.commitments.create, { text: "Build Log" });
+    const id = await t.mutation(internal.commitments.createInternal, {
+      userId,
+      text: "Build Log",
+    });
     const commitment = await t.query(api.commitments.getById, { id });
 
     expect(commitment).toMatchObject({
@@ -22,9 +25,10 @@ describe("commitments.create", () => {
 
   test("stores optional repo field", async () => {
     const t = testCtx();
-    const { as } = await setupUser(t);
+    const { userId } = await setupUser(t);
 
-    const id = await as.mutation(api.commitments.create, {
+    const id = await t.mutation(internal.commitments.createInternal, {
+      userId,
       text: "Build Log",
       repo: "imprfct/log",
     });
@@ -32,23 +36,16 @@ describe("commitments.create", () => {
 
     expect(commitment?.repo).toBe("imprfct/log");
   });
-
-  test("throws for unauthenticated user", async () => {
-    const t = testCtx();
-
-    await expect(t.mutation(api.commitments.create, { text: "Build Log" })).rejects.toThrow(
-      "Not authenticated",
-    );
-  });
 });
 
-describe("commitments.connectRepo", () => {
+describe("commitments.connectRepoInternal", () => {
   test("connects repo to a commitment", async () => {
     const t = testCtx();
-    const { as, commitmentId } = await setupUserWithCommitment(t);
+    const { userId, commitmentId } = await setupUserWithCommitment(t);
 
-    await as.mutation(api.commitments.connectRepo, {
-      id: commitmentId,
+    await t.mutation(internal.commitments.connectRepoInternal, {
+      commitmentId,
+      userId,
       repo: "imprfct/log",
     });
 
@@ -56,33 +53,36 @@ describe("commitments.connectRepo", () => {
     expect(commitment?.repo).toBe("imprfct/log");
   });
 
-  test("throws for unauthenticated user", async () => {
-    const t = testCtx();
-    const { commitmentId } = await setupUserWithCommitment(t);
-
-    await expect(
-      t.mutation(api.commitments.connectRepo, { id: commitmentId, repo: "owner/repo" }),
-    ).rejects.toThrow("Not authenticated");
-  });
-
   test("cannot connect repo to someone else's commitment", async () => {
     const t = testCtx();
     const { commitmentId } = await setupUserWithCommitment(t, "user1");
-    const { as: otherUser } = await setupUser(t, "user2", "otheruser");
+    const { userId: otherUserId } = await setupUser(t, "user2", "otheruser");
 
     await expect(
-      otherUser.mutation(api.commitments.connectRepo, { id: commitmentId, repo: "owner/repo" }),
+      t.mutation(internal.commitments.connectRepoInternal, {
+        commitmentId,
+        userId: otherUserId,
+        repo: "owner/repo",
+      }),
     ).rejects.toThrow("Not the owner");
   });
 
   test("cannot overwrite already connected repo", async () => {
     const t = testCtx();
-    const { as, commitmentId } = await setupUserWithCommitment(t);
+    const { userId, commitmentId } = await setupUserWithCommitment(t);
 
-    await as.mutation(api.commitments.connectRepo, { id: commitmentId, repo: "imprfct/log" });
+    await t.mutation(internal.commitments.connectRepoInternal, {
+      commitmentId,
+      userId,
+      repo: "imprfct/log",
+    });
 
     await expect(
-      as.mutation(api.commitments.connectRepo, { id: commitmentId, repo: "imprfct/other" }),
+      t.mutation(internal.commitments.connectRepoInternal, {
+        commitmentId,
+        userId,
+        repo: "imprfct/other",
+      }),
     ).rejects.toThrow("Repo already connected");
   });
 });

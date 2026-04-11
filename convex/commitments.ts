@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalMutation, mutation, query } from "./_generated/server";
+import { action, internalMutation, mutation, query } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
@@ -10,6 +10,7 @@ import { computeVisibility, redactEntry } from "./privacy";
 import { resolveAttachments, updateActivity } from "./devlog";
 import { fetchCommentDataForEntry } from "./comments";
 import { r2 } from "./r2";
+import { fetchGitHubToken, verifyRepoAccess } from "./githubApi";
 
 const REPO_RE = /^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/;
 
@@ -19,20 +20,19 @@ function validateRepo(repo: string) {
   }
 }
 
-export const create = mutation({
+export const createInternal = internalMutation({
   args: {
+    userId: v.id("users"),
     text: v.string(),
     repo: v.optional(v.string()),
+    clerkUserId: v.optional(v.string()),
+    syncMode: v.optional(v.string()),
   },
-  handler: async (ctx, { text, repo }) => {
-    const user = await getUserByToken(ctx);
-    if (!user) throw new Error("Not authenticated");
-
+  handler: async (ctx, { userId, text, repo, clerkUserId, syncMode }) => {
     const now = Date.now();
-    if (repo) validateRepo(repo);
 
     const commitmentId = await ctx.db.insert("commitments", {
-      userId: user._id,
+      userId,
       text,
       repo,
       isPrivate: false,
@@ -44,18 +44,17 @@ export const create = mutation({
       activity: [0, 0, 0, 0, 0, 0, 0],
     });
 
-    // Set up GitHub commit tracking if repo provided
     if (repo) {
-      if (user.clerkUserId) {
+      if (clerkUserId) {
         await ctx.scheduler.runAfter(0, internal.github.checkRepoPrivacy, {
           commitmentId,
           repo,
-          clerkUserId: user.clerkUserId,
+          clerkUserId,
         });
       }
 
-      const syncMode = user.syncMode ?? "polling";
-      if (syncMode === "webhook") {
+      const mode = syncMode ?? "polling";
+      if (mode === "webhook") {
         await ctx.scheduler.runAfter(0, internal.github.registerWebhook, { commitmentId, repo });
       } else {
         await ctx.scheduler.runAfter(0, internal.githubPolling.setupPolling, {
@@ -65,6 +64,43 @@ export const create = mutation({
       }
     }
 
+    return commitmentId;
+  },
+});
+
+export const create = action({
+  args: {
+    text: v.string(),
+    repo: v.optional(v.string()),
+  },
+  handler: async (ctx, { text, repo }): Promise<Id<"commitments">> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user: Doc<"users"> | null = await ctx.runQuery(internal.users.getByTokenIdentifier, {
+      tokenIdentifier: identity.tokenIdentifier,
+    });
+    if (!user) throw new Error("Not authenticated");
+
+    if (repo) {
+      validateRepo(repo);
+
+      if (!user.clerkUserId) throw new Error("GitHub account not linked");
+      const token = await fetchGitHubToken(user.clerkUserId);
+      if (!token) throw new Error("Could not get GitHub token — try reconnecting GitHub");
+      await verifyRepoAccess(repo, token);
+    }
+
+    const commitmentId: Id<"commitments"> = await ctx.runMutation(
+      internal.commitments.createInternal,
+      {
+        userId: user._id,
+        text,
+        repo,
+        clerkUserId: user.clerkUserId,
+        syncMode: user.syncMode,
+      },
+    );
     return commitmentId;
   },
 });
@@ -270,42 +306,73 @@ export const listByUser = query({
   },
 });
 
-export const connectRepo = mutation({
+export const connectRepoInternal = internalMutation({
+  args: {
+    commitmentId: v.id("commitments"),
+    userId: v.id("users"),
+    repo: v.string(),
+    clerkUserId: v.optional(v.string()),
+    syncMode: v.optional(v.string()),
+  },
+  handler: async (ctx, { commitmentId, userId, repo, clerkUserId, syncMode }) => {
+    const commitment = await ctx.db.get(commitmentId);
+    if (!commitment) throw new Error("Commitment not found");
+    if (commitment.userId !== userId) throw new Error("Not the owner");
+    if (commitment.repo) throw new Error("Repo already connected");
+
+    await ctx.db.patch(commitmentId, { repo, isPrivate: false, initialSyncStatus: "syncing" });
+
+    if (clerkUserId) {
+      await ctx.scheduler.runAfter(0, internal.github.checkRepoPrivacy, {
+        commitmentId,
+        repo,
+        clerkUserId,
+      });
+    }
+
+    const mode = syncMode ?? "polling";
+    if (mode === "webhook") {
+      await ctx.scheduler.runAfter(0, internal.github.registerWebhook, {
+        commitmentId,
+        repo,
+      });
+    } else {
+      await ctx.scheduler.runAfter(0, internal.githubPolling.setupPolling, {
+        commitmentId,
+        repo,
+      });
+    }
+  },
+});
+
+export const connectRepo = action({
   args: {
     id: v.id("commitments"),
     repo: v.string(),
   },
-  handler: async (ctx, { id, repo }) => {
-    const user = await getUserByToken(ctx);
-    if (!user) throw new Error("Not authenticated");
+  handler: async (ctx, { id, repo }): Promise<void> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
 
-    const commitment = await ctx.db.get(id);
-    if (!commitment) throw new Error("Commitment not found");
-    if (commitment.userId !== user._id) throw new Error("Not the owner");
-    if (commitment.repo) throw new Error("Repo already connected");
+    const user: Doc<"users"> | null = await ctx.runQuery(internal.users.getByTokenIdentifier, {
+      tokenIdentifier: identity.tokenIdentifier,
+    });
+    if (!user) throw new Error("Not authenticated");
 
     validateRepo(repo);
 
-    await ctx.db.patch(id, { repo, isPrivate: false, initialSyncStatus: "syncing" });
+    if (!user.clerkUserId) throw new Error("GitHub account not linked");
+    const token = await fetchGitHubToken(user.clerkUserId);
+    if (!token) throw new Error("Could not get GitHub token — try reconnecting GitHub");
+    await verifyRepoAccess(repo, token);
 
-    if (user.clerkUserId) {
-      await ctx.scheduler.runAfter(0, internal.github.checkRepoPrivacy, {
-        commitmentId: id,
-        repo,
-        clerkUserId: user.clerkUserId,
-      });
-    }
-
-    // Set up GitHub commit tracking based on user preference
-    const syncMode = user.syncMode ?? "polling";
-    if (syncMode === "webhook") {
-      await ctx.scheduler.runAfter(0, internal.github.registerWebhook, { commitmentId: id, repo });
-    } else {
-      await ctx.scheduler.runAfter(0, internal.githubPolling.setupPolling, {
-        commitmentId: id,
-        repo,
-      });
-    }
+    await ctx.runMutation(internal.commitments.connectRepoInternal, {
+      commitmentId: id,
+      userId: user._id,
+      repo,
+      clerkUserId: user.clerkUserId,
+      syncMode: user.syncMode,
+    });
   },
 });
 

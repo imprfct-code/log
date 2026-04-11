@@ -147,7 +147,7 @@ export function CommitmentDetailScreen() {
 
   return (
     <DetailLayout>
-      <div className="feed-in opacity-0">
+      <div className="feed-in relative z-10 opacity-0">
         <CommitmentMeta
           username={user?.username ?? "unknown"}
           repo={commitment.repo}
