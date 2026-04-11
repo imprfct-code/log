@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import type { Id } from "@convex/_generated/dataModel";
-import { GhIcon, CommentIcon, BoostIcon } from "./Icons";
+import { GhIcon, CommentIcon } from "./Icons";
+import BoostIcon from "./BoostIcon";
 import { ActivitySparkline } from "./ActivitySparkline";
 import { cn } from "@/lib/utils";
 

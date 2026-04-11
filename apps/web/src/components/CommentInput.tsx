@@ -245,6 +245,12 @@ export function CommentInput({
           attachments: atts.length > 0 ? atts : undefined,
         });
         uploadedKeysRef.current.clear();
+        for (const attachment of attachments) {
+          if (attachment.previewUrl.startsWith("blob:")) {
+            URL.revokeObjectURL(attachment.previewUrl);
+            blobUrlsRef.current.delete(attachment.previewUrl);
+          }
+        }
         setText("");
         setAttachments([]);
       }
@@ -323,7 +329,7 @@ export function CommentInput({
               <button
                 type="button"
                 onClick={() => removeAttachment(i)}
-                className="absolute top-1 right-1 z-10 flex h-5 w-5 cursor-pointer items-center justify-center border border-border bg-background/80 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/resize:opacity-100"
+                className="absolute top-1 right-1 z-10 flex h-5 w-5 cursor-pointer items-center justify-center border border-border bg-background/80 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/resize:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
                 aria-label={`Remove ${att.filename}`}
               >
                 <X size={10} />

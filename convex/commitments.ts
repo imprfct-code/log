@@ -495,8 +495,8 @@ export const devDelete = internalMutation({
       .query("boosts")
       .withIndex("by_commitmentId", (q) => q.eq("commitmentId", commitmentId))
       .collect();
-    for (const r of boosts) {
-      await ctx.db.delete(r._id);
+    for (const boost of boosts) {
+      await ctx.db.delete(boost._id);
     }
 
     // 3. Delete devlog entries (with R2 cleanup)

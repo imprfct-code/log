@@ -107,16 +107,11 @@ export function ShipModal({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
-  function validateUrl(raw: string): string | null {
+  function validateUrl(rawUrl: string): string | null {
     try {
-      const toValidate = /^https?:\/\//i.test(raw) ? raw : "https://" + raw;
+      const toValidate = /^https?:\/\//i.test(rawUrl) ? rawUrl : "https://" + rawUrl;
       const parsed = new URL(toValidate);
-      const hostname = parsed.hostname;
-      // Allow localhost, IPv4 (192.168.1.1), and IPv6 addresses, otherwise require a dot
-      const isLocalhost = hostname === "localhost";
-      const isIPv4 = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname);
-      const isIPv6 = hostname.startsWith("[") && hostname.endsWith("]");
-      if (!isLocalhost && !isIPv4 && !isIPv6 && !hostname.includes(".")) {
+      if (!parsed.hostname.includes(".")) {
         return "enter a valid url, e.g. example.com";
       }
       return null;
@@ -210,9 +205,9 @@ export function ShipModal({
             submitting={submitting}
             onBack={() => setStep("reflect")}
             onSubmit={() => void handleSubmit()}
-            onValidate={(raw) => {
-              const err = validateUrl(raw);
-              if (err) setError(err);
+            onValidate={(rawUrl) => {
+              const validationError = validateUrl(rawUrl);
+              if (validationError) setError(validationError);
             }}
           />
         )}

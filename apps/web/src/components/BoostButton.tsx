@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
-import { BoostIcon, BoostIconFilled } from "./Icons";
+import BoostIcon from "./BoostIcon";
+import BoostIconFilled from "./BoostIconFilled";
 
 export function BoostButton({
   commitmentId,
@@ -20,6 +21,7 @@ export function BoostButton({
 
   const [optimistic, setOptimistic] = useState<{ boosted: boolean; count: number } | null>(null);
   const [pulsing, setPulsing] = useState(false);
+  const [isMutating, setIsMutating] = useState(false);
   const pulseTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const prevCountRef = useRef(initialCount);
 
@@ -41,7 +43,8 @@ export function BoostButton({
   const count = optimistic?.count ?? initialCount;
 
   async function handleClick() {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || isMutating) return;
+    setIsMutating(true);
     const nextBoosted = !boosted;
     const nextCount = nextBoosted ? count + 1 : Math.max(0, count - 1);
     setOptimistic({ boosted: nextBoosted, count: nextCount });
@@ -54,13 +57,15 @@ export function BoostButton({
       await toggle({ commitmentId });
     } catch {
       setOptimistic(null);
+    } finally {
+      setIsMutating(false);
     }
   }
 
   return (
     <button
       onClick={handleClick}
-      disabled={!isAuthenticated}
+      disabled={!isAuthenticated || isMutating}
       aria-label={boosted ? `Boosted — ${count} total` : `Boost — ${count} total`}
       aria-pressed={boosted}
       className={`flex items-center gap-1.5 border-none bg-transparent font-mono text-[11px] transition-colors ${
