@@ -28,7 +28,7 @@ export function DevlogTimeline({
   showHashes?: boolean;
   showBranches?: boolean;
   authorLinks?: boolean;
-  status: "building" | "shipped";
+  status: "building" | "shipped" | "abandoned";
   isDetailPage?: boolean;
   limit?: number;
   onLoadMore?: () => void;

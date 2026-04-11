@@ -27,7 +27,7 @@ export function ProfileScreen() {
     me !== undefined && profile?.user !== undefined && me?._id === profile.user._id;
 
   const commitments = useMemo(() => {
-    if (!profile) return { all: [], building: [], released: [] };
+    if (!profile) return { all: [], building: [], released: [], abandoned: [] };
     const released = profile.shipped.map((c) => ({
       ...c,
       status: "shipped" as const,
@@ -38,8 +38,14 @@ export function ProfileScreen() {
       status: "building" as const,
       boostCount: 0,
     }));
-    const all = [...building, ...released];
-    return { all, building, released };
+    const abandoned = profile.abandoned.map((c) => ({
+      ...c,
+      status: "abandoned" as const,
+      boostCount: 0,
+      commentCount: 0,
+    }));
+    const all = [...building, ...released, ...abandoned];
+    return { all, building, released, abandoned };
   }, [profile]);
 
   // Loading
@@ -63,7 +69,7 @@ export function ProfileScreen() {
   }
 
   const { user, stats } = profile;
-  const hasCommitments = stats.totalShips + stats.activeCount > 0;
+  const hasCommitments = stats.totalShips + stats.activeCount + stats.abandonedCount > 0;
 
   return (
     <div className="mx-auto max-w-[720px] px-4 py-8 sm:px-12">
@@ -107,6 +113,11 @@ export function ProfileScreen() {
             <span className="text-foreground-bright">{stats.totalShips}</span>{" "}
             {stats.totalShips === 1 ? "release" : "releases"}
           </span>
+          {stats.abandonedCount > 0 && (
+            <span>
+              <span className="text-foreground-bright">{stats.abandonedCount}</span> abandoned
+            </span>
+          )}
           <span>
             <span className="text-foreground-bright">{stats.totalBoosts}</span>{" "}
             {stats.totalBoosts === 1 ? "boost" : "boosts"}
@@ -133,6 +144,7 @@ export function ProfileScreen() {
             all={commitments.all}
             building={commitments.building}
             released={commitments.released}
+            abandoned={commitments.abandoned}
           />
         ) : isOwnProfile ? (
           <div className="py-16 text-center">

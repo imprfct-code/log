@@ -135,8 +135,10 @@ export const listFeed = query({
       numItems: Math.ceil(paginationOpts.numItems * 1.5),
     });
 
-    // Hide commitments still doing initial sync from the feed entirely
-    const visiblePage = page.page.filter((c) => c.initialSyncStatus !== "syncing");
+    // Hide commitments still doing initial sync or abandoned from the feed
+    const visiblePage = page.page.filter(
+      (c) => c.initialSyncStatus !== "syncing" && c.status !== "abandoned",
+    );
 
     const itemsWithData = await Promise.all(
       visiblePage.map(async (commitment) => {
@@ -218,7 +220,9 @@ export const search = query({
 
     const results = await q.take(20);
 
-    const visibleResults = results.filter((c) => c.initialSyncStatus !== "syncing");
+    const visibleResults = results.filter(
+      (c) => c.initialSyncStatus !== "syncing" && c.status !== "abandoned",
+    );
 
     return await Promise.all(
       visibleResults.map(async (commitment) => {
@@ -249,7 +253,9 @@ export const search = query({
 export const listByUser = query({
   args: {
     userId: v.id("users"),
-    status: v.optional(v.union(v.literal("building"), v.literal("shipped"))),
+    status: v.optional(
+      v.union(v.literal("building"), v.literal("shipped"), v.literal("abandoned")),
+    ),
   },
   handler: async (ctx, { userId, status }) => {
     let results;
@@ -379,6 +385,51 @@ export const ship = mutation({
 
     // Remove GitHub webhook only when done (not keep building)
     if (done && commitment.repo && commitment.webhookId) {
+      await ctx.scheduler.runAfter(0, internal.github.removeWebhook, {
+        commitmentId: id,
+        repo: commitment.repo,
+        webhookId: commitment.webhookId,
+      });
+    }
+  },
+});
+
+/** Mark a commitment as abandoned with an optional reason. */
+export const abandon = mutation({
+  args: {
+    id: v.id("commitments"),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, { id, reason }) => {
+    const user = await getUserByToken(ctx);
+    if (!user) throw new Error("Not authenticated");
+
+    const commitment = await ctx.db.get(id);
+    if (!commitment) throw new Error("Commitment not found");
+    if (commitment.userId !== user._id) throw new Error("Not the owner");
+    if (commitment.status !== "building") throw new Error("Can only abandon active commitments");
+
+    const normalizedReason = reason?.trim().slice(0, 500) || undefined;
+    const now = Date.now();
+
+    await ctx.db.patch(id, {
+      status: "abandoned",
+      lastActivityAt: now,
+      activity: updateActivity(commitment.activity, commitment.lastActivityAt),
+    });
+
+    await ctx.db.insert("devlogEntries", {
+      commitmentId: id,
+      userId: user._id,
+      type: "abandon",
+      text: "abandoned",
+      body: normalizedReason,
+      committedAt: now,
+      commentCount: 0,
+    });
+
+    // Remove GitHub webhook if present
+    if (commitment.repo && commitment.webhookId) {
       await ctx.scheduler.runAfter(0, internal.github.removeWebhook, {
         commitmentId: id,
         repo: commitment.repo,

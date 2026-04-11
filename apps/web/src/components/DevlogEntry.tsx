@@ -3,6 +3,7 @@ import type { DevlogEntry as DevlogEntryType } from "@/types";
 import { CommitEntry } from "./CommitEntry";
 import { PostEntry } from "./PostEntry";
 import { ShipEntry } from "./ShipEntry";
+import { AbandonEntry } from "./AbandonEntry";
 
 export function DevlogEntry({
   entry,
@@ -27,12 +28,15 @@ export function DevlogEntry({
   showBranches?: boolean;
   authorLinks?: boolean;
   isLatest?: boolean;
-  status?: "building" | "shipped";
+  status?: "building" | "shipped" | "abandoned";
   isDetailPage?: boolean;
   onCommentClick?: () => void;
 }) {
   if (entry.type === "ship") {
     return <ShipEntry entry={entry} onCommentClick={onCommentClick} />;
+  }
+  if (entry.type === "abandon") {
+    return <AbandonEntry entry={entry} onCommentClick={onCommentClick} />;
   }
   if (entry.type === "commit" || entry.type === "git_commit") {
     return (
