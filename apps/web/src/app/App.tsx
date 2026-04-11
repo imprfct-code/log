@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router";
 import { NavHeader } from "@/components/NavHeader";
 import { RequireAuth } from "@/components/RequireAuth";
+import { FullPageLoader } from "@/components/FullPageLoader";
 
 const LandingScreen = lazy(() =>
   import("@/screens/LandingScreen").then((m) => ({ default: m.LandingScreen })),
@@ -50,9 +51,10 @@ function Layout({ children }: { children: React.ReactNode }) {
 export function App() {
   return (
     <BrowserRouter>
-      <Suspense>
+      <Suspense fallback={<FullPageLoader />}>
         <Routes>
           <Route index element={<LandingScreen />} />
+          <Route path="test" element={<FullPageLoader />} />
           <Route path="sso-callback" element={<SSOCallbackScreen />} />
           <Route
             path="feed"
