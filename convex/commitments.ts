@@ -82,13 +82,15 @@ export const create = action({
     });
     if (!user) throw new Error("Not authenticated");
 
-    if (repo) {
-      validateRepo(repo);
+    const normalizedRepo = repo?.trim() || undefined;
+
+    if (normalizedRepo) {
+      validateRepo(normalizedRepo);
 
       if (!user.clerkUserId) throw new Error("GitHub account not linked");
       const token = await fetchGitHubToken(user.clerkUserId);
       if (!token) throw new Error("Could not get GitHub token — try reconnecting GitHub");
-      await verifyRepoAccess(repo, token);
+      await verifyRepoAccess(normalizedRepo, token);
     }
 
     const commitmentId: Id<"commitments"> = await ctx.runMutation(
@@ -96,7 +98,7 @@ export const create = action({
       {
         userId: user._id,
         text,
-        repo,
+        repo: normalizedRepo,
         clerkUserId: user.clerkUserId,
         syncMode: user.syncMode,
       },
@@ -359,17 +361,19 @@ export const connectRepo = action({
     });
     if (!user) throw new Error("Not authenticated");
 
-    validateRepo(repo);
+    const normalizedRepo = repo.trim();
+
+    validateRepo(normalizedRepo);
 
     if (!user.clerkUserId) throw new Error("GitHub account not linked");
     const token = await fetchGitHubToken(user.clerkUserId);
     if (!token) throw new Error("Could not get GitHub token — try reconnecting GitHub");
-    await verifyRepoAccess(repo, token);
+    await verifyRepoAccess(normalizedRepo, token);
 
     await ctx.runMutation(internal.commitments.connectRepoInternal, {
       commitmentId: id,
       userId: user._id,
-      repo,
+      repo: normalizedRepo,
       clerkUserId: user.clerkUserId,
       syncMode: user.syncMode,
     });

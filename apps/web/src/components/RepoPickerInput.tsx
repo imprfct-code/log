@@ -56,8 +56,17 @@ export function RepoPickerInput({ value, onChange, autoFocus }: RepoPickerInputP
         const result = await listRepos();
         setRepos(result);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to load repos");
-        setRepos([]);
+        const message = e instanceof Error ? e.message : "";
+        const isAuthError =
+          message.includes("Not authenticated") ||
+          message.includes("GitHub account not linked") ||
+          message.includes("Could not get GitHub token");
+        if (isAuthError) {
+          setError("link your GitHub account to load repos");
+        } else {
+          setError("couldn't load repos — type manually");
+          setRepos([]);
+        }
       } finally {
         setLoading(false);
       }
@@ -78,27 +87,35 @@ export function RepoPickerInput({ value, onChange, autoFocus }: RepoPickerInputP
   }, [selectedIndex, showDropdown]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!isOpen) {
-      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    if (!showDropdown) {
+      if (!isOpen && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
         e.preventDefault();
         setIsOpen(true);
         setSelectedIndex(0);
+      }
+      if (isOpen && e.key === "Escape") {
+        e.preventDefault();
+        setIsOpen(false);
       }
       return;
     }
 
     switch (e.key) {
       case "ArrowDown":
-        e.preventDefault();
-        setSelectedIndex((prev) => (prev < filtered.length - 1 ? prev + 1 : 0));
+        if (filtered.length > 0) {
+          e.preventDefault();
+          setSelectedIndex((prev) => Math.min(prev + 1, filtered.length - 1));
+        }
         break;
       case "ArrowUp":
-        e.preventDefault();
-        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : filtered.length - 1));
+        if (filtered.length > 0) {
+          e.preventDefault();
+          setSelectedIndex((prev) => Math.max(prev - 1, 0));
+        }
         break;
       case "Enter":
-        e.preventDefault();
         if (filtered[selectedIndex]) {
+          e.preventDefault();
           onChange(filtered[selectedIndex].fullName);
           setIsOpen(false);
         }
@@ -110,14 +127,28 @@ export function RepoPickerInput({ value, onChange, autoFocus }: RepoPickerInputP
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let newValue = e.target.value;
-    if (newValue.includes("github.com/")) {
-      newValue = newValue
+  const normalizeGitHubUrl = (input: string): string => {
+    // SSH: git@github.com:owner/repo(.git)?
+    const sshMatch = input.match(/^git@github\.com:([^/\s]+\/[^/\s]+?)(?:\.git)?$/);
+    if (sshMatch) return sshMatch[1];
+
+    // HTTPS or bare: https://github.com/owner/repo(/tree/main, .git, etc.)
+    if (input.includes("github.com/")) {
+      const stripped = input
         .replace(/^https?:\/\/(www\.)?github\.com\//, "")
-        .replace(/^github\.com\//, "")
-        .replace(/\/$/, "");
+        .replace(/^github\.com\//, "");
+      const parts = stripped.split("/").filter(Boolean);
+      if (parts.length >= 2) {
+        return `${parts[0]}/${parts[1].replace(/\.git$/, "")}`;
+      }
+      return stripped.replace(/\/$/, "");
     }
+
+    return input;
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = normalizeGitHubUrl(e.target.value);
     onChange(newValue);
     setIsOpen(true);
     setSelectedIndex(0);
@@ -125,14 +156,12 @@ export function RepoPickerInput({ value, onChange, autoFocus }: RepoPickerInputP
 
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     const pasted = e.clipboardData.getData("text");
-    if (pasted.includes("github.com/")) {
+    if (pasted.includes("github.com") || pasted.includes("git@github.com")) {
       e.preventDefault();
-      const cleaned = pasted
-        .replace(/^https?:\/\/(www\.)?github\.com\//, "")
-        .replace(/^github\.com\//, "")
-        .replace(/\/$/, "");
+      const cleaned = normalizeGitHubUrl(pasted);
       onChange(cleaned);
       setIsOpen(true);
+      setSelectedIndex(0);
     }
   };
 
@@ -191,9 +220,7 @@ export function RepoPickerInput({ value, onChange, autoFocus }: RepoPickerInputP
           )}
 
           {error && !loading && (
-            <div className="px-3.5 py-3 text-[12px] text-muted-foreground">
-              couldn&apos;t load repos — type manually
-            </div>
+            <div className="px-3.5 py-3 text-[12px] text-muted-foreground">{error}</div>
           )}
 
           {!loading && filtered.length > 0 && (
