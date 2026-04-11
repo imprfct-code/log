@@ -42,6 +42,10 @@ function cellTooltip(cell: HeatmapCell): string {
 }
 
 function buildGrid(data: HeatmapDay[]): { grid: HeatmapCell[][]; total: number } {
+  if (data.length === 0) {
+    return { grid: [], total: 0 };
+  }
+
   let total = 0;
   const cells: HeatmapCell[] = data.map((d) => {
     const t = d.commits + d.posts;

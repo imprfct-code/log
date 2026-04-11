@@ -242,10 +242,15 @@ export function SettingsScreen() {
                   return;
                 }
                 setBioSaving(true);
-                await updateProfile({ bio: trimmed || undefined });
-                setBio(null);
-                setBioSaving(false);
-                flashSaved();
+                try {
+                  await updateProfile({ bio: trimmed });
+                  setBio(null);
+                  flashSaved();
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : "Failed to save bio");
+                } finally {
+                  setBioSaving(false);
+                }
               }}
               rows={2}
               maxLength={BIO_MAX}
