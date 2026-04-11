@@ -386,6 +386,40 @@ export const connectRepo = action({
   },
 });
 
+export const COMMITMENT_TITLE_MAX_LENGTH = 80;
+
+function assertCanEditCommitment(commitment: Doc<"commitments">, userId: Id<"users">) {
+  if (commitment.userId !== userId) throw new Error("Not the owner");
+  if (commitment.status !== "building")
+    throw new Error("Cannot edit a shipped or abandoned commitment");
+}
+
+function normalizeCommitmentText(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed) throw new Error("Text must not be empty");
+  if (trimmed.length > COMMITMENT_TITLE_MAX_LENGTH)
+    throw new Error(`Text must be ${COMMITMENT_TITLE_MAX_LENGTH} characters or less`);
+  return trimmed;
+}
+
+export const updateText = mutation({
+  args: {
+    id: v.id("commitments"),
+    text: v.string(),
+  },
+  handler: async (ctx, { id, text }) => {
+    const user = await getUserByToken(ctx);
+    if (!user) throw new Error("Not authenticated");
+
+    const commitment = await ctx.db.get(id);
+    if (!commitment) throw new Error("Commitment not found");
+    assertCanEditCommitment(commitment, user._id);
+    const trimmed = normalizeCommitmentText(text);
+
+    await ctx.db.patch(id, { text: trimmed });
+  },
+});
+
 /** Mark a commitment as shipped with a URL and optional note. If keepBuilding is false, mark as fully completed. */
 export const ship = mutation({
   args: {

@@ -1,9 +1,9 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useRef, useMemo, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
-import { useAction, usePaginatedQuery, useQuery } from "convex/react";
+import { useAction, useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
-import { Eye, GitBranch, RefreshCw } from "lucide-react";
+import { Eye, GitBranch, Pencil, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ActivitySparkline } from "@/components/ActivitySparkline";
 import { BoostButton } from "@/components/BoostButton";
@@ -14,6 +14,7 @@ import { DevlogTimeline } from "@/components/DevlogTimeline";
 import { ShipModal } from "@/components/ShipModal";
 import { AbandonModal } from "@/components/AbandonModal";
 import { Button } from "@/components/ui/button";
+import { COMMITMENT_TITLE_MAX_LENGTH } from "@convex/commitments";
 import { daysSince, formatShippedIn, formatTimeAgo } from "@/lib/formatTime";
 import type { DevlogEntry as DevlogEntryType } from "@/types";
 
@@ -62,6 +63,13 @@ export function CommitmentDetailScreen() {
     { initialNumItems: 20 },
   );
   const triggerSync = useAction(api.github.triggerSync);
+  const updateText = useMutation(api.commitments.updateText);
+
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const [titleSaving, setTitleSaving] = useState(false);
+  const [titleError, setTitleError] = useState<string | null>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
 
   const isAuthor = !!data && !!me && me._id === data.userId;
   const effectiveAuthor = isAuthor && !viewAsGuest;
@@ -130,6 +138,34 @@ export function CommitmentDetailScreen() {
     effectiveAuthor && commitment.status === "building" && !isSyncing && entries.length > 0;
   const canAbandon = effectiveAuthor && commitment.status === "building";
   const day = daysSince(commitment.firstEntryAt ?? commitment._creationTime);
+
+  const canEditTitle = effectiveAuthor && commitment.status === "building";
+
+  function startEditingTitle() {
+    setTitleDraft(commitment.text);
+    setTitleError(null);
+    setEditingTitle(true);
+    requestAnimationFrame(() => titleRef.current?.focus());
+  }
+
+  async function saveTitle() {
+    if (titleSaving) return;
+    const trimmed = titleDraft.trim();
+    if (!trimmed || trimmed === commitment.text) {
+      setEditingTitle(false);
+      return;
+    }
+    setTitleSaving(true);
+    setTitleError(null);
+    try {
+      await updateText({ id: commitment._id, text: trimmed });
+      setEditingTitle(false);
+    } catch (e) {
+      setTitleError(e instanceof Error ? e.message : "Failed to save");
+    } finally {
+      setTitleSaving(false);
+    }
+  }
 
   async function handleSync() {
     if (!commitmentId || syncing) return;
@@ -203,9 +239,68 @@ export function CommitmentDetailScreen() {
         )}
 
         <div className="mt-1 mb-2 flex items-start gap-4">
-          <h1 className="min-w-0 flex-1 text-lg font-bold text-foreground-bright">
-            {commitment.text}
-          </h1>
+          {editingTitle ? (
+            <div className="min-w-0 flex-1">
+              <input
+                ref={titleRef}
+                value={titleDraft}
+                onChange={(e) =>
+                  setTitleDraft(e.target.value.slice(0, COMMITMENT_TITLE_MAX_LENGTH))
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void saveTitle();
+                  }
+                  if (e.key === "Escape") setEditingTitle(false);
+                }}
+                maxLength={COMMITMENT_TITLE_MAX_LENGTH}
+                autoComplete="off"
+                className="w-full border-b border-border-strong bg-transparent text-lg font-bold text-foreground-bright outline-none focus:border-accent"
+              />
+              <div className="mt-1 flex items-center justify-between">
+                <span className="text-[10px] text-muted-foreground/40">
+                  {titleDraft.length}/{COMMITMENT_TITLE_MAX_LENGTH}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingTitle(false)}
+                    className="cursor-pointer bg-transparent text-[11px] text-muted-foreground/50 transition-colors hover:text-muted-foreground"
+                  >
+                    cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={
+                      titleSaving || !titleDraft.trim() || titleDraft.trim() === commitment.text
+                    }
+                    onClick={() => void saveTitle()}
+                    className="cursor-pointer bg-transparent text-[11px] text-accent transition-colors hover:text-accent/80 disabled:opacity-40"
+                  >
+                    {titleSaving ? "saving..." : "save"}
+                  </button>
+                </div>
+              </div>
+              {titleError && <p className="mt-1 text-[11px] text-destructive">{titleError}</p>}
+            </div>
+          ) : (
+            <div className="group flex min-w-0 flex-1 items-center">
+              <h1 className="min-w-0 flex-1 text-lg font-bold text-foreground-bright">
+                {commitment.text}
+              </h1>
+              {canEditTitle && (
+                <button
+                  type="button"
+                  onClick={startEditingTitle}
+                  aria-label="Edit commitment title"
+                  className="ml-2 cursor-pointer bg-transparent p-0 text-muted-foreground/0 transition-colors group-hover:text-muted-foreground/60 focus-visible:text-muted-foreground/60"
+                >
+                  <Pencil size={12} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+          )}
           {!isSyncing && (
             <ActivitySparkline activity={commitment.activity} className="shrink-0 pt-1" />
           )}
