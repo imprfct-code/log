@@ -90,6 +90,31 @@
     scrollbar-width: thin;
     scrollbar-color: #26233a transparent;
   }
+
+  /* Reusable thin scrollbar — always reserves space, thumb fades in on hover */
+  .thin-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+  .thin-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .thin-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .thin-scrollbar::-webkit-scrollbar-thumb {
+    background: transparent;
+    transition: background 0.15s;
+  }
+  .thin-scrollbar:hover {
+    scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+  }
+  .thin-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+  }
+  .thin-scrollbar:hover::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
 }
 
 /* ── Landing page animations ── */

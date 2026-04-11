@@ -371,6 +371,42 @@ export const removeWebhook = internalAction({
   },
 });
 
+/** List GitHub repos the authenticated user has access to. */
+export const listUserRepos = action({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.runQuery(internal.users.getByTokenIdentifier, {
+      tokenIdentifier: identity.tokenIdentifier,
+    });
+    if (!user?.clerkUserId) throw new Error("GitHub account not linked");
+
+    const token = await fetchGitHubToken(user.clerkUserId);
+    if (!token) throw new Error("Could not get GitHub token");
+
+    const repos: Array<{ fullName: string; isPrivate: boolean }> = [];
+    const maxPages = 3;
+
+    for (let page = 1; page <= maxPages; page++) {
+      const res = await fetch(
+        `https://api.github.com/user/repos?per_page=100&sort=pushed&affiliation=owner,collaborator,organization_member&page=${page}`,
+        { headers: githubApiHeaders(token) },
+      );
+      if (!res.ok) break;
+
+      const data: Array<{ full_name: string; private: boolean }> = await res.json();
+      for (const r of data) {
+        repos.push({ fullName: r.full_name, isPrivate: r.private });
+      }
+      if (data.length < 100) break;
+    }
+
+    return repos;
+  },
+});
+
 /** Check if the user's GitHub token has the admin:repo_hook scope. */
 export const checkWebhookScope = action({
   args: {},

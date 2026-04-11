@@ -180,3 +180,22 @@ export async function isRepositoryPrivate(repo: string, token: string): Promise<
   const data: { private?: boolean } = await res.json();
   return data.private ?? false;
 }
+
+/** Verify the authenticated user has push access to a repo. Throws on failure (fail-closed). */
+export async function verifyRepoAccess(repo: string, token: string): Promise<void> {
+  const res = await fetch(`https://api.github.com/repos/${repo}`, {
+    headers: githubApiHeaders(token),
+  });
+
+  if (res.status === 404) {
+    throw new Error("Repository not found or you don't have access");
+  }
+  if (!res.ok) {
+    throw new Error("Could not verify repository access");
+  }
+
+  const data: { permissions?: { push?: boolean } } = await res.json();
+  if (!data.permissions?.push) {
+    throw new Error("You don't have write access to this repository");
+  }
+}
