@@ -61,6 +61,25 @@ describe("comments.create", () => {
       t.mutation(api.comments.create, { commitmentId, text: "Anonymous" }),
     ).rejects.toThrow("Not authenticated");
   });
+
+  test("throws for empty text without attachments", async () => {
+    const t = testCtx();
+    const { as, commitmentId } = await setupUserWithCommitment(t);
+
+    await expect(as.mutation(api.comments.create, { commitmentId, text: "   " })).rejects.toThrow(
+      "Comment cannot be empty",
+    );
+  });
+
+  test("throws for text exceeding max length", async () => {
+    const t = testCtx();
+    const { as, commitmentId } = await setupUserWithCommitment(t);
+
+    const longText = "a".repeat(2001);
+    await expect(
+      as.mutation(api.comments.create, { commitmentId, text: longText }),
+    ).rejects.toThrow("Comment text is too long");
+  });
 });
 
 describe("comments.remove", () => {
@@ -192,5 +211,20 @@ describe("comments.update", () => {
     await expect(as.mutation(api.comments.update, { id: commentId, text: "   " })).rejects.toThrow(
       "Text cannot be empty",
     );
+  });
+
+  test("throws for text exceeding max length", async () => {
+    const t = testCtx();
+    const { as, commitmentId } = await setupUserWithCommitment(t);
+
+    const commentId = await as.mutation(api.comments.create, {
+      commitmentId,
+      text: "Original",
+    });
+
+    const longText = "a".repeat(2001);
+    await expect(
+      as.mutation(api.comments.update, { id: commentId, text: longText }),
+    ).rejects.toThrow("Comment text is too long");
   });
 });

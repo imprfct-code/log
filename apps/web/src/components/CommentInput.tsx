@@ -21,6 +21,7 @@ const ALL_MEDIA_TYPES = [...IMAGE_TYPES, ...VIDEO_TYPES];
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 50 * 1024 * 1024;
 const COMMENT_MAX_ATTACHMENTS = 2;
+const COMMENT_MAX_LENGTH = 2000;
 
 interface PendingAttachment {
   key: string;
@@ -295,6 +296,7 @@ export function CommentInput({
         autoFocus={autoFocus || isEditing}
         aria-label={isEditing ? "Edit comment" : "Write a comment"}
         rows={1}
+        maxLength={COMMENT_MAX_LENGTH}
         className="w-full resize-none border-none bg-transparent font-mono text-xs text-foreground placeholder:text-[#444] focus:outline-none"
         style={{ minHeight: "24px" }}
       />

@@ -12,7 +12,10 @@ export function BoostButton({
   initialCount: number;
 }) {
   const { isAuthenticated } = useConvexAuth();
-  const serverBoosted = useQuery(api.boosts.hasBoosted, { commitmentId });
+  const serverBoosted = useQuery(
+    api.boosts.hasBoosted,
+    isAuthenticated ? { commitmentId } : "skip",
+  );
   const toggle = useMutation(api.boosts.toggle);
 
   const [optimistic, setOptimistic] = useState<{ boosted: boolean; count: number } | null>(null);
