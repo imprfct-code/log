@@ -21,11 +21,16 @@ export function BoostButton({
   const [optimistic, setOptimistic] = useState<{ boosted: boolean; count: number } | null>(null);
   const [pulsing, setPulsing] = useState(false);
   const pulseTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const prevCountRef = useRef(initialCount);
 
-  // Clear optimistic state when server catches up
+  // Clear optimistic state only when the parent count has actually caught up,
+  // not just when the boolean flips (they arrive from different subscriptions)
   useEffect(() => {
-    setOptimistic(null);
-  }, [serverBoosted]);
+    if (prevCountRef.current !== initialCount) {
+      prevCountRef.current = initialCount;
+      setOptimistic(null);
+    }
+  }, [serverBoosted, initialCount]);
 
   // Cleanup pulse timer on unmount
   useEffect(() => {

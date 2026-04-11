@@ -309,11 +309,15 @@ export const listByCommitment = query({
         result.page.map(async (e) => {
           const redacted = redactEntry(e, flags, commitment.isPrivate, effectiveAuthor);
 
-          const commentData = await fetchCommentDataForEntry(ctx, e._id, e.commentCount);
+          // Don't leak comments or attachments for redacted entries (private commits/ships)
+          const isContentHidden = !flags.showMessages && e.type !== "post";
+          const commentData = isContentHidden
+            ? []
+            : await fetchCommentDataForEntry(ctx, e._id, e.commentCount);
 
           return {
             ...redacted,
-            resolvedAttachments: await resolveAttachments(e.attachments),
+            resolvedAttachments: isContentHidden ? [] : await resolveAttachments(e.attachments),
             commentData,
           };
         }),

@@ -58,14 +58,14 @@ export function CommentThread({
               <span className="text-[11px] text-[#333]">{comment.time}</span>
 
               {isOwn && !isEditing && (
-                <div className="flex items-center gap-2 text-[11px] opacity-0 transition-opacity group-hover/comment:opacity-100">
+                <div className="flex items-center gap-2 text-[11px] opacity-0 transition-opacity group-hover/comment:opacity-100 group-focus-within/comment:opacity-100">
                   <button
                     type="button"
                     onClick={() => {
                       setEditingId(comment._id);
                       setConfirmDeleteId(null);
                     }}
-                    className="flex cursor-pointer items-center border-none bg-transparent text-[#333] transition-colors hover:text-muted-foreground"
+                    className="flex cursor-pointer items-center border-none bg-transparent text-[#333] transition-colors hover:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
                     aria-label="Edit comment"
                   >
                     <Pencil size={10} />
@@ -76,14 +76,14 @@ export function CommentThread({
                         type="button"
                         disabled={isDeleting}
                         onClick={() => void handleDelete(comment._id)}
-                        className="cursor-pointer border-none bg-transparent text-[11px] text-destructive transition-colors hover:text-destructive/80 disabled:pointer-events-none disabled:opacity-40"
+                        className="cursor-pointer border-none bg-transparent text-[11px] text-destructive transition-colors hover:text-destructive/80 disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
                       >
                         {isDeleting ? "deleting..." : "confirm"}
                       </button>
                       <button
                         type="button"
                         onClick={() => setConfirmDeleteId(null)}
-                        className="cursor-pointer border-none bg-transparent text-[11px] text-[#333] transition-colors hover:text-muted-foreground"
+                        className="cursor-pointer border-none bg-transparent text-[11px] text-[#333] transition-colors hover:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
                       >
                         cancel
                       </button>
@@ -92,7 +92,7 @@ export function CommentThread({
                     <button
                       type="button"
                       onClick={() => setConfirmDeleteId(comment._id)}
-                      className="flex cursor-pointer items-center border-none bg-transparent text-[#333] transition-colors hover:text-destructive"
+                      className="flex cursor-pointer items-center border-none bg-transparent text-[#333] transition-colors hover:text-destructive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
                       aria-label="Delete comment"
                     >
                       <Trash2 size={10} />

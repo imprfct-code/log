@@ -23,6 +23,18 @@ function sanitizeAttachments(attachments?: (typeof attachmentValidator.type)[]) 
   }));
 }
 
+function validateAttachmentOwnership(
+  attachments: (typeof attachmentValidator.type)[] | undefined,
+  userId: Id<"users">,
+) {
+  if (!attachments || attachments.length === 0) return;
+  for (const att of attachments) {
+    if (!att.key.startsWith(`uploads/${userId}/`)) {
+      throw new Error("Not authorized to use this attachment");
+    }
+  }
+}
+
 /** Fetch resolved comment data for a devlog entry. Shared by commitments.ts and devlog.ts. */
 export async function fetchCommentDataForEntry(
   ctx: QueryCtx,
@@ -76,6 +88,8 @@ export const create = mutation({
     if (attachments && attachments.length > MAX_COMMENT_ATTACHMENTS) {
       throw new Error(`Comments support up to ${MAX_COMMENT_ATTACHMENTS} attachments`);
     }
+
+    validateAttachmentOwnership(attachments, user._id);
 
     const commitment = await ctx.db.get(commitmentId);
     if (!commitment) throw new Error("Commitment not found");
@@ -166,6 +180,8 @@ export const update = mutation({
     if (attachments && attachments.length > MAX_COMMENT_ATTACHMENTS) {
       throw new Error(`Comments support up to ${MAX_COMMENT_ATTACHMENTS} attachments`);
     }
+
+    validateAttachmentOwnership(attachments, user._id);
 
     // Delete removed attachments from R2 (best-effort)
     if (attachments !== undefined) {

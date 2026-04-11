@@ -31,7 +31,6 @@ export function ProfileScreen() {
     const released = profile.shipped.map((c) => ({
       ...c,
       status: "shipped" as const,
-      boostCount: c.boostCount,
       commentCount: 0,
     }));
     const building = profile.active.map((c) => ({

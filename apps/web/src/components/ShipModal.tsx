@@ -111,7 +111,14 @@ export function ShipModal({
     try {
       const toValidate = /^https?:\/\//i.test(raw) ? raw : "https://" + raw;
       const parsed = new URL(toValidate);
-      if (!parsed.hostname.includes(".")) return "enter a valid url, e.g. example.com";
+      const hostname = parsed.hostname;
+      // Allow localhost, IPv4 (192.168.1.1), and IPv6 addresses, otherwise require a dot
+      const isLocalhost = hostname === "localhost";
+      const isIPv4 = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname);
+      const isIPv6 = hostname.startsWith("[") && hostname.endsWith("]");
+      if (!isLocalhost && !isIPv4 && !isIPv6 && !hostname.includes(".")) {
+        return "enter a valid url, e.g. example.com";
+      }
       return null;
     } catch {
       return "enter a valid url, e.g. example.com";

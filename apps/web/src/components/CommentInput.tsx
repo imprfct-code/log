@@ -115,6 +115,7 @@ export function CommentInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inFlightRef = useRef(0);
   const blobUrlsRef = useRef<Set<string>>(new Set());
+  const uploadedKeysRef = useRef<Set<string>>(new Set());
 
   // Auto-dismiss errors
   useEffect(() => {
@@ -136,14 +137,18 @@ export function CommentInput({
     if (isEditing) textareaRef.current?.focus();
   }, [isEditing]);
 
-  // Revoke blob URLs on unmount
+  // Revoke blob URLs and delete unsaved R2 objects on unmount
   useEffect(() => {
     return () => {
       for (const url of blobUrlsRef.current) {
         URL.revokeObjectURL(url);
       }
+      // Delete orphaned R2 objects that weren't saved
+      for (const key of uploadedKeysRef.current) {
+        void deleteR2Object({ key }).catch(() => {});
+      }
     };
-  }, []);
+  }, [deleteR2Object]);
 
   const uploadSingle = useCallback(
     async (file: File) => {
@@ -167,6 +172,7 @@ export function CommentInput({
           uploadFile(file),
           isVideo ? getVideoDuration(file) : Promise.resolve(undefined),
         ]);
+        uploadedKeysRef.current.add(key);
         const previewUrl = URL.createObjectURL(file);
         blobUrlsRef.current.add(previewUrl);
         setAttachments((prev) => [
@@ -199,6 +205,7 @@ export function CommentInput({
     }
     // Only delete from R2 for newly uploaded files, not existing ones
     if (!att.isExisting) {
+      uploadedKeysRef.current.delete(att.key);
       void deleteR2Object({ key: att.key }).catch(() => {});
     }
     setAttachments((prev) => prev.filter((_, i) => i !== index));
@@ -228,6 +235,7 @@ export function CommentInput({
           text: trimmed,
           attachments: atts,
         });
+        uploadedKeysRef.current.clear();
         onEditDone?.();
       } else {
         await createComment({
@@ -236,6 +244,7 @@ export function CommentInput({
           text: trimmed,
           attachments: atts.length > 0 ? atts : undefined,
         });
+        uploadedKeysRef.current.clear();
         setText("");
         setAttachments([]);
       }

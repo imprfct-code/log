@@ -160,7 +160,11 @@ export const listFeed = query({
           entries.slice(0, 4).map(async (e) => {
             const entry = redactEntry(e, flags, commitment.isPrivate, isAuthor);
 
-            const commentData = await fetchCommentDataForEntry(ctx, e._id, e.commentCount);
+            // Don't leak comments for redacted entries (private commits/ships)
+            const isContentHidden = !flags.showMessages && e.type !== "post";
+            const commentData = isContentHidden
+              ? []
+              : await fetchCommentDataForEntry(ctx, e._id, e.commentCount);
 
             return {
               ...entry,
