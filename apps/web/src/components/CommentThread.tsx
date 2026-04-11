@@ -117,9 +117,7 @@ export function CommentThread({
               </div>
             ) : (
               <>
-                {comment.text && (
-                  <div className="text-[13px] text-muted-foreground">{comment.text}</div>
-                )}
+                {comment.text && <CommentBody text={comment.text} />}
                 {comment.attachments && comment.attachments.length > 0 && (
                   <AttachmentGrid attachments={comment.attachments} />
                 )}
@@ -132,6 +130,28 @@ export function CommentThread({
         <div className={comments.length > 0 ? "mt-2" : ""}>
           <CommentInput commitmentId={commitmentId} devlogEntryId={devlogEntryId} />
         </div>
+      )}
+    </div>
+  );
+}
+
+const CLAMP_CHARS = 280;
+
+function CommentBody({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = text.length > CLAMP_CHARS;
+
+  return (
+    <div className="text-[13px] text-muted-foreground">
+      <div className={!expanded && isLong ? "line-clamp-4" : ""}>{text}</div>
+      {isLong && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-0.5 cursor-pointer border-none bg-transparent p-0 font-mono text-[11px] text-[#444] transition-colors hover:text-muted-foreground"
+        >
+          {expanded ? "show less" : "show more"}
+        </button>
       )}
     </div>
   );

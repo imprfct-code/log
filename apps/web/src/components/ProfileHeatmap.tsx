@@ -15,6 +15,7 @@ type HeatmapCell = {
   total: number;
   level: number;
   isPadding?: boolean;
+  isFuture?: boolean;
 };
 
 const LEVEL_COLORS = [
@@ -47,13 +48,16 @@ function buildGrid(data: HeatmapDay[]): { grid: HeatmapCell[][]; total: number }
     return { grid: [], total: 0 };
   }
 
+  const today = new Date().toISOString().slice(0, 10);
   let total = 0;
   const cells: HeatmapCell[] = data.map((d) => {
+    const future = d.date > today;
     const t = d.commits + d.posts;
-    total += t;
-    // Ship → max level, else normal activity level
+    if (!future) total += t;
     let level: number;
-    if (d.shipped) {
+    if (future) {
+      level = 0;
+    } else if (d.shipped) {
       level = 4;
     } else {
       level = t === 0 ? 0 : t <= 1 ? 1 : t <= 2 ? 2 : t <= 4 ? 3 : 4;
@@ -64,6 +68,7 @@ function buildGrid(data: HeatmapDay[]): { grid: HeatmapCell[][]; total: number }
       shipped: d.shipped,
       total: t,
       level,
+      isFuture: future,
     };
   });
 
@@ -161,7 +166,7 @@ export function ProfileHeatmap({ data }: { data: HeatmapDay[] }) {
     <div>
       <div className="mb-2 flex items-baseline justify-between">
         <span className="text-[11px] text-muted-foreground">
-          {total} contribution{total !== 1 ? "s" : ""} in the last year
+          {total} contribution{total !== 1 ? "s" : ""} in {new Date().getFullYear()}
         </span>
         <div className="flex items-center gap-3 text-[9px] text-muted-foreground">
           <span className="flex items-center gap-1">
@@ -190,10 +195,14 @@ export function ProfileHeatmap({ data }: { data: HeatmapDay[] }) {
                 <div
                   key={di}
                   data-hw={`${wi},${di}`}
-                  data-label={cell.isPadding ? undefined : cellTooltip(cell)}
+                  data-label={cell.isPadding || cell.isFuture ? undefined : cellTooltip(cell)}
                   className={cn(
                     "aspect-square w-full heatmap-cell",
-                    cell.shipped ? RELEASE_COLORS[cell.level] : LEVEL_COLORS[cell.level],
+                    cell.isFuture
+                      ? "bg-[#0d0d0d]"
+                      : cell.shipped
+                        ? RELEASE_COLORS[cell.level]
+                        : LEVEL_COLORS[cell.level],
                   )}
                   style={{ animationDelay: `${wi * 20}ms` }}
                 />
