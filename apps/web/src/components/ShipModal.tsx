@@ -116,7 +116,7 @@ export function ShipModal({
       if (
         host === "localhost" ||
         /^\d{1,3}(\.\d{1,3}){3}$/.test(host) ||
-        host.includes(":") ||
+        parsed.port !== "" ||
         !host.includes(".")
       ) {
         return "enter a valid url, e.g. example.com";
