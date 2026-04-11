@@ -37,9 +37,10 @@ interface RawDevlogEntry {
       key: string;
       type: "image" | "video";
       filename: string;
-      inline: boolean;
+      hasMarkdownRef?: boolean;
       cover?: boolean;
       duration?: number;
+      widthPercent?: number;
     }>;
   }>;
   _creationTime: number;
@@ -48,9 +49,10 @@ interface RawDevlogEntry {
     key: string;
     type: "image" | "video";
     filename: string;
-    inline: boolean;
+    hasMarkdownRef: boolean;
     cover?: boolean;
     duration?: number;
+    widthPercent?: number;
   }>;
 }
 

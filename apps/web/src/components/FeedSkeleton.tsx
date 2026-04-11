@@ -71,7 +71,7 @@ const CARDS = [
   },
   {
     id: 3,
-    meta: { user: "w-18", repo: "w-24" },
+    meta: { user: "w-16", repo: "w-24" },
     title: "w-5/12",
     entries: [
       { id: 0, hash: "w-12", msg: "max-w-[48%]", time: "w-8" },
@@ -80,7 +80,7 @@ const CARDS = [
   },
   {
     id: 4,
-    meta: { user: "w-14", repo: "w-30" },
+    meta: { user: "w-14", repo: "w-28" },
     title: "w-7/12",
     entries: [
       { id: 0, hash: "w-12", msg: "max-w-[42%]", time: "w-6" },

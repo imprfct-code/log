@@ -105,6 +105,28 @@ export const update = mutation({
     const trimmed = text.trim();
     if (!trimmed) throw new Error("Text cannot be empty");
 
+    if (attachments && attachments.length > MAX_COMMENT_ATTACHMENTS) {
+      throw new Error(`Comments support up to ${MAX_COMMENT_ATTACHMENTS} attachments`);
+    }
+
+    // Delete removed attachments from R2 (best-effort)
+    if (attachments !== undefined) {
+      const oldKeys = new Set((comment.attachments ?? []).map((a) => a.key));
+      const newKeys = new Set(attachments.map((a) => a.key));
+      for (const oldKey of oldKeys) {
+        if (!newKeys.has(oldKey)) {
+          try {
+            await r2.deleteObject(ctx, oldKey);
+          } catch (err) {
+            console.error("Failed to delete R2 object during comment update", {
+              key: oldKey,
+              err,
+            });
+          }
+        }
+      }
+    }
+
     const patch: { text: string; attachments?: typeof attachments } = { text: trimmed };
     if (attachments !== undefined) {
       patch.attachments = attachments;
