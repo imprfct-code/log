@@ -15,7 +15,7 @@ describe("commitments.create", () => {
       text: "Build Log",
       status: "building",
       commentCount: 0,
-      respectCount: 0,
+      boostCount: 0,
       activity: [0, 0, 0, 0, 0, 0, 0],
     });
   });

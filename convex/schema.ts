@@ -48,7 +48,7 @@ export default defineSchema({
     initialSyncStatus: v.optional(v.union(v.literal("syncing"), v.literal("ready"))),
     syncCurrentBranch: v.optional(v.string()),
     commentCount: v.number(),
-    respectCount: v.number(),
+    boostCount: v.number(),
     lastActivityAt: v.number(),
     activity: v.array(v.number()),
   })
@@ -99,7 +99,7 @@ export default defineSchema({
     .index("by_commitmentId", ["commitmentId"])
     .index("by_devlogEntryId", ["devlogEntryId"]),
 
-  respects: defineTable({
+  boosts: defineTable({
     userId: v.id("users"),
     commitmentId: v.id("commitments"),
   })

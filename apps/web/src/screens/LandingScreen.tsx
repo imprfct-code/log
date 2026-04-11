@@ -64,7 +64,7 @@ const PREVIEW_COMMITMENT: Commitment = {
   showBranches: true,
   day: 7,
   comments: 0,
-  respects: 12,
+  boosts: 12,
   status: "building",
   activity: [0, 2, 1, 0, 3, 1, 2],
   devlog: [

@@ -211,7 +211,7 @@ export const getProfile = query({
       .withIndex("by_userId_and_status", (q) => q.eq("userId", user._id))
       .collect();
 
-    let totalRespects = 0;
+    let totalBoosts = 0;
     let totalShips = 0;
     let activeCount = 0;
     for (const c of allCommitmentsForTotals) {
@@ -220,7 +220,7 @@ export const getProfile = query({
       } else {
         activeCount++;
       }
-      totalRespects += c.respectCount;
+      totalBoosts += c.boostCount;
     }
 
     // Get paginated list for display
@@ -235,7 +235,7 @@ export const getProfile = query({
       text: string;
       repo?: string;
       shipUrl?: string;
-      respectCount: number;
+      boostCount: number;
       shippedIn: string;
       activity: number[];
       _creationTime: number;
@@ -293,7 +293,7 @@ export const getProfile = query({
           text: c.text,
           repo,
           shipUrl: c.isPrivate && !isOwner ? undefined : c.shipUrl,
-          respectCount: c.respectCount,
+          boostCount: c.boostCount,
           shippedIn,
           activity,
           _creationTime: c._creationTime,
@@ -335,7 +335,7 @@ export const getProfile = query({
       stats: {
         totalShips,
         activeCount,
-        totalRespects,
+        totalBoosts,
       },
       shipped,
       active,

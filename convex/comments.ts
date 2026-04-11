@@ -103,7 +103,10 @@ export const update = mutation({
     if (comment.userId !== user._id) throw new Error("Not the owner");
 
     const trimmed = text.trim();
-    if (!trimmed) throw new Error("Text cannot be empty");
+    const hasAttachments = attachments
+      ? attachments.length > 0
+      : (comment.attachments ?? []).length > 0;
+    if (!trimmed && !hasAttachments) throw new Error("Text cannot be empty");
 
     if (attachments && attachments.length > MAX_COMMENT_ATTACHMENTS) {
       throw new Error(`Comments support up to ${MAX_COMMENT_ATTACHMENTS} attachments`);

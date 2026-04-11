@@ -6,6 +6,7 @@ import type { Id } from "@convex/_generated/dataModel";
 import { Eye, GitBranch, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ActivitySparkline } from "@/components/ActivitySparkline";
+import { BoostButton } from "@/components/BoostButton";
 import { CommitmentMeta } from "@/components/CommitmentMeta";
 import { ConnectRepoForm } from "@/components/ConnectRepoForm";
 import { CreatePostForm } from "@/components/CreatePostForm";
@@ -208,7 +209,9 @@ export function CommitmentDetailScreen() {
         {!isSyncing && (
           <div className="mb-3 flex items-center gap-4 text-[11px] text-muted-foreground">
             <span>{commitment.commentCount} comments</span>
-            <span>{commitment.respectCount} respects</span>
+            {commitment.status === "shipped" && (
+              <BoostButton commitmentId={commitment._id} initialCount={commitment.boostCount} />
+            )}
             {canSync && (
               <button
                 type="button"

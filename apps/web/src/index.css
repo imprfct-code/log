@@ -29,6 +29,10 @@
   --color-release: #5cb870;
   --color-release-soft: #5cb87022;
 
+  /* Boost (amber) */
+  --color-boost: #e5a440;
+  --color-boost-soft: #e5a44022;
+
   /* Primary / Secondary */
   --color-primary: #e8e8e8;
   --color-primary-foreground: #0a0a0a;
@@ -292,7 +296,7 @@
   transform: scaleX(0);
 }
 
-@keyframes respect-pulse {
+@keyframes boost-pulse {
   0% {
     transform: scale(1);
   }
@@ -304,8 +308,8 @@
   }
 }
 
-.respect-pulse {
-  animation: respect-pulse 0.3s ease;
+.boost-pulse {
+  animation: boost-pulse 0.3s ease;
 }
 
 /* ── Ship modal animations ── */
@@ -646,7 +650,7 @@
 
   .landing-orb,
   .landing-cursor,
-  .respect-pulse,
+  .boost-pulse,
   .pulse-dot,
   .pulse-dot-release,
   .commit-pulse,

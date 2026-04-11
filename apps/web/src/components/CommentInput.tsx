@@ -113,6 +113,7 @@ export function CommentInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inFlightRef = useRef(0);
+  const blobUrlsRef = useRef<Set<string>>(new Set());
 
   // Auto-dismiss errors
   useEffect(() => {
@@ -136,13 +137,12 @@ export function CommentInput({
 
   // Revoke blob URLs on unmount
   useEffect(() => {
-    const current = attachments;
     return () => {
-      for (const att of current) {
-        if (att.previewUrl.startsWith("blob:")) URL.revokeObjectURL(att.previewUrl);
+      for (const url of blobUrlsRef.current) {
+        URL.revokeObjectURL(url);
       }
     };
-  }, [attachments]);
+  }, []);
 
   const uploadSingle = useCallback(
     async (file: File) => {
@@ -167,6 +167,7 @@ export function CommentInput({
           isVideo ? getVideoDuration(file) : Promise.resolve(undefined),
         ]);
         const previewUrl = URL.createObjectURL(file);
+        blobUrlsRef.current.add(previewUrl);
         setAttachments((prev) => [
           ...prev,
           {
@@ -191,7 +192,10 @@ export function CommentInput({
   function removeAttachment(index: number) {
     const att = attachments[index];
     if (!att) return;
-    if (att.previewUrl.startsWith("blob:")) URL.revokeObjectURL(att.previewUrl);
+    if (att.previewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(att.previewUrl);
+      blobUrlsRef.current.delete(att.previewUrl);
+    }
     // Only delete from R2 for newly uploaded files, not existing ones
     if (!att.isExisting) {
       void deleteR2Object({ key: att.key }).catch(() => {});

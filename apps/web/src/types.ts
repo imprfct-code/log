@@ -53,7 +53,7 @@ export interface Commitment {
   day: number;
   comments: number;
   devlog: DevlogEntry[];
-  respects: number;
+  boosts: number;
   status: "building" | "shipped";
   shipUrl?: string;
   shipNote?: string;

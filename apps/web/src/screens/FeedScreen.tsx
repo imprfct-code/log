@@ -66,7 +66,7 @@ interface RawFeedItem {
   initialSyncStatus?: "syncing" | "ready";
   activity: number[];
   commentCount: number;
-  respectCount: number;
+  boostCount: number;
   _creationTime: number;
   firstEntryAt?: number;
   showMessages: boolean;
@@ -123,7 +123,7 @@ function toCommitment(item: RawFeedItem): Commitment {
     day: daysSince(item.firstEntryAt ?? item._creationTime),
     comments: item.commentCount,
     devlog: (item.recentEntries ?? []).map((e) => toDevlogEntry(e)),
-    respects: item.respectCount,
+    boosts: item.boostCount,
     status: item.status,
     shipUrl: item.shipUrl,
     shipNote: item.shipNote,

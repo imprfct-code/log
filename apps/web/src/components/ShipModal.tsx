@@ -110,10 +110,11 @@ export function ShipModal({
   function validateUrl(raw: string): string | null {
     try {
       const toValidate = /^https?:\/\//i.test(raw) ? raw : "https://" + raw;
-      new URL(toValidate);
+      const parsed = new URL(toValidate);
+      if (!parsed.hostname.includes(".")) return "enter a valid url, e.g. example.com";
       return null;
     } catch {
-      return "invalid url";
+      return "enter a valid url, e.g. example.com";
     }
   }
 
@@ -202,6 +203,10 @@ export function ShipModal({
             submitting={submitting}
             onBack={() => setStep("reflect")}
             onSubmit={() => void handleSubmit()}
+            onValidate={(raw) => {
+              const err = validateUrl(raw);
+              if (err) setError(err);
+            }}
           />
         )}
 
@@ -365,6 +370,7 @@ function DetailsStep({
   submitting,
   onBack,
   onSubmit,
+  onValidate,
 }: {
   url: string;
   onUrlChange: (v: string) => void;
@@ -376,6 +382,7 @@ function DetailsStep({
   submitting: boolean;
   onBack: () => void;
   onSubmit: () => void;
+  onValidate: (value: string) => void;
 }) {
   return (
     <div className="ship-step-in opacity-0">
@@ -388,11 +395,20 @@ function DetailsStep({
           <label htmlFor="ship-url" className="mb-1.5 block text-[11px] text-muted-foreground">
             url <span className="text-accent">*</span>
           </label>
-          <div className="border-b border-border-strong transition-colors focus-within:border-release">
+          <div
+            className={cn(
+              "border-b transition-colors focus-within:border-release",
+              error ? "border-destructive" : "border-border-strong",
+            )}
+          >
             <input
               id="ship-url"
               value={url}
               onChange={(e) => onUrlChange(e.target.value)}
+              onBlur={() => {
+                const trimmed = url.trim();
+                if (trimmed) onValidate(trimmed);
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -402,9 +418,16 @@ function DetailsStep({
               placeholder="https://..."
               autoFocus
               autoComplete="off"
+              aria-invalid={!!error}
+              aria-describedby={error ? "ship-url-error" : undefined}
               className="w-full bg-transparent px-1 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
             />
           </div>
+          {error && (
+            <p id="ship-url-error" role="alert" className="mt-1.5 text-[11px] text-destructive">
+              {error}
+            </p>
+          )}
         </div>
 
         <div>
@@ -461,12 +484,6 @@ function DetailsStep({
             {keepBuilding ? "ship a version — keep the devlog going" : "release your project"}
           </p>
         </div>
-
-        {error && (
-          <p role="alert" className="text-[12px] text-destructive">
-            {error}
-          </p>
-        )}
       </div>
 
       <div className="mt-8 flex items-center justify-between">
