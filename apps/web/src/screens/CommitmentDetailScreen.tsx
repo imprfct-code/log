@@ -14,7 +14,7 @@ import { DevlogTimeline } from "@/components/DevlogTimeline";
 import { ShipModal } from "@/components/ShipModal";
 import { AbandonModal } from "@/components/AbandonModal";
 import { Button } from "@/components/ui/button";
-import { COMMITMENT_TITLE_MAX_LENGTH } from "@convex/commitments";
+import { COMMITMENT_TITLE_MAX_LENGTH } from "@convex/shared";
 import { daysSince, formatShippedIn, formatTimeAgo } from "@/lib/formatTime";
 import type { DevlogEntry as DevlogEntryType } from "@/types";
 

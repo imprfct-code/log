@@ -386,7 +386,7 @@ export const connectRepo = action({
   },
 });
 
-export const COMMITMENT_TITLE_MAX_LENGTH = 80;
+import { COMMITMENT_TITLE_MAX_LENGTH } from "./shared";
 
 function assertCanEditCommitment(commitment: Doc<"commitments">, userId: Id<"users">) {
   if (commitment.userId !== userId) throw new Error("Not the owner");
