@@ -315,6 +315,29 @@ export const connectRepo = mutation({
   },
 });
 
+export const updateText = mutation({
+  args: {
+    id: v.id("commitments"),
+    text: v.string(),
+  },
+  handler: async (ctx, { id, text }) => {
+    const user = await getUserByToken(ctx);
+    if (!user) throw new Error("Not authenticated");
+
+    const commitment = await ctx.db.get(id);
+    if (!commitment) throw new Error("Commitment not found");
+    if (commitment.userId !== user._id) throw new Error("Not the owner");
+    if (commitment.status !== "building")
+      throw new Error("Cannot edit a shipped or abandoned commitment");
+
+    const trimmed = text.trim();
+    if (!trimmed) throw new Error("Text must not be empty");
+    if (trimmed.length > 80) throw new Error("Text must be 80 characters or less");
+
+    await ctx.db.patch(id, { text: trimmed });
+  },
+});
+
 /** Mark a commitment as shipped with a URL and optional note. If keepBuilding is false, mark as fully completed. */
 export const ship = mutation({
   args: {
