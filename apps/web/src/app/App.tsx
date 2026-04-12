@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router";
 import { NavHeader } from "@/components/NavHeader";
 import { RequireAuth } from "@/components/RequireAuth";
 import { FullPageLoader } from "@/components/FullPageLoader";
+import { Footer } from "@/components/Footer";
 
 const LandingScreen = lazy(() =>
   import("@/screens/LandingScreen").then((m) => ({ default: m.LandingScreen })),
@@ -38,12 +39,19 @@ const NotFoundScreen = lazy(() =>
 const SSOCallbackScreen = lazy(() =>
   import("@/screens/SSOCallbackScreen").then((m) => ({ default: m.SSOCallbackScreen })),
 );
+const PrivacyScreen = lazy(() =>
+  import("@/screens/PrivacyScreen").then((m) => ({ default: m.PrivacyScreen })),
+);
+const TermsScreen = lazy(() =>
+  import("@/screens/TermsScreen").then((m) => ({ default: m.TermsScreen })),
+);
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex min-h-dvh flex-col bg-background">
       <NavHeader />
-      <main>{children}</main>
+      <main className="flex-1">{children}</main>
+      <Footer />
     </div>
   );
 }
@@ -114,6 +122,22 @@ export function App() {
                 <RequireAuth>
                   <ShipFlowScreen />
                 </RequireAuth>
+              </Layout>
+            }
+          />
+          <Route
+            path="privacy"
+            element={
+              <Layout>
+                <PrivacyScreen />
+              </Layout>
+            }
+          />
+          <Route
+            path="terms"
+            element={
+              <Layout>
+                <TermsScreen />
               </Layout>
             }
           />

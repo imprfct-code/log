@@ -11,6 +11,7 @@ import { CommitCard } from "@/components/CommitCard";
 import { useReveal } from "@/hooks/useReveal";
 import { useGithubLogin } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { Footer } from "@/components/Footer";
 import type { Id } from "@convex/_generated/dataModel";
 import type { Commitment } from "@/types";
 
@@ -301,6 +302,8 @@ export function LandingScreen() {
             <GitHubLoginButton isLoggingIn={isLoggingIn} onClick={login} />
           </div>
         </div>
+
+        <Footer />
       </div>
     </div>
   );
