@@ -111,6 +111,7 @@ export function DeleteAccountModal({
   );
 }
 
+/** First step of deletion flow: explains consequences of account deletion. */
 function WarningStep({ onContinue, onClose }: { onContinue: () => void; onClose: () => void }) {
   return (
     <div>
@@ -152,6 +153,7 @@ function WarningStep({ onContinue, onClose }: { onContinue: () => void; onClose:
   );
 }
 
+/** Second step of deletion flow: requires user to type username to confirm deletion. */
 function ConfirmStep({
   username,
   confirmation,

@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 
+/** Footer with copyright year, Privacy, and Terms links. */
 export function Footer() {
   return (
     <footer className="border-t border-border">
