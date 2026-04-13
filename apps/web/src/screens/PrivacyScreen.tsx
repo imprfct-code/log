@@ -1,4 +1,6 @@
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+import type { ReactNode } from "react";
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="mb-8">
       <h2 className="mb-3 text-sm font-semibold text-foreground-bright">{title}</h2>
