@@ -169,13 +169,20 @@ export const deleteAccount = action({
           if (githubToken) {
             for (const { repo, webhookId } of webhooks) {
               try {
-                await fetch(`https://api.github.com/repos/${repo}/hooks/${webhookId}`, {
+                const res = await fetch(`https://api.github.com/repos/${repo}/hooks/${webhookId}`, {
                   method: "DELETE",
                   headers: {
                     Authorization: `Bearer ${githubToken}`,
                     Accept: "application/vnd.github+json",
                   },
                 });
+                if (!res.ok && res.status !== 404) {
+                  console.error("Failed to remove GitHub webhook", {
+                    repo,
+                    webhookId,
+                    status: res.status,
+                  });
+                }
               } catch (err) {
                 console.error("Failed to remove GitHub webhook", { repo, webhookId, err });
               }
@@ -197,7 +204,6 @@ export const deleteAccount = action({
           console.error("Failed to delete Clerk user", {
             clerkUserId,
             status: res.status,
-            body: await res.text(),
           });
         }
       }

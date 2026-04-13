@@ -117,6 +117,7 @@ export function SettingsScreen() {
   const [bioError, setBioError] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const currentMode: SyncMode = me?.syncMode ?? "polling";
 
@@ -425,6 +426,7 @@ export function SettingsScreen() {
                 disabled={exporting}
                 onClick={async () => {
                   setExporting(true);
+                  setExportError(null);
                   try {
                     const data = await exportMyData({});
                     const json = JSON.stringify(data, null, 2);
@@ -438,6 +440,7 @@ export function SettingsScreen() {
                     URL.revokeObjectURL(url);
                   } catch (e) {
                     console.error("Export failed:", e);
+                    setExportError("Export failed. Please try again.");
                   } finally {
                     setExporting(false);
                   }
@@ -452,6 +455,8 @@ export function SettingsScreen() {
                 {exporting ? "exporting..." : "export"}
               </button>
             </div>
+
+            {exportError && <p className="-mt-2 text-[12px] text-destructive">{exportError}</p>}
 
             <div className="flex items-center justify-between border border-destructive/20 p-4">
               <div className="min-w-0">

@@ -11,7 +11,7 @@ export function PrivacyScreen() {
   return (
     <div className="mx-auto max-w-[720px] px-4 py-6 sm:px-12 sm:py-8">
       <h1 className="mb-2 text-lg font-bold text-foreground-bright">Privacy Policy</h1>
-      <p className="mb-10 text-[12px] text-muted-foreground">Effective date: April 12, 2025</p>
+      <p className="mb-10 text-[12px] text-muted-foreground">Effective date: April 12, 2026</p>
 
       <Section title="1. Who we are">
         <p>

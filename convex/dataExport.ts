@@ -79,6 +79,27 @@ export const gatherUserData = internalQuery({
       .withIndex("by_userId_and_status", (q) => q.eq("userId", userId))
       .collect();
 
+    // Fetch all user comments once, then partition by own vs external commitments
+    const allUserComments = await ctx.db
+      .query("comments")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .collect();
+
+    const ownCommitmentIds = new Set<Id<"commitments">>(commitments.map((c) => c._id));
+
+    const commentsByCommitment = new Map<Id<"commitments">, Doc<"comments">[]>();
+    const externalCommentDocs: Doc<"comments">[] = [];
+
+    for (const c of allUserComments) {
+      if (ownCommitmentIds.has(c.commitmentId)) {
+        const list = commentsByCommitment.get(c.commitmentId) ?? [];
+        list.push(c);
+        commentsByCommitment.set(c.commitmentId, list);
+      } else {
+        externalCommentDocs.push(c);
+      }
+    }
+
     const commitmentData = await Promise.all(
       commitments.map(async (c) => {
         const entries = await ctx.db
@@ -86,13 +107,7 @@ export const gatherUserData = internalQuery({
           .withIndex("by_commitmentId", (q) => q.eq("commitmentId", c._id))
           .collect();
 
-        const comments = await ctx.db
-          .query("comments")
-          .withIndex("by_commitmentId", (q) => q.eq("commitmentId", c._id))
-          .collect();
-
-        // Only include comments by this user on their own commitment
-        const ownComments = comments.filter((cm) => cm.userId === userId);
+        const ownComments = commentsByCommitment.get(c._id) ?? [];
 
         return {
           text: c.text,
@@ -132,23 +147,14 @@ export const gatherUserData = internalQuery({
       }),
     );
 
-    // Comments user left on OTHER people's commitments
-    const allUserComments = await ctx.db
-      .query("comments")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .collect();
-
-    const ownCommitmentIds = new Set<Id<"commitments">>(commitments.map((c) => c._id));
-    const externalComments = allUserComments
-      .filter((c) => !ownCommitmentIds.has(c.commitmentId))
-      .map((c) => ({
-        text: c.text,
-        createdAt: c._creationTime,
-        attachments: (c.attachments ?? []).map((a) => ({
-          filename: a.filename,
-          type: a.type,
-        })),
-      }));
+    const externalComments = externalCommentDocs.map((c) => ({
+      text: c.text,
+      createdAt: c._creationTime,
+      attachments: (c.attachments ?? []).map((a) => ({
+        filename: a.filename,
+        type: a.type,
+      })),
+    }));
 
     // Boosts user gave
     const boosts = await ctx.db
