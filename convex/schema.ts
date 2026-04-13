@@ -98,7 +98,8 @@ export default defineSchema({
     attachments: v.optional(v.array(attachmentValidator)),
   })
     .index("by_commitmentId", ["commitmentId"])
-    .index("by_devlogEntryId", ["devlogEntryId"]),
+    .index("by_devlogEntryId", ["devlogEntryId"])
+    .index("by_userId", ["userId"]),
 
   boosts: defineTable({
     userId: v.id("users"),

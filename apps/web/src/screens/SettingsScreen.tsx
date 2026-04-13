@@ -13,9 +13,11 @@ import {
   MessageSquare,
   Hash,
   GitBranch,
+  Download,
 } from "lucide-react";
 import { GhIcon } from "@/components/Icons";
 import { PrivacyToggle } from "@/components/PrivacyToggle";
+import { DeleteAccountModal } from "@/components/DeleteAccountModal";
 import { cn } from "@/lib/utils";
 
 type SyncMode = "polling" | "webhook";
@@ -102,6 +104,8 @@ export function SettingsScreen() {
   const checkWebhookScope = useAction(api.github.checkWebhookScope);
   const [searchParams, setSearchParams] = useSearchParams();
 
+  const exportMyData = useAction(api.dataExport.exportMyData);
+
   const [saving, setSaving] = useState(false);
   const [authorizing, setAuthorizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -111,6 +115,9 @@ export function SettingsScreen() {
   const [bioSaving, setBioSaving] = useState(false);
   const [bioSaved, setBioSaved] = useState(false);
   const [bioError, setBioError] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const currentMode: SyncMode = me?.syncMode ?? "polling";
 
@@ -399,7 +406,80 @@ export function SettingsScreen() {
             </p>
           </div>
         </SettingsSection>
+
+        {/* Account */}
+        <SettingsSection
+          label="account"
+          description="Export your data or delete your account."
+          delay={180}
+        >
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border border-border p-4">
+              <div className="min-w-0">
+                <p className="text-[13px] font-medium text-foreground-bright">Export my data</p>
+                <p className="mt-0.5 text-[12px] text-muted-foreground">
+                  Download all your data as JSON.
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={exporting}
+                onClick={async () => {
+                  setExporting(true);
+                  setExportError(null);
+                  try {
+                    const data = await exportMyData({});
+                    const json = JSON.stringify(data, null, 2);
+                    const blob = new Blob([json], { type: "application/json" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    const date = new Date().toISOString().slice(0, 10);
+                    a.download = `log-export-${me.username}-${date}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  } catch (e) {
+                    console.error("Export failed:", e);
+                    setExportError("Export failed. Please try again.");
+                  } finally {
+                    setExporting(false);
+                  }
+                }}
+                className="flex shrink-0 cursor-pointer items-center gap-1.5 border border-border bg-transparent px-3 py-1.5 font-mono text-xs text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {exporting ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : (
+                  <Download size={12} />
+                )}
+                {exporting ? "exporting..." : "export"}
+              </button>
+            </div>
+
+            {exportError && <p className="-mt-2 text-[12px] text-destructive">{exportError}</p>}
+
+            <div className="flex items-center justify-between border border-destructive/20 p-4">
+              <div className="min-w-0">
+                <p className="text-[13px] font-medium text-destructive">Delete account</p>
+                <p className="mt-0.5 text-[12px] text-muted-foreground">
+                  Permanently delete your account and all data.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(true)}
+                className="shrink-0 cursor-pointer border border-destructive/30 bg-transparent px-3 py-1.5 font-mono text-xs text-destructive transition-colors hover:border-destructive"
+              >
+                delete
+              </button>
+            </div>
+          </div>
+        </SettingsSection>
       </div>
+
+      {showDeleteModal && (
+        <DeleteAccountModal username={me.username} onClose={() => setShowDeleteModal(false)} />
+      )}
     </div>
   );
 }
