@@ -9,4 +9,9 @@ export default defineConfig({
   run: {
     cache: true,
   },
+  test: {
+    include: ["convex/**/*.test.ts"],
+    exclude: ["convex/testing.test.ts"],
+    environment: "edge-runtime",
+  },
 });

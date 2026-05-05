@@ -1,37 +1,693 @@
-:root {
-  --bg: #0a0a0a;
-  --text: #fafafa;
-  --text-muted: #6b6b6b;
-  --imprfct-accent: #c9787e;
-  --border: #222;
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-  --mono: "SF Mono", ui-monospace, "Cascadia Code", "Fira Code", Consolas, monospace;
+@custom-variant dark (&:is(.dark *));
 
-  color-scheme: dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@theme inline {
+  /* Base */
+  --color-background: #0a0a0a;
+  --color-foreground: #e8e8e8;
+  --color-foreground-bright: #ffffff;
+
+  /* Muted */
+  --color-muted: #1a1a1a;
+  --color-muted-foreground: #666666;
+
+  /* Borders */
+  --color-border: #1a1a1a;
+  --color-border-strong: #2a2a2a;
+  --color-input: #2a2a2a;
+  --color-ring: #c7787a;
+
+  /* Accent (rose) */
+  --color-accent: #c7787a;
+  --color-accent-soft: #c7787a44;
+  --color-accent-foreground: #ffffff;
+
+  /* Release (green) */
+  --color-release: #5cb870;
+  --color-release-soft: #5cb87022;
+
+  /* Boost (amber) */
+  --color-boost: #e5a440;
+  --color-boost-soft: #e5a44022;
+
+  /* Primary / Secondary */
+  --color-primary: #e8e8e8;
+  --color-primary-foreground: #0a0a0a;
+  --color-secondary: #1a1a1a;
+  --color-secondary-foreground: #e8e8e8;
+
+  /* Destructive */
+  --color-destructive: #ef4444;
+
+  /* Card / Popover */
+  --color-card: #0a0a0a;
+  --color-card-foreground: #e8e8e8;
+  --color-popover: #0a0a0a;
+  --color-popover-foreground: #e8e8e8;
+
+  /* Typography — monospace everywhere */
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", "Cascadia Code", monospace;
+  --font-sans: "Geist Mono", ui-monospace, "SF Mono", "Cascadia Code", monospace;
+
+  /* No border radius — sharp edges everywhere */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  --radius-4xl: 0px;
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-mono;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    margin: 0;
+  }
+
+  /* Thin scrollbar for code blocks inside markdown */
+  .markdown-body pre::-webkit-scrollbar {
+    height: 6px;
+  }
+  .markdown-body pre::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .markdown-body pre::-webkit-scrollbar-thumb {
+    background: #26233a;
+  }
+  .markdown-body pre::-webkit-scrollbar-thumb:hover {
+    background: #6e6a86;
+  }
+  .markdown-body pre {
+    scrollbar-width: thin;
+    scrollbar-color: #26233a transparent;
+  }
+
+  /* Reusable thin scrollbar — always reserves space, thumb fades in on hover */
+  .thin-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+  .thin-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .thin-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .thin-scrollbar::-webkit-scrollbar-thumb {
+    background: transparent;
+    transition: background 0.15s;
+  }
+  .thin-scrollbar:hover {
+    scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+  }
+  .thin-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+  }
+  .thin-scrollbar:hover::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
 }
 
-body {
-  margin: 0;
-  font-family: var(--mono);
-  font-size: 15px;
-  line-height: 1.6;
+/* ── Landing page animations ── */
+
+@keyframes landing-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-#root {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 0 24px;
-  min-height: 100svh;
+@keyframes landing-word-in {
+  from {
+    opacity: 0;
+    transform: translateY(110%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landing-line-grow {
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes landing-orb {
+  0%,
+  100% {
+    opacity: 0.06;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 0.14;
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+}
+
+@keyframes landing-cursor {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.landing-up {
+  animation: landing-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.landing-word-in {
+  animation: landing-word-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.landing-line-grow {
+  transform-origin: top;
+  transform: scaleY(0);
+  animation: landing-line-grow 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards;
+}
+
+.landing-orb {
+  position: absolute;
+  top: 15%;
+  left: 65%;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--color-accent) 0%, transparent 70%);
+  opacity: 0.06;
+  pointer-events: none;
+  filter: blur(100px);
+  transform: translate(-50%, -50%);
+  animation: landing-orb 8s ease-in-out infinite;
+}
+
+.landing-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--color-border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-border) 1px, transparent 1px);
+  background-size: 64px 64px;
+  opacity: 0.4;
+  mask-image: radial-gradient(ellipse 60% 40% at 50% 15%, black 10%, transparent 60%);
+  pointer-events: none;
+}
+
+.landing-cursor {
+  animation: landing-cursor 1s step-end infinite;
+}
+
+/* ── Glow card (mouse-follow blob) ── */
+
+.glow-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.glow-card::before {
+  content: "";
+  position: absolute;
+  top: var(--glow-y, 0);
+  left: var(--glow-x, 0);
+  width: 400px;
+  height: 400px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, var(--color-accent) 0%, transparent 70%);
+  opacity: calc(var(--glow-opacity, 0) * 0.15);
+  filter: blur(80px);
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+.landing-cta {
+  transition:
+    transform 150ms ease,
+    box-shadow 250ms ease;
+}
+
+.landing-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 24px var(--color-accent-soft);
+}
+
+.landing-cta:active {
+  transform: translateY(0);
+  transition-duration: 50ms;
+}
+
+.not-found-cta {
+  transition:
+    transform 150ms ease,
+    box-shadow 250ms ease,
+    border-color 200ms ease,
+    color 200ms ease;
+}
+
+.not-found-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px var(--color-accent-soft);
+}
+
+.not-found-cta:active {
+  transform: translateY(0);
+  transition-duration: 50ms;
+}
+
+/* ── Heatmap animation ── */
+
+@keyframes heatmap-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.heatmap-cell {
+  opacity: 0;
+  animation: heatmap-in 0.3s ease forwards;
+  transition: transform 0.12s ease-out;
+  transform-origin: center;
+  will-change: transform;
+}
+
+/* ── Feed animations ── */
+
+@keyframes feed-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.feed-in {
+  animation: feed-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes progress-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(var(--progress, 0));
+  }
+}
+
+.progress-fill {
+  transform-origin: left;
+  animation: progress-fill 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
+  transform: scaleX(0);
+}
+
+@keyframes boost-pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.boost-pulse {
+  animation: boost-pulse 0.3s ease;
+}
+
+/* ── Ship modal animations ── */
+
+@keyframes ship-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ship-step-in {
+  animation: ship-step-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes ship-stat-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.ship-stat-in {
+  animation: ship-stat-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes ship-celebrate {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  60% {
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.ship-celebrate {
+  animation: ship-celebrate 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── Pulse dot (active building indicator) ── */
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--color-accent);
+  }
+  50% {
+    box-shadow: 0 0 0 4px var(--color-accent-soft);
+  }
+}
+
+.pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot-release {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--color-release);
+  }
+  50% {
+    box-shadow: 0 0 0 4px var(--color-release-soft);
+  }
+}
+
+.pulse-dot-release {
+  animation: pulse-dot-release 2s ease-in-out infinite;
+}
+
+@keyframes dots {
+  0% {
+    content: "";
+  }
+  25% {
+    content: ".";
+  }
+  50% {
+    content: "..";
+  }
+  75% {
+    content: "...";
+  }
+}
+
+.dots-loading::after {
+  content: "";
+  animation: dots 1.5s steps(1) infinite;
+}
+
+/* ── Commit preview pulse ── */
+
+@keyframes commit-pulse {
+  0%,
+  100% {
+    border-color: var(--color-border-strong);
+  }
+  50% {
+    border-color: var(--color-accent);
+  }
+}
+
+.commit-pulse {
+  animation: commit-pulse 1.5s ease-in-out 1;
+}
+
+/* ── Skeleton shimmer ── */
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-muted) 25%,
+    var(--color-border-strong) 50%,
+    var(--color-muted) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* ── Image preview hover ── */
+
+@keyframes preview-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.skip-landing-anim .landing-up,
+.skip-landing-anim .landing-word-in {
+  animation: none !important;
+  opacity: 1 !important;
+}
+
+.skip-landing-anim .landing-line-grow {
+  animation: none !important;
+  transform: scaleY(1) !important;
+}
+
+/* ── Plyr video player custom styling ── */
+
+.plyr {
+  --plyr-color-main: var(--color-accent);
+  --plyr-video-control-background: var(--color-background);
+  --plyr-video-progress-buffered-background: var(--color-border-strong);
+  --plyr-video-control-text-color: var(--color-foreground);
+  --plyr-range-track-height: 3px;
+  --plyr-control-radius: 0;
+  --plyr-font-family: var(--font-mono);
+  --plyr-font-size-base: 13px;
+}
+
+.plyr {
+  @apply border border-border overflow-hidden;
+}
+
+.plyr__controls {
+  @apply gap-1 bg-background px-2 py-1;
+}
+
+.plyr__control {
+  @apply border border-transparent transition-colors;
+
+  color: var(--color-foreground);
+  padding: 4px;
+}
+
+.plyr__control:hover,
+.plyr__control.active {
+  @apply border-border-strong;
+
+  color: var(--color-accent);
+}
+
+.plyr__progress input[type="range"] {
+  color: var(--color-accent);
+}
+
+.plyr__time {
+  @apply text-[11px] text-foreground;
+}
+
+.plyr__menu__container {
+  @apply bg-muted border border-border-strong;
+}
+
+.plyr__menu__container [data-plyr="language"] option,
+.plyr__menu__container [data-plyr="speed"] option,
+.plyr__menu__container [data-plyr="quality"] option {
+  @apply bg-muted text-foreground;
+}
+
+.plyr__menu__container [data-plyr="language"] option:checked,
+.plyr__menu__container [data-plyr="speed"] option:checked,
+.plyr__menu__container [data-plyr="quality"] option:checked {
+  @apply bg-accent text-foreground;
+}
+
+.plyr--video .plyr__play-large {
+  @apply bg-white/90;
+}
+
+.plyr--video .plyr__play-large svg {
+  @apply text-black;
+}
+
+.video-player-wrapper {
+  container-type: inline-size;
+}
+
+.video-player-wrapper .plyr {
+  @apply w-full;
+}
+
+/* Hide less important controls when player is narrow */
+@container (max-width: 450px) {
+  .plyr__volume input[type="range"] {
+    display: none !important;
+    width: 0 !important;
+  }
+
+  .plyr__time--duration {
+    display: none !important;
+  }
+}
+
+@container (max-width: 300px) {
+  .plyr__time--current {
+    display: none !important;
+  }
+}
+
+/* ── Video loading overlay ── */
+
+.video-loading-overlay {
+  @apply pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/50;
+
+  backdrop-filter: blur(2px);
+}
+
+.video-loading-bars {
+  @apply flex gap-1;
+}
+
+.video-loading-bars span {
+  @apply block h-4 w-1 bg-accent;
+
+  animation: loading-bar 0.8s ease-in-out infinite;
+}
+
+.video-loading-bars span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.video-loading-bars span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes loading-bar {
+  0%,
+  100% {
+    transform: scaleY(0.4);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+/* ── Inline video play overlay ── */
+
+.video-inline-overlay {
+  @apply absolute inset-0 z-10 flex cursor-pointer items-center justify-center border-none bg-black/30 transition-all duration-200;
+}
+
+.video-inline-overlay:hover {
+  @apply bg-black/50;
+}
+
+.video-inline-play {
+  @apply flex h-12 w-12 items-center justify-center bg-white/90 shadow-lg transition-transform;
+}
+
+.video-inline-overlay:hover .video-inline-play {
+  transform: scale(1.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-up,
+  .landing-word-in,
+  .feed-in {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+
+  .landing-line-grow,
+  .progress-fill {
+    animation: none !important;
+    transform: scaleY(1) !important;
+  }
+
+  .heatmap-cell {
+    animation: none !important;
+    opacity: 1 !important;
+    transition: none !important;
+  }
+
+  .video-loading-bars span {
+    animation: none !important;
+    opacity: 0.6;
+  }
+
+  .landing-orb,
+  .landing-cursor,
+  .boost-pulse,
+  .pulse-dot,
+  .pulse-dot-release,
+  .commit-pulse,
+  .ship-step-in,
+  .ship-stat-in,
+  .ship-celebrate {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+
+  .skeleton {
+    animation: none;
+    background: var(--color-muted);
+  }
 }

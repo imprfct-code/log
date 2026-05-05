@@ -22,6 +22,8 @@ Log — ship-only devlog platform by imprfct. People publicly commit to building
 - `vp fmt --check` — check formatting
 - `vp run -r typecheck` — type check
 - `vp check` — lint + fmt + typecheck
+- `vp test` — run root tests (convex)
+- `vp run -r test` — run workspace tests (apps/web, packages/utils)
 - `pnpm ready` — full pre-push check (fmt + lint + test + build)
 
 ## Project Structure
@@ -73,6 +75,16 @@ oxfmt: double quotes, 2-space indent, 100 char width, trailing commas.
 - Explicit over implicit. Name things clearly, avoid abbreviations.
 - Delete dead code. Don't comment it out, don't leave TODOs for "later".
 - Error handling only at boundaries (user input, API responses). Don't defensively code internal logic.
+
+## Testing
+
+- Cover all important business logic with tests. Pure functions, data transformations, algorithms, validators — if it can break, it should have a test.
+- Tests live colocated with the code: `convex/dates.test.ts` next to `convex/dates.ts`, `formatTime.test.ts` next to `formatTime.ts`.
+- Import test utilities from `vite-plus/test` (`test`, `expect`, `describe`, `vi`, etc.).
+- Run tests: `vp test` (root — convex tests), `vp run -r test` (workspace tests), `pnpm ready` (everything).
+- **Never modify existing tests to make them pass.** If a test fails, the code has a bug — fix the code, not the test. The only exception is when the test itself has a genuine mistake (wrong expectation, outdated after intentional behavior change).
+- **Always run tests before delivering code.** Run `pnpm ready` (fmt + lint + tests + build) as a final check. Pre-commit hooks also run tests automatically.
+- When adding new business logic, write tests for it in the same PR. Don't ship untested logic "to add tests later".
 
 ## Boundaries
 

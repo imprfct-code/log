@@ -36,8 +36,40 @@ jobs:
           echo "environment=$ENV" >> "$GITHUB_OUTPUT"
           echo "is_production=$( [ "$ENV" = "production" ] && echo true || echo false )" >> "$GITHUB_OUTPUT"
 
-  deploy-web:
+  test:
     needs: resolve-env
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: ${{ needs.resolve-env.outputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Generate Convex types
+        run: npx convex codegen
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+      - name: Format
+        run: pnpm run fmt:check
+      - name: Lint
+        run: pnpm run lint
+      - name: Typecheck
+        run: pnpm run typecheck
+      - name: Test — convex
+        run: pnpm test
+      - name: Test — workspaces
+        run: pnpm run -r test
+      - name: Build
+        run: pnpm run build
+      - name: Clean summary
+        run: echo -n > "$GITHUB_STEP_SUMMARY"
+
+  deploy-web:
+    needs: [resolve-env, test]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: ${{ needs.resolve-env.outputs.environment }}
@@ -73,7 +105,7 @@ jobs:
           echo "${{ steps.deploy.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
 
   deploy-convex:
-    needs: resolve-env
+    needs: [resolve-env, test]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: ${{ needs.resolve-env.outputs.environment }}

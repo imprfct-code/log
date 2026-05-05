@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "ready": "vp fmt && vp lint && vp run -r test && vp run -r build",
+    "test": "vp test",
+    "ready": "vp fmt && vp lint && vp test && vp run -r test && vp run -r build",
     "dev": "npx convex dev & vp run web#dev",
     "preview": "vercel env pull .env.production --environment=production --yes && vp run -r build && vp run web#preview",
     "build": "vp run -r build",
@@ -15,8 +16,20 @@
     "check": "vp check",
     "prepare": "vp config"
   },
+  "dependencies": {
+    "@convex-dev/r2": "catalog:",
+    "@vercel/og": "catalog:",
+    "plyr": "catalog:",
+    "react-syntax-highlighter": "catalog:"
+  },
   "devDependencies": {
+    "@edge-runtime/vm": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-syntax-highlighter": "catalog:",
+    "@vercel/node": "catalog:",
     "convex": "catalog:",
+    "convex-test": "catalog:",
+    "react": "catalog:",
     "vite-plus": "catalog:"
   },
   "engines": {

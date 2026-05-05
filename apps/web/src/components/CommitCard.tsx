@@ -1,0 +1,92 @@
+import { Link } from "react-router";
+import type { Commitment } from "@/types";
+import { CommitmentMeta } from "./CommitmentMeta";
+import { DevlogTimeline } from "./DevlogTimeline";
+import { BoostButton } from "./BoostButton";
+import { CommentIcon } from "./Icons";
+
+export function CommitCard({ item, preview }: { item: Commitment; preview?: boolean }) {
+  return (
+    <div>
+      <CommitmentMeta
+        username={item.user}
+        repo={item.repo || undefined}
+        repoHref={item.repo ? `https://github.com/${item.repo}` : undefined}
+        isPrivate={item.isPrivate}
+        activity={item.activity}
+        statusLabel={
+          item.status === "abandoned" ? (
+            <span className="text-muted-foreground/60">abandoned</span>
+          ) : item.status === "shipped" ? (
+            <span className="text-release">released in {item.shippedIn}</span>
+          ) : item.shippedAt ? (
+            <span>
+              <span className="text-release">shipped</span>
+              <span className="text-muted-foreground">
+                {" · "}day <span className="text-accent">{item.day}</span>
+              </span>
+            </span>
+          ) : (
+            <span className="text-muted-foreground">
+              day <span className="text-accent">{item.day}</span>
+            </span>
+          )
+        }
+      />
+
+      {preview ? (
+        <div className="mt-1 mb-1 text-sm font-medium text-foreground">{item.text}</div>
+      ) : (
+        <Link
+          to={`/commitment/${item.id}`}
+          className="mt-1 mb-1 block text-sm font-medium text-foreground no-underline transition-colors hover:text-foreground-bright"
+        >
+          {item.text}
+        </Link>
+      )}
+
+      {item.status === "shipped" && item.shipNote && (
+        <p className="mb-1 truncate text-[11px] italic text-muted-foreground">
+          &ldquo;{item.shipNote}&rdquo;
+        </p>
+      )}
+
+      {(item.comments > 0 || item.status === "shipped") && (
+        <div className="mb-1 flex items-center gap-3 font-mono text-[11px]">
+          {item.comments > 0 && (
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <CommentIcon size={10} color="currentColor" />
+              {item.comments}
+            </span>
+          )}
+          {item.status === "shipped" && (
+            <BoostButton commitmentId={item.id} initialCount={item.boosts} />
+          )}
+        </div>
+      )}
+
+      {item.devlog.length > 0 && (
+        <>
+          <DevlogTimeline
+            entries={item.devlog}
+            commitmentId={item.id}
+            repo={item.repo || undefined}
+            isPrivate={item.isPrivate}
+            showMessages={item.showMessages}
+            showHashes={item.showHashes}
+            showBranches={item.showBranches}
+            status={item.status}
+          />
+          {!preview && item.hasMore && (
+            <Link
+              to={`/commitment/${item.id}`}
+              className="mt-1 block pl-6 font-mono text-[11px] text-muted-foreground no-underline transition-colors hover:text-foreground"
+            >
+              view all
+            </Link>
+          )}
+        </>
+      )}
+    </div>
+  );
+}

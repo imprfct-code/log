@@ -8,13 +8,27 @@
     "build": "tsc -b && vp build",
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
+    "test": "vp test",
     "preview": "vp preview"
   },
   "dependencies": {
+    "@base-ui/react": "catalog:",
     "@clerk/react": "catalog:",
+    "@fontsource-variable/geist-mono": "catalog:",
+    "@tailwindcss/vite": "catalog:",
+    "class-variance-authority": "catalog:",
+    "clsx": "catalog:",
     "convex": "catalog:",
+    "lucide-react": "catalog:",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "react-markdown": "catalog:",
+    "react-router": "catalog:",
+    "remark-gfm": "catalog:",
+    "shadcn": "catalog:",
+    "tailwind-merge": "catalog:",
+    "tailwindcss": "catalog:",
+    "tw-animate-css": "catalog:",
     "utils": "workspace:*"
   },
   "devDependencies": {
