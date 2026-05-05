@@ -371,7 +371,6 @@ export const removeWebhook = internalAction({
   },
 });
 
-/** List GitHub repos the authenticated user has access to. */
 export const listUserRepos = action({
   args: {},
   handler: async (ctx) => {
@@ -407,7 +406,6 @@ export const listUserRepos = action({
   },
 });
 
-/** Check if the user's GitHub token has the admin:repo_hook scope. */
 export const checkWebhookScope = action({
   args: {},
   handler: async (ctx) => {
@@ -473,7 +471,6 @@ export const checkRepoPrivacy = internalAction({
   },
 });
 
-/** Manual sync — callable from the frontend. Returns count of new commits found. */
 export const triggerSync = action({
   args: { commitmentId: v.id("commitments") },
   handler: async (ctx, { commitmentId }) => {

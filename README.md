@@ -134,10 +134,18 @@ Create two **environments** (`production` and `development`), each with:
 
 ### Convex (production)
 
-Add the Clerk secret key to your Convex production deployment:
+Set the backend env vars on the production Convex deployment:
 
 ```bash
-CONVEX_DEPLOYMENT=prod:your-deployment npx convex env set CLERK_SECRET_KEY sk_live_...
+npx convex env set CLERK_FRONTEND_API_URL <clerk-issuer-url> --prod
+npx convex env set CLERK_SECRET_KEY <clerk-secret-key> --prod
+```
+
+Webhook sync also needs:
+
+```bash
+npx convex env set GITHUB_WEBHOOK_SECRET <webhook-secret> --prod
+npx convex env set CONVEX_SITE_URL <convex-site-url> --prod
 ```
 
 ## Project Structure

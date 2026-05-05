@@ -14,7 +14,12 @@ export interface GitHubCommitWithBranch extends GitHubCommit {
 
 export async function fetchGitHubToken(clerkUserId: string): Promise<string | null> {
   const secretKey = process.env.CLERK_SECRET_KEY;
-  if (!secretKey) return null;
+  if (!secretKey) {
+    console.error("CLERK_SECRET_KEY is not configured; cannot fetch GitHub OAuth token", {
+      clerkUserId,
+    });
+    return null;
+  }
 
   const res = await fetch(
     `https://api.clerk.com/v1/users/${clerkUserId}/oauth_access_tokens/oauth_github`,
